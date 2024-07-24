@@ -1,8 +1,9 @@
 # Per cominciare
-installa da terminale flask e google-api-python-client
+Installa i `requirements.txt`
 
 ### per accedere
-devi possedere il file keys.json con le credenziali (mettilo nella cartella)
+devi possedere il file keys.json con le credenziali (mettilo nella main directory)
+avvia app.py
 
 ### per lamentarsi
 dont
