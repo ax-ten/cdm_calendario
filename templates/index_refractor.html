@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8">
+    <!-- <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script> -->
+    <meta name="viewport" content="width=device-width">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style_refractor.css') }}">
+    <title>Calendario crocevia</title>
+  </head>
+<body>
+  <div id="week">
+    {{ week_data|safe }}
+  </div>
+  
+</body>
+</html>
