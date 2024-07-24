@@ -2,7 +2,7 @@
 Installa i `requirements.txt`
 
 ### per accedere
-devi possedere il file keys.json con le credenziali (mettilo nella main directory)
+devi possedere il file .env con le credenziali (mettilo nella main directory)
 avvia app.py
 
 ### per lamentarsi
