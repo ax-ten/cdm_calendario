@@ -49,14 +49,6 @@ def getEventsPerDay(events_result):
         events_list.sort(key=lambda x: x["start"].get("dateTime", x["start"].get("date")))
     return events_per_day
 
-# # Stampa gli eventi divisi per giorno in ordine
-# for event_date, events_list in events_per_day.items():
-#     print(f"Eventi del {event_date.strftime('%a')}:")
-#     for event in events_list:
-#         start = event["start"].get("dateTime", event["start"].get("date"))
-#         starttime = datetime.datetime.fromisoformat(start).strftime("%H:%M")
-#         print(f"{starttime} - {event['summary']}")
-#     print()
 
 def getItemsFromDescription(description):
     GDR = "gdr"
@@ -71,10 +63,18 @@ def getItemsFromDescription(description):
     ESTERNO = "esterno"
     DEFAULT = "default"
 
+    #Altri eventi sporadici
+    HARRYPOTTER = "harry"
+    PRIDE = "pride"
+
     if description is None:
         return DEFAULT, []
     tags = re.split("\s#", description)
     match tags[0].lower():
+        case "pride":
+            return PRIDE, tags[1:]
+        case "hogwarts"|"harry"|"potterheads"|"harrypotter":
+            return HARRYPOTTER, tags[1:]
         case "roll"|"dark"|"rollinthedark"|"roll in the dark":
             return ROLL, tags[1:]
         case "gdr"|"rpg":
@@ -176,7 +176,7 @@ async def getCreds():
         os.getenv("GOOGLE_APPLICATION_CREDENTIALS"),
         scopes=["https://www.googleapis.com/auth/calendar.readonly"],
     )  
-    time.sleep(1) # Dormi due secondi così carica correttamente tutto
+    time.sleep(1) # Dormi due secondi così carica correttamente
     return creds
 
 def getContenutoFinale():
