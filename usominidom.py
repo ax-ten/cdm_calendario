@@ -61,6 +61,7 @@ def getItemsFromDescription(description):
     DRAW_CLUB = "disegno"
     RIUNIONE = "riunione"
     ESTERNO = "esterno"
+    FRULLATORI = "frullatori"
     DEFAULT = "default"
 
     #Altri eventi sporadici
@@ -71,6 +72,8 @@ def getItemsFromDescription(description):
         return DEFAULT, []
     tags = re.split("\s#", description)
     match tags[0].lower():
+        case "frullatori"|"3d"|"blender":
+            return FRULLATORI, tags[1:]
         case "pride":
             return PRIDE, tags[1:]
         case "hogwarts"|"harry"|"potterheads"|"harrypotter":
