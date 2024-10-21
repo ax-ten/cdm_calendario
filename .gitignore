@@ -1,3 +1,5 @@
 /.vscode
 .env
+/.venv
 keys.json
+/__pycache__

@@ -11,6 +11,10 @@
   --riunioneurl: url(../src/Fenice.png);
   --gdturl: url(../src/GdT.png);
   --rollurl: url(../src/Roll.png);
+  --sfondorroll : url(../src/sfondoRollinthedark.png)
+  --gamingurl: url(../src/gaming.png);
+  --frullatoriurl: url(../src/Frullatori.png);
+  --pin: url(../src/pin.png);
 }
 
 /* GIOCO DI RUOLO */
@@ -38,6 +42,11 @@
 .twitch-img{background-image: var(--twitchurl);}
 .twitch-tag{background:#6441a5}
 
+/* GAMING */
+.gaming{background:#9770df}
+.gaming-img{background-image: var(--gamingurl);}
+.gaming-tag{background:#6441a5}
+
 /* MONDI TRA LE RIGHE */
 .libro{background:#68a5a8}
 .libro-img{background-image: var(--librourl);}
@@ -63,12 +72,54 @@
 .esterno-img{background-image: var(--esternourl);}
 .esterno-tag{background:#045C2E}
 
+/* FRULLATORI */
+.frullatori{background:#68a5a8}
+.frullatori-img{background-image: var(--frullatoriurl);}
+.frullatori-tag{background:#3d6a6d}
+
 /* DEFAULT */
-.default{background:#EF6C00}
+.default{background:#E3583B}
 .default-img{background-image: var(--defaulturl);}
 .default-tag{background:#99371e}
 
+/* PIN */
+.pin{
+  background-image: var(--pin);
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
 /* ------ Eventi particolari ------ */
+
+/* Nintendo */
+.nintendo{
+  background-color: #63439e;
+  /* background-image: linear-gradient(to right, 
+    #0061F2 0%,        #0061F2 15%,   
+    #1b1b1b 15%,       #1b1b1b 16%,   
+    #2F2F2F 17%,       #2F2F2F 84%,   
+    #1b1b1b 84%,       #1b1b1b 86%,   
+    #FF007A 86%
+  ); */
+}
+
+/* ROLL IN THE DARK */
+.roll{
+  background-image: var(--sfondorroll);
+  background-size: contain;
+  /* background-color: #E3583B;
+  background-image: linear-gradient(to right, #E3583B 65%, #e3573b00 100%), 
+  url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 14 18"><text x="0" y="18" font-size="20" font-weight="bold" font-family="Arial" fill="%23494B86" transform="rotate(45 10 10)">?</text></svg>');
+      
+  background-repeat:repeat;
+  background-position: top right, 
+    calc(100% - 20px) 0, 
+    calc(100% - 40px) 20px, 
+    calc(100% - 60px) 40px,
+    calc(100% - 80px) 60px;
+  background-size: 400px 100%, auto; */
+}
+
 /* PRIDE */
 .pride{
   background-image: linear-gradient(45deg,

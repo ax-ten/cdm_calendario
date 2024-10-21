@@ -62,11 +62,13 @@ def getItemsFromDescription(description):
     RIUNIONE = "riunione"
     ESTERNO = "esterno"
     FRULLATORI = "frullatori"
+    GAMING = "gaming"
     DEFAULT = "default"
 
     #Altri eventi sporadici
     HARRYPOTTER = "harry"
     PRIDE = "pride"
+    NINTENDO = 'nintendo'
 
     if description is None:
         return DEFAULT, []
@@ -74,6 +76,10 @@ def getItemsFromDescription(description):
     match tags[0].lower():
         case "frullatori"|"3d"|"blender":
             return FRULLATORI, tags[1:]
+        case "nintendo":
+            return NINTENDO, tags[1:]
+        case "gaming"|'game'|'videgiochi'|'vg':
+            return GAMING, tags[1:]
         case "pride":
             return PRIDE, tags[1:]
         case "hogwarts"|"harry"|"potterheads"|"harrypotter":
@@ -159,7 +165,7 @@ def getAppuntamentoSlotDiv(starttime, endtime, summary, type, tags):
                     <p class=\"appuntamento_name\">{summary}</p>\
                     <div class=\"sub-items_wrapper\">"
                             
-    if starttime != endtime: ## Se non è un evento che dura una giornata intera              
+    if starttime != endtime: ## Se non è un evento che dura una giornata intera     
         slotdiv+=f"<span class=\"sub_item orario\">{starttime} - {endtime}</span>"
     
     for tag in tags:
