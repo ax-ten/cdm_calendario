@@ -15,7 +15,7 @@ def favicon():
 @app.route('/')
 def index():
     # Recupera la settimana dal calendario
-    week_data = getContenutoFinale()
+    week_data = getContenutoFinale(daysforward=2)
     return render_template('index_refractor.html', week_data)
 
 def find_free_port():
@@ -32,4 +32,6 @@ def run(port=None):
 
 
 if __name__ == '__main__':
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.DEBUG)
     run()

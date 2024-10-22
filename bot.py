@@ -2,10 +2,8 @@
 # from multiprocessing import Process
 from telegram import  Update #,Bot
 from telegram.ext import CommandHandler, CallbackContext#,  Updater, MessageHandler
-
+import logging
 from telegram.ext import ApplicationBuilder
-
-# from datetime import time
 from enum import Enum
 import json
 from background_browser import BackgroundBrowser
@@ -53,19 +51,22 @@ async def calendario(update: Update, _):
 
 
 def main():  
-    # Costruisci bot
-    application = ApplicationBuilder().token(token()).build()
-    application.add_handler(CommandHandler('calendario', calendario))
-    #application.add_handler(MessageHandler(filters=None,callback=duh))
+    try:
+        # Costruisci bot
+        application = ApplicationBuilder().token(token()).build()
+        application.add_handler(CommandHandler('calendario', calendario))
+        #application.add_handler(MessageHandler(filters=None,callback=duh))
 
-    # Crea la JQ e aggiungi update automatici al calendario
-    # job_queue = application.job_queue
-    #job_queue.run_repeating(render_calendario, interval = 60, name="update_calendar") #Aggiorna il calendario ogni minuto
-    # job_queue.run_daily(calendario_to_terradimezzo, time=time(10,0),days=(0,), name="posta_in_terradimezzo") #posta di lunedì alle 10.00 nel gruppo terradimezzo
-    # job_queue.run_daily(calendario_to_terradimezzo, time=time(15,30),days=(0,),name="posta_calendario") #Posta di lunedì alle 15.30 nel gruppo grande
-
-    
-    application.run_polling()
+        # Crea la JQ e aggiungi update automatici al calendario
+        # job_queue = application.job_queue
+        #job_queue.run_repeating(render_calendario, interval = 60, name="update_calendar") #Aggiorna il calendario ogni minuto
+        # job_queue.run_daily(calendario_to_terradimezzo, time=time(10,0),days=(0,), name="posta_in_terradimezzo") #posta di lunedì alle 10.00 nel gruppo terradimezzo
+        # job_queue.run_daily(calendario_to_terradimezzo, time=time(15,30),days=(0,),name="posta_calendario") #Posta di lunedì alle 15.30 nel gruppo grande
+        
+        application.run_polling()
+    finally:
+        logging.info('Bot in chiusura')
+        bb.on_close()
 
 
 

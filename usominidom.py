@@ -188,7 +188,7 @@ async def getCreds():
     time.sleep(1) # Dormi due secondi così carica correttamente
     return creds
 
-def getContenutoFinale():
+def getContenutoFinale(daysforward=2):
     locale.setlocale(locale.LC_ALL, 'it_IT.utf8')
 
     # Carica le variabili di ambiente da un file .env
@@ -199,7 +199,7 @@ def getContenutoFinale():
     # Crea un'istanza del servizio del calendario
     service = build("calendar", "v3", credentials=credentials)
 
-    events_result = query(service, day=datetime.date.today() + datetime.timedelta(days=2))
+    events_result = query(service, day=datetime.date.today() + datetime.timedelta(days=daysforward))
     epd = getEventsPerDay(events_result)
 
     return getContenuto(epd)

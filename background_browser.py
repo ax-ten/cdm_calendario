@@ -48,12 +48,14 @@ class BackgroundBrowser:
         await self.page.setViewport({'width': int(page_width), 'height': int(page_height)})
         await self.page.screenshot({'path': (output_path or 'screenshot.png'), 'fullPage': True})
 
+
     async def on_close(self):
         """Chiude il browser."""
         if self.browser:
             await self.browser.close()
         if self.flask_process:
             self.flask_process.terminate()
+
 
 async def start_flask_app():
     """Avvia il server Flask in un processo separato."""
@@ -62,3 +64,14 @@ async def start_flask_app():
     p.start()
     await asyncio.sleep(0.1)  # Attendi che il server Flask si avvii completamente
     return p, port
+
+
+async def main():
+    bb = BackgroundBrowser()
+    try:
+        await bb.take_screenshot()
+    finally:
+        await bb.on_close()
+
+if __name__ == '__main__':
+    asyncio.run(main())
