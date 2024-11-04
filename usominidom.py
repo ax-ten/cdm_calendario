@@ -69,11 +69,14 @@ def getItemsFromDescription(description):
     HARRYPOTTER = "harry"
     PRIDE = "pride"
     NINTENDO = 'nintendo'
+    HALLOWEEN = 'halloween'
 
     if description is None:
         return DEFAULT, []
     tags = re.split("\s#", description)
     match tags[0].lower():
+        case "allouin"|"halloween":
+            return HALLOWEEN, tags[1:]
         case "frullatori"|"3d"|"blender":
             return FRULLATORI, tags[1:]
         case "nintendo":

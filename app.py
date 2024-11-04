@@ -16,7 +16,7 @@ def favicon():
 def index():
     # Recupera la settimana dal calendario
     week_data = getContenutoFinale(daysforward=2)
-    return render_template('index_refractor.html', week_data)
+    return render_template('index_refractor.html', week_data=week_data)
 
 def find_free_port():
     """Trova una porta libera sul sistema."""
