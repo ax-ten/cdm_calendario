@@ -11,6 +11,7 @@ class GoogleCreds:
 
     CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
     BUSINESS_SCOPES = ["https://www.googleapis.com/auth/business.manage"]
+    LOCATION = "DUH/230239029302",  # Es: "locations/1234567890"
 
     @staticmethod
     async def get_creds(scopes):
@@ -22,6 +23,12 @@ class GoogleCreds:
         return creds
 
 
+    ##################################################
+
+    #               CALENDAR SERVICES                #
+
+    ##################################################
+
     @staticmethod
     def get_calendar_service():
         """Ritorna un'istanza del servizio Google Calendar."""
@@ -30,16 +37,6 @@ class GoogleCreds:
             GoogleCreds.get_creds(scopes=GoogleCreds.CALENDAR_SCOPES)
         )
         return build("calendar", "v3", credentials=credentials)
-
-
-    @staticmethod
-    def get_business_service():
-        """Ritorna un'istanza del servizio Google Business Information."""
-        load_dotenv()  # Carica variabili di ambiente
-        credentials = asyncio.run(
-            GoogleCreds.get_creds(scopes=GoogleCreds.BUSINESS_SCOPES)
-        )
-        return build("mybusinessbusinessinformation", "v1", credentials=credentials)
 
 
     @staticmethod
@@ -104,3 +101,95 @@ class GoogleCreds:
             events_list.sort(key=lambda x: x["start"].get("dateTime", x["start"].get("date")))
 
         return events_per_day
+
+
+
+    ##################################################
+
+    #               BUSINESS SERVICES                #
+
+    ##################################################
+
+
+    @staticmethod
+    def get_business_service():
+        """Ritorna un'istanza del servizio Google Business Information."""
+        load_dotenv()  # Carica variabili di ambiente
+        credentials = asyncio.run(
+            GoogleCreds.get_creds(scopes=GoogleCreds.BUSINESS_SCOPES)
+        )
+        return build("mybusinessbusinessinformation", "v1", credentials=credentials)
+    
+
+    @staticmethod
+    def updateBusinessHours(service):
+        request_body = GoogleCreds.get_business_hours()
+        request = service.locations().patch(
+            name=GoogleCreds.LOCATION,  # Es: "locations/1234567890"
+            updateMask="regularHours",
+            body=request_body,
+        )
+        response = request.execute()
+        print("Orari aggiornati con successo:", response)
+
+
+    # Funzione per ottenere gli orari di apertura e chiusura
+    @staticmethod
+    def get_business_hours():
+        events = GoogleCreds.get_events_per_day()
+        business_hours = {}
+
+        for date, events_list in events.items():
+            # Lista per gli orari di apertura e chiusura
+            open_time = None
+            close_time = None
+            
+            for event in events_list:
+                start_time = format_time(event['start']['dateTime'])
+                end_time = format_time(event['end']['dateTime'])
+
+                # Se l'orario di apertura non è definito, settalo al primo evento
+                if open_time is None or start_time < open_time:
+                    open_time = start_time
+
+                # Se l'orario di chiusura non è definito, settalo al primo evento
+                if close_time is None or end_time > close_time:
+                    close_time = end_time
+
+            # Aggiungi l'orario complessivo per la data nel dizionario
+            day_of_week = date.strftime("%A").upper()  # Ottieni il giorno della settimana in formato stringa
+            business_hours[day_of_week] = {
+                "openTime": open_time,
+                "closeTime": close_time
+            }
+
+        return business_hours
+    
+
+# Funzione per formattare l'orario
+
+def format_time(time_str):
+    return datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S%z").strftime("%H:%M")
+
+
+# vogliono essere pagati, vabbè
+# import googlemaps
+# if __name__ == '__main__':
+#    # Replace with your actual API key
+#     api_key = ""
+
+#     # Create a Google Maps client
+#     gmaps = googlemaps.Client(key=api_key)
+
+#     # Replace with your business name or a related keyword
+#     query = "Crocevia dei Mondi, Barletta"
+
+#     # Search for places matching the query
+#     places = gmaps.places(query=query)
+
+#     # Filter results to find your locations (you might need to add logic here)
+#     for place in places['results']:
+#         print(f"Place ID: {place['place_id']}")
+#         print(f"Name: {place['name']}")
+#         print(f"Address: {place['formatted_address']}")
+#         # ... other attributes
