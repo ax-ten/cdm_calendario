@@ -7,6 +7,7 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
+DAYS_FORWARD = 5
 
 @app.route('/favicon.ico')
 def favicon():
@@ -15,7 +16,7 @@ def favicon():
 @app.route('/')
 def index():
     # Recupera la settimana dal calendario
-    week_data = getContenutoFinale(daysforward=2)
+    week_data = getContenutoFinale(DAYS_FORWARD)
     return render_template('index_refractor.html', week_data=week_data)
 
 def find_free_port():
@@ -24,9 +25,11 @@ def find_free_port():
         s.bind(('', 0))
         return s.getsockname()[1]
 
-def run(port=None):
+def run(port=None, daysforward=DAYS_FORWARD):
+    global DAYS_FORWARD
     if port is None:
         port = find_free_port()
+    DAYS_FORWARD = daysforward
     app.run(port=port)
     return port
 

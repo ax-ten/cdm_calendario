@@ -2,12 +2,10 @@
     border-radius: 20px;
     padding: 10px 0px 0px 0px;
     margin-bottom: 16px;
-    width: 380px;
 }
 
 .fullday_appuntamenti h4{
   font-size: larger;
-  font-weight: bolder;
   text-align: center;
   width: 100%;
   margin: 0%;
@@ -38,7 +36,6 @@ min-height: 40px;
 padding: 10px;
 padding-left: 70px;
 color: white;
-/* font-weight: bold; */
 margin-bottom: 20px;
 }
 
@@ -53,7 +50,7 @@ margin:0px 0px 9px 0px;
 }
 
 .sub-items_wrapper{
-width: 315px;
+/* width: 300px; */
 display:flex;
 justify-content: flex-start;
 position: absolute;
@@ -64,10 +61,10 @@ min-height: 30px;
 padding: 6px 9px 0px 9px;
 margin: 0;
 margin-right: 6px;
-font-size: 14px;
+font-size: 13px;
 border-radius: 25px;
 position:relative;
-left: -8px;
+left: -20px;
 box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 

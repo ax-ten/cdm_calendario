@@ -1,113 +1,37 @@
 import datetime
 import locale
-import os
-import asyncio
 import re
-
-import time
-from dotenv import load_dotenv
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-
-def query(service, day=datetime.date.today()):
-    # Ottieni la data di inizio e fine per la settimana in cui day appartiene, default today
-    start_of_week = day - datetime.timedelta(days=day.weekday())
-    end_of_week = start_of_week + datetime.timedelta(days=6)
-
-    # Formatta le date per la query
-    start_date = start_of_week.isoformat() + "T00:00:00Z"
-    end_date = end_of_week.isoformat() + "T23:59:59Z"
-
-    # Elenca gli eventi del calendario per la settimana corrente
-    events_result = service.events().list(
-        calendarId=os.getenv("calendar_id"),
-        timeMin=start_date,
-        timeMax=end_date,
-        singleEvents=True,
-        orderBy="startTime",
-    ).execute()
-    return events_result
+from api import GoogleCreds
 
 
-def getEventsPerDay(events_result):
-    events = events_result.get("items", [])
-    # Crea un dizionario per organizzare gli eventi per giorno
-    events_per_day = {}
-
-    # Popola il dizionario con gli eventi divisi per giorno
-    for event in events:
-        start = event["start"].get("dateTime", event["start"].get("date"))
-        event_date = datetime.datetime.fromisoformat(start).date()
-
-        if event_date in events_per_day:
-            events_per_day[event_date].append(event)
-        else:
-            events_per_day[event_date] = [event]
-
-    # Ordina gli eventi all'interno di ciascun giorno in base all'orario di inizio
-    for events_list in events_per_day.values():
-        events_list.sort(key=lambda x: x["start"].get("dateTime", x["start"].get("date")))
-    return events_per_day
-
+def load_event_types():
+    event_mapping = {}
+    file_path="event_types.txt"
+    with open(file_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or ":" not in line:
+                continue
+            event_type, keywords = line.split(":", 1)
+            event_mapping[event_type.strip()] = [kw.strip() for kw in keywords.split(",")]
+    return event_mapping
 
 def getItemsFromDescription(description):
-    GDR = "gdr"
-    GDT = "gdt"
-    ROLL = "roll"
-    TWITCH = "twitch"
-    MANA_VAULT = "mana"
-    BOOK_CLUB = "libro"
-    WRITE_CLUB = "penna"
-    DRAW_CLUB = "disegno"
-    RIUNIONE = "riunione"
-    ESTERNO = "esterno"
-    FRULLATORI = "frullatori"
-    GAMING = "gaming"
+    event_mapping = load_event_types()
     DEFAULT = "default"
-
-    #Altri eventi sporadici
-    HARRYPOTTER = "harry"
-    PRIDE = "pride"
-    NINTENDO = 'nintendo'
-    HALLOWEEN = 'halloween'
-
     if description is None:
         return DEFAULT, []
-    tags = re.split("\s#", description)
-    match tags[0].lower():
-        case "allouin"|"halloween":
-            return HALLOWEEN, tags[1:]
-        case "frullatori"|"3d"|"blender":
-            return FRULLATORI, tags[1:]
-        case "nintendo":
-            return NINTENDO, tags[1:]
-        case "gaming"|'game'|'videgiochi'|'vg':
-            return GAMING, tags[1:]
-        case "pride":
-            return PRIDE, tags[1:]
-        case "hogwarts"|"harry"|"potterheads"|"harrypotter":
-            return HARRYPOTTER, tags[1:]
-        case "roll"|"dark"|"rollinthedark"|"roll in the dark":
-            return ROLL, tags[1:]
-        case "gdr"|"rpg":
-            return GDR, tags[1:]
-        case "gdt":
-            return GDT, tags[1:]
-        case "riunione":
-            return RIUNIONE, tags[1:]
-        case "mana"|"mana vault":
-            return MANA_VAULT, tags[1:]
-        case "live"|"twitch":
-            return TWITCH, tags[1:]
-        case "esterno"|"open":
-            return ESTERNO, tags[1:]
-        case "lettura"|"bookclub"|"book"|"club del libro"|"mondi tra le righe":
-            return BOOK_CLUB, tags[1:]
-        case "disegno"|"matitozze"|"tecniche"|"tm":
-            return DRAW_CLUB, tags[1:]
-        case "scrittura"|"scritturacreativa"|"scrittura creativa":
-            return WRITE_CLUB, tags[1:]
+    
+    tags = re.split(r"\s#", description)
+    keyword = tags[0].lower()
+
+    for event_type, keywords in event_mapping.items():
+        if keyword in keywords:
+            return event_type, tags[1:]
+
     return DEFAULT, tags[1:]
+
+
 
 def getContenuto(events_per_day):
     date = list(events_per_day.keys())
@@ -138,6 +62,7 @@ def getContenuto(events_per_day):
     contenuto += "</div>" # Chiudi Day
     return contenuto
 
+
 def eventTime(event):
         start = event["start"].get("dateTime", event["start"].get("date"))
         end = event["end"].get("dateTime", event["end"].get("date"))
@@ -145,8 +70,10 @@ def eventTime(event):
         endtime = datetime.datetime.fromisoformat(end).strftime("%H:%M")
         return starttime, endtime
 
+
 def isFullDayEvent(event):
         return eventTime(event)[0] == eventTime(event)[1]
+
 
 def openDayDiv(event_date, starting_event):
     daydiv = f"<div class=\"day\">\
@@ -160,6 +87,7 @@ def openDayDiv(event_date, starting_event):
         return daydiv + f"<div class=\"fullday_appuntamenti {type}\"> <h4>{starting_event['summary']}</h4>"
     else:
         return daydiv + "<div class=\"appuntamenti\">"
+    
 
 def getAppuntamentoSlotDiv(starttime, endtime, summary, type, tags):
     slotdiv = f"<div class=\"appuntamento_slot\">\
@@ -183,47 +111,16 @@ def getAppuntamentoSlotDiv(starttime, endtime, summary, type, tags):
 
     return slotdiv + f"</div></div></div>"
     
-async def getCreds():
-    creds = service_account.Credentials.from_service_account_file(
-        os.getenv("GOOGLE_APPLICATION_CREDENTIALS"),
-        scopes=["https://www.googleapis.com/auth/calendar.readonly"],
-    )  
-    time.sleep(1) # Dormi due secondi così carica correttamente
-    return creds
 
 def getContenutoFinale(daysforward=2):
     locale.setlocale(locale.LC_ALL, 'it_IT.utf8')
 
-    # Carica le variabili di ambiente da un file .env
-    load_dotenv()
-
-    credentials = asyncio.run(getCreds())
-
-    # Crea un'istanza del servizio del calendario
-    service = build("calendar", "v3", credentials=credentials)
-
-    events_result = query(service, day=datetime.date.today() + datetime.timedelta(days=daysforward))
-    epd = getEventsPerDay(events_result)
+    start_day = datetime.date.today() + datetime.timedelta(days=daysforward)
+    epd = GoogleCreds.get_events_per_day(day=start_day)
 
     return getContenuto(epd)
 
 import pprint
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, 'it_IT.utf8')
-
-    # Carica le variabili di ambiente da un file .env
-    load_dotenv()
-
-    credentials = asyncio.run(getCreds())
-
-    # Crea un'istanza del servizio del calendario
-    service = build("calendar", "v3", credentials=credentials)
-
-    events_result = query(service)
-    epd = getEventsPerDay(events_result)
-    pprint.pprint(epd)
-
-
-    #TODO output immagine
-    #TODO differenziare eventi fuorisede
-    
+    pprint.pprint(GoogleCreds.get_events_per_day())

@@ -36,11 +36,10 @@ class BackgroundBrowser:
                     html = document.documentElement;
 
                 var height = Math.max(
-                    body.scrollHeight, body.offsetHeight, html.clientHeight,
-                    html.scrollHeight, html.offsetHeight);
+                    body.scrollHeight, body.offsetHeight);
                 return height;
             }
-        """)
+        """)#, html.clientHeight, html.scrollHeight, html.offsetHeight
         # print(f"Altezza della pagina: {page_height}")
         page_width = 480 * zoom_level
 
