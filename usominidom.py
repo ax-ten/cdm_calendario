@@ -4,38 +4,10 @@ import re
 from api import GoogleCreds
 
 
-def load_event_types():
-    event_mapping = {}
-    file_path="event_types.txt"
-    with open(file_path, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line or ":" not in line:
-                continue
-            event_type, keywords = line.split(":", 1)
-            event_mapping[event_type.strip()] = [kw.strip() for kw in keywords.split(",")]
-    return event_mapping
-
-def getItemsFromDescription(description):
-    event_mapping = load_event_types()
-    DEFAULT = "default"
-    if description is None:
-        return DEFAULT, []
-    
-    tags = re.split(r"\s#", description)
-    keyword = tags[0].lower()
-
-    for event_type, keywords in event_mapping.items():
-        if keyword in keywords:
-            return event_type, tags[1:]
-
-    return DEFAULT, tags[1:]
-
-
 
 def getContenuto(events_per_day):
     date = list(events_per_day.keys())
-    # se il mese del giorno iniziale e finale non coincidono, specifica entrambi
+    # se il mese di inizio e fine settimana non coincidono, specifica entrambi
     startday = date[0].strftime('%d '+("" if date[0].month == date[-1].month else " %B"))
     endday = date[-1].strftime('%d %B')
     contenuto = f"<p class='header'>{startday} - {endday}</p><hr>"
@@ -120,7 +92,3 @@ def getContenutoFinale(daysforward=2):
 
     return getContenuto(epd)
 
-import pprint
-if __name__ == "__main__":
-    locale.setlocale(locale.LC_ALL, 'it_IT.utf8')
-    pprint.pprint(GoogleCreds.get_events_per_day())
