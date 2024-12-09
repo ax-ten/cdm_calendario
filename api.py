@@ -3,15 +3,24 @@ from googleapiclient.discovery import build
 from dotenv import load_dotenv
 import asyncio
 import os
-import datetime
+import datetime, logging
+from datetime import timezone
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 
+LAST_CALL_FILE = "last_gmail_call.txt"
 
 class GoogleCreds:
     """Classe per gestire credenziali Google e servizi API."""
-
     CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
     BUSINESS_SCOPES = ["https://www.googleapis.com/auth/business.manage"]
+    GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
     LOCATION = "DUH/230239029302",  # Es: "locations/1234567890"
+    LAST_CALL_FILE = "last_gmail_call.txt"
+    CREDENTIALS_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")  # Path al file JSON delle credenziali di servizio
+    TOKEN_FILE = "token.json" 
+    CLIENT_SECRETS_FILE = "credentials.json"
 
     @staticmethod
     async def get_creds(scopes):
@@ -19,8 +28,133 @@ class GoogleCreds:
         creds = service_account.Credentials.from_service_account_file(
             os.getenv("GOOGLE_APPLICATION_CREDENTIALS"),
             scopes=scopes,
+            subject="croceviadeimondi@gmail.com"
         )
         return creds
+
+
+    ##################################################
+    #                                                #
+    #                GMAIL  SERVICES                 #
+    #                                                #
+    ##################################################
+
+
+    @staticmethod
+    def get_gmail_creds():
+        """
+        Ottiene le credenziali per Gmail API.
+        Usa prima le credenziali di Account di Servizio (con delega), altrimenti le credenziali OAuth User.
+        """
+        creds = None
+
+        # Verifica se esistono credenziali OAuth salvate (token.json)
+        if os.path.exists(GoogleCreds.TOKEN_FILE):
+            creds = Credentials.from_authorized_user_file(GoogleCreds.TOKEN_FILE, GoogleCreds.GMAIL_SCOPES)
+
+        # Se non sono disponibili credenziali OAuth valide, avvia il login manuale
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                # Avvia il login manuale tramite OAuth
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    GoogleCreds.CLIENT_SECRETS_FILE, GoogleCreds.SCOPES
+                )
+                creds = flow.run_local_server(port=0)
+
+                # Salva le credenziali per il prossimo utilizzo
+                with open(GoogleCreds.TOKEN_FILE, "w") as token:
+                    token.write(creds.to_json())
+
+        return creds
+
+    @staticmethod
+    def get_last_call_timestamp() -> str:
+        """Legge il timestamp dell'ultima chiamata."""
+        if os.path.exists(GoogleCreds.LAST_CALL_FILE):
+            with open(GoogleCreds.LAST_CALL_FILE, "r") as file:
+                return file.read().strip()
+        return None
+
+    @staticmethod
+    def save_last_call_timestamp():
+        """Salva il timestamp corrente come ultima chiamata."""
+        current_timestamp = datetime.now(timezone.utc).strftime("%s")
+        with open(GoogleCreds.LAST_CALL_FILE, "w") as file:
+            file.write(current_timestamp)
+
+    @staticmethod
+    async def get_gmail_service():
+        """Inizializza il servizio Gmail."""
+        creds = await GoogleCreds.get_creds(GoogleCreds.GMAIL_SCOPES)
+        return build('gmail', 'v1', credentials=creds)
+    
+
+    # @staticmethod
+    # async def get_new_mails() -> list[dict]:
+    #     """Recupera le nuove email come una lista di dizionari."""
+    #     service = await GoogleCreds.get_gmail_service()
+    #     last_call = GoogleCreds.get_last_call_timestamp()
+    #     query = f"after:{last_call}" if last_call else None
+
+    #     try:
+    #         if query:
+    #             result = service.users().messages().list(userId="me", q=query, maxResults=10).execute()
+    #         else:
+    #             result = service.users().messages().list(userId="me", maxResults=10).execute()
+    #         return result
+    #     except Exception as e:
+    #         print(f"Errore HTTP durante la chiamata a Gmail: {e}")
+    #         return []
+
+    @staticmethod
+    def get_new_mails():
+        """
+        Recupera le email ricevute dopo l'ultimo timestamp registrato.
+        Questo metodo utilizza le credenziali generate in `get_creds`.
+        """
+        try:
+            # Inizializza il servizio Gmail
+            creds = GoogleCreds.get_creds()
+            service = build("gmail", "v1", credentials=creds)
+
+            # Ottieni il timestamp dell'ultima chiamata
+            last_call_timestamp = GoogleCreds.get_last_call_timestamp()
+
+            # Costruisci la query per email successive all'ultimo timestamp
+            query = ""
+            if last_call_timestamp:
+                query = f"after:{int(last_call_timestamp.timestamp())}"
+
+            # Recupera le email corrispondenti
+            response = service.users().messages().list(userId="me", q=query, maxResults=10).execute()
+            messages = response.get("messages", [])
+            if not messages:
+                logging.info("Nessuna nuova email trovata.")
+                return []
+
+            # Ottieni i dettagli di ogni email
+            emails = []
+            for message in messages:
+                msg = service.users().messages().get(userId="me", id=message["id"]).execute()
+                headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
+                email_data = {
+                    "mittente": headers.get("From", "Sconosciuto"),
+                    "oggetto": headers.get("Subject", "Senza Oggetto"),
+                    "data": headers.get("Date", "Sconosciuta"),
+                    "ora": headers.get("Date", "Sconosciuta"),  # La data contiene anche l'orario
+                }
+                emails.append(email_data)
+
+            # Salva il timestamp corrente
+            GoogleCreds.save_last_call_timestamp(datetime.now())
+
+            logging.info(f"Recuperate {len(emails)} email.")
+            return emails
+        except Exception as error:
+            logging.error(f"Errore durante il recupero delle email: {error}")
+            raise
 
 
     ##################################################
