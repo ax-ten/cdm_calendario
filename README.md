@@ -3,11 +3,11 @@ Installa i `requirements.txt`
 
 ## per avviare
 devi possedere i file .env e keys.json con le credenziali (mettili nella main directory)
-- esegui bot.py per avviare il bot telegram
-    - /calendario mostra la prossima settimana
-    - aggiorna automaticamente gli orari della sede su gmaps
-- esegui background_browser per creare screenshot.png con la settimana corrente (3 giorni da oggi)
-- esegui app.py per avviare il browser di visualizzazione
+- esegui `bot.py` per avviare il bot telegram
+    - il comando `/calendario` mostra le attività della prossima settimana
+    - ~aggiorna automaticamente gli orari della sede su gmaps~ è implementato ma l'API è a pagamento
+- esegui `background_browser.py` per creare screenshot.png con la settimana corrente (3 giorni da oggi)
+- esegui `app.py` per avviare il browser di visualizzazione
 
 ## per aggiungere un evento:
 aggiungi un nome e tutti i tag che ne farebbero riferimento in event_types.txt:
