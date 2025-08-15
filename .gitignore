@@ -5,3 +5,6 @@ keys.json
 /__pycache__
 screenshot.png
 credentials.json
+calendar_key.json
+
+drive_key.json

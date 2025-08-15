@@ -1,0 +1,170 @@
+:root { --pad: 14px; --radius: 16px; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; background: #0b0c10; color: #eaf0f1; }
+
+body.day {
+  background: #f0f0f0;
+  color: #222;
+}
+
+body.night {
+  background: #0b0c10;
+  color: #eaf0f1;
+}
+
+
+.container { max-width: 1200px; margin: 0 auto; padding: 32px 20px; }
+header { margin-bottom: 24px; }
+h1 { margin: 0 0 6px 0; font-weight: 700; }
+h2 { margin: 24px 0 12px; font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.card { background: #14161b; margin-bottom: 8px; border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+.thumb {
+  width: 100%;
+  aspect-ratio: 16/3;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: block;
+}
+
+.card-body { padding: var(--pad); display: grid; gap: 8px; }
+.title { margin: 0; font-size: 1.05rem; line-height: 1.2; }
+.meta { font-size: 0.9rem; color: #b9c1c9; display: flex; gap: 10px; flex-wrap: wrap; }
+.meta .cat { padding: 2px 8px; border: 1px solid #2b3242; border-radius: 999px; }
+.desc { margin: 0; color: #cfd6dc; font-size: 0.95rem; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.tags span { font-size: 0.8rem; padding: 2px 8px; border: 1px dashed #374050; border-radius: 999px; }
+.screen + .screen { margin-top: 36px; }
+.bar {padding: 5px; padding-left: 10px;margin: 0 0 6px 0; border-radius: 15px;}
+
+.card-body .header-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* così le altezze possono differire */
+  gap: 10px;               /* spazio orizzontale fra titolo e data */
+}
+
+.card-body .header-line .title {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.card-body .header-line .time {
+  font-size: 0.9rem;
+  color: #b9c1c9;
+  white-space: nowrap; /* evita che la data vada a capo */
+}
+
+
+/* layout a righe per giorno */
+#attivita {
+  display: flex;
+  flex-direction: column;
+  /* gap: 14px; */
+  margin-bottom: 30px;
+}
+
+.day-row {
+  display: grid;
+  grid-template-columns: 80px 1fr; /* label a sinistra fissa, traccia a destra */
+  align-items: center;
+  gap: 10px;
+}
+
+.day-label {
+  display: flex;
+  flex-direction: row; /* numero sopra abbreviazione */
+  align-items: center;
+  justify-content: center;
+  font-family: ui-monospace, monospace;
+  user-select: none;
+  gap: 4px;
+}
+
+.day-label .day-num {
+  font-weight: 700; /* bold */
+  font-size: 1.1rem;
+}
+
+.day-label .day-abbr {
+  font-weight: 400; /* più sottile */
+  font-size: 0.85rem;
+}
+
+
+/* area timeline del giorno */
+.day-track {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* spazio verticale tra barre nello stesso giorno */
+}
+
+/* barre attività (colore dalla classe categoria) */
+.day-track .bar {
+  display: inline-block;
+  border-radius: 9999px;
+  padding: 6px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* background: #2b3242;  */
+  color: #eaf0f1;
+}
+
+.day-track .bar .title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+
+/* Griglia oraria 17→23 sulla traccia del giorno */
+.day-track {
+  position: relative;
+}
+
+.day-row:nth-of-type(odd) .day-track {
+  background-color: rgba(255, 255, 255, 0.05); /* grigio trasparente per night mode */
+  border-radius: 6px; /* opzionale, per smussare */
+}
+
+
+/* 1 ora = 6 * 10min; 10min = var(--vw-per-10min) vw
+   quindi passo = calc(6vw * var(--vw-per-10min))
+   span totale 17→23 = 6 ore = calc(36vw * var(--vw-per-10min)) */
+.day-track::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0; /* parte da 17:00 */
+  height: 100%;
+  width: 100%; /* copre tutta la traccia */
+  pointer-events: none;
+
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(255,255,255,0.12) 0 1px,
+    transparent 1px calc(6vw * var(--vw-per-10min))
+  );
+  /* linea iniziale delle 17 */
+  /* border-left: 2px solid rgba(255,255,255,0.25); */
+}
+
+.orari-header {
+  display: grid;
+  grid-auto-flow: column;
+  /* 1 ora = 6 * VW_PER_10MIN */
+  grid-auto-columns: calc(6vw * var(--vw-per-10min));
+  margin-left: 50px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: #b9c1c9;
+  user-select: none;
+}
+
+.orari-header span {
+  justify-self: center; /* centra orizzontalmente nella cella */
+}
