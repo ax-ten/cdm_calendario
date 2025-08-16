@@ -156,10 +156,10 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
 
     let desc = ev.description || '';
     let verbose = '';
-    if (desc.includes('desc:')) {
-      const parts = desc.split('desc:');
+    if (desc.includes("desc:")) {
+      const parts = desc.split("desc:");
       desc = parts[0].trim();
-      verbose = parts.slice(1).join('desc:').trim(); 
+      verbose = parts.slice(1).join("desc:").trim(); 
     }
 
     let categoria = detectCategoria(desc);

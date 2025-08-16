@@ -15,6 +15,7 @@ body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
   background: #0b0c10;
   color: #eaf0f1;
+  max-width: 600px;
 }
 
 /* ================================
@@ -111,7 +112,7 @@ h2 {
   justify-content: space-between;
   align-items: flex-end;
   gap: 10px;
-  border-bottom: 1px solid #d9dfe457; /* linea semitrasparente */
+  border-bottom: 1px solid #d9dfe457; 
   padding-bottom: 2px; 
   margin-bottom: 3px; 
 }
@@ -238,13 +239,12 @@ h2 {
   font-size: 0.85rem;
 }
 
-/* Traccia del giorno */
-/* La traccia fa da contenitore di stacking */
+/* Track del giorno */
 .day-track {
   position: relative;
 }
 
-/* Le linee orarie: sopra al background della traccia… */
+/* Le linee orarie: sopra al background della track */
 .day-track::before {
   content: "";
   position: absolute;
@@ -260,13 +260,11 @@ h2 {
 
 }
 
-/* Qualsiasi contenuto (le bar) sta sopra le linee */
 .day-track > * {
   position: relative;
   z-index: 1;
 }
 
-/* Se vuoi il “grigio alternato” sulle righe dispari, resta sotto le linee */
 .day-row:nth-of-type(odd) {
   background-color: rgba(126, 126, 126, 0.15);
   border-radius: 6px;
@@ -291,14 +289,14 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
 
-  height: 32px;          /* altezza uniforme */
-  padding: 0;            /* rimosso il padding */
-  gap: 8px;              /* solo spazio tra icona e testo */
+  height: 32px;          
+  padding: 0;            
+  gap: 8px;              
 }
 
 .bar-icon {
-  height: 100%;          /* riempie tutta l’altezza della bar */
-  aspect-ratio: 1 / 1;   /* mantiene proporzione quadrata */
+  height: 100%;          
+  aspect-ratio: 1 / 1;   
   object-fit: contain;
   flex-shrink: 0;
 }
