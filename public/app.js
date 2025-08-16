@@ -1,13 +1,6 @@
 const VW_PER_10MIN = 2;
 document.documentElement.style.setProperty('--vw-per-10min', VW_PER_10MIN);
-// siamo in /calendario o root?
-const BASE = window.location.pathname.startsWith("/calendario")
-  ? "/calendario"
-  : "";
 
-function api(path) {
-  return fetch(`${BASE}/api/${path}`);
-}
 
 
 function eventCard(ev) {
@@ -106,7 +99,7 @@ function formatDate(dateStr) {
 
 
 async function loadAndRender(offset=1) {
-  const res = await api(`weekly?offset=${offset}`);
+  const res = await fetch(`weekly?offset=${offset}`);
   const data = await res.json();
 
   document.getElementById('range').textContent +=
