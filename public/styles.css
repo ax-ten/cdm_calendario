@@ -59,12 +59,13 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
 #schermata-eventi {
   display: flex;
   justify-content: space-between; /* h2 a sinistra, span a destra */
-  align-items: center;            /* allineati verticalmente */
+  align-items: baseline;            /* allineati verticalmente */
+  margin: 0px;
   margin-bottom: 10px;
 }
 
-#schermata-eventi h2 {
-  margin: 0; /* elimina margini verticali extra */
+#schermata-eventi h2{
+  margin: 0px;
 }
 
 

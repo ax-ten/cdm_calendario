@@ -83,6 +83,16 @@ function renderActivitiesByDay(attivita) {
   return html;
 }
 
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'long'
+  });
+}
+
+
+
 
 
 async function loadAndRender() {
@@ -90,7 +100,7 @@ async function loadAndRender() {
   const data = await res.json();
 
   document.getElementById('range').textContent +=
-    `${data.range.start} → ${data.range.end}`;
+    `${formatDate(data.range.start)} → ${formatDate(data.range.end)}`;
 
   const eventiEl = document.getElementById('eventi');
   const attivitaEl = document.getElementById('attivita');
@@ -101,7 +111,7 @@ async function loadAndRender() {
 
 
 loadAndRender();
-document.body.classList.add('night');
+document.body.classList.add('day');
 
 document.addEventListener('keydown', (e) => {
   // Evita che lo spazio faccia scroll
