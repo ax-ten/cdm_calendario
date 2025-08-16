@@ -15,6 +15,7 @@ const CALENDAR_ID = "4b70a04394809659390244a872836e10cc89e9016fdf66cd2f0a40c2a48
 
 
 
+
 // --- DRIVE API KEY (da drive_key.json) ---
 const driveKeyPath = path.join(__dirname, 'drive_key.json');
 const DRIVE_API_KEY = JSON.parse(fs.readFileSync(driveKeyPath, 'utf8')).APIKEY;
@@ -31,7 +32,9 @@ const FOLDER_IDS = {
 
 const app = express();
 app.use(cors());
-app.use(express.static('public'));
+// app.use(express.static('public'));
+// esponi tutto ciò che sta in /public
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------- AUTH ----------
 async function getAuth() {
