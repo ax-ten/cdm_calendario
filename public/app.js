@@ -14,11 +14,11 @@ function eventCard(ev) {
       </div>
       <div class="card-body">
         <div class="header-line">
-          <h3 class="title">${ev.nome}</h3>
+          <h1 class="title">${ev.nome}</h3>
+          <span class="time"><strong>${ev.giorno}</strong> dalle ${ev.orainizio}</span>
         </div>
         <div class="description-line">
-          <span class="time">${ev.giorno} · ${ev.orainizio} - ${ev.orafine}</span>
-          ${tags}
+          ${ev.verbose}
         </div>
       </div>
     </article>
@@ -34,6 +34,7 @@ function activityBar(ev) {
 
   return `
     <div class="bar ${cat}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}">
+      <img class="bar-icon" src="/src/${cat}.png" alt="${cat}">
       <span class="title">${ev.nome || 'Senza titolo'}</span>
     </div>
   `;
@@ -95,8 +96,8 @@ function formatDate(dateStr) {
 
 
 
-async function loadAndRender() {
-  const res = await fetch('/api/weekly');
+async function loadAndRender(offset=1) {
+  const res = await fetch(`/api/weekly?offset=${offset}`);
   const data = await res.json();
 
   document.getElementById('range').textContent +=

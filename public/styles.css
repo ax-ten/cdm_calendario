@@ -1,7 +1,25 @@
-:root { --pad: 14px; --radius: 16px; }
-* { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; background: #0b0c10; color: #eaf0f1; }
+/* ================================
+   Variabili globali e reset
+================================ */
+:root {
+  --pad: 14px;
+  --radius: 16px;
+}
 
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  background: #0b0c10;
+  color: #eaf0f1;
+}
+
+/* ================================
+   Modalità Day/Night
+================================ */
 body.day {
   background: #f0f0f0;
   color: #222;
@@ -12,39 +30,162 @@ body.night {
   color: #eaf0f1;
 }
 
+/* ================================
+   Layout generale
+================================ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
 
-.container { max-width: 1200px; margin: 0 auto; padding: 32px 20px; }
-header { margin-bottom: 24px; }
-h1 { margin: 0 0 6px 0; font-weight: 700; }
-h2 { margin: 24px 0 12px; font-weight: 600; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.card { background: #14161b; margin-bottom: 8px; border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
-/* .thumb {
+header {
+  margin-bottom: 24px;
+}
+
+.screen + .screen {
+  margin-top: 36px;
+}
+
+#schermata-eventi {
+  display: flex;
+  justify-content: space-between; /* h2 a sinistra, span a destra */
+  align-items: baseline;
+  margin: 0;
+  margin-bottom: 10px;
+}
+
+#schermata-eventi h2 {
+  margin: 0;
+}
+
+.time-range{
+  font-size: 1.3em;
+}
+
+/* ================================
+   Tipografia
+================================ */
+h1 {
+  margin: 0 0 6px 0;
+  font-weight: 700;
+}
+
+h2 {
+  margin: 24px 0 12px;
+  font-weight: 600;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.5;
+}
+
+/* ================================
+   Cards
+================================ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: #14161b;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #eaf0f1;
+}
+
+.card-body {
+  padding: 5px 10px;
+  display: grid;
+}
+
+.card-body .header-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+  border-bottom: 1px solid #d9dfe457; /* linea semitrasparente */
+  padding-bottom: 2px; 
+  margin-bottom: 3px; 
+}
+
+.card-body .header-line .title {
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.card-body .header-line .time {
+  font-size: 1rem;
+  color: #d9dfe4;
+  white-space: nowrap;
+  padding-bottom: 3px;
+}
+
+.card-body .description-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  color: #d6d6d6;
+  gap: 10px;
+}
+
+.meta {
+  font-size: 0.9rem;
+  color: #b9c1c9;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.meta .cat {
+  padding: 2px 8px;
+  border: 1px solid #2b3242;
+  border-radius: 999px;
+}
+
+.desc {
+  margin: 0;
+  color: #cfd6dc;
+  font-size: 0.95rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tags span {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border: 1px dashed #374050;
+  border-radius: 999px;
+}
+
+/* ================================
+   Immagini
+================================ */
+.thumb-wrapper {
+  position: relative;
   width: 100%;
-  aspect-ratio: 16/3;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  display: block;
-} */
-/* Forza lo sfondo da Drive sopra qualsiasi altro background (anche con !important altrove) */
-.card .thumb.use-drive {
-  background-image: var(--drive-img) !important;
+  aspect-ratio: 16 / 5;
+  overflow: hidden;
 }
 
 .thumb-img {
   width: 100%;
-  aspect-ratio: 16 / 3; /* Mantiene proporzione 16:3 */
-  object-fit: contain;    /* Copre il box senza deformare */
-  object-position: center; /* Centra il ritaglio */
-  display: block;       /* Evita spazi bianchi dovuti a inline-img */
-}
-
-.thumb-wrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 5; /* box proporzionato */
-  overflow: hidden;     /* taglia tutto ciò che esce */
+  aspect-ratio: 16 / 3;
+  object-fit: contain;
+  object-position: center;
+  display: block;
 }
 
 .thumb-wrapper .thumb-img {
@@ -56,76 +197,30 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
   object-fit: cover;
 }
 
-#schermata-eventi {
-  display: flex;
-  justify-content: space-between; /* h2 a sinistra, span a destra */
-  align-items: baseline;            /* allineati verticalmente */
-  margin: 0px;
-  margin-bottom: 10px;
+/* Forza lo sfondo da Drive sopra qualsiasi altro background */
+.card .thumb.use-drive {
+  background-image: var(--drive-img) !important;
 }
 
-#schermata-eventi h2{
-  margin: 0px;
-}
-
-
-
-
-.card-body { padding: 5px; padding-left: 10px; display: grid;}
-.title { margin: 0; font-size: 1.05rem; line-height: 1.2; }
-.meta { font-size: 0.9rem; color: #b9c1c9; display: flex; gap: 10px; flex-wrap: wrap; }
-.meta .cat { padding: 2px 8px; border: 1px solid #2b3242; border-radius: 999px; }
-.desc { margin: 0; color: #cfd6dc; font-size: 0.95rem; }
-.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.tags span { font-size: 0.8rem; padding: 2px 8px; border: 1px dashed #374050; border-radius: 999px; }
-.screen + .screen { margin-top: 36px; }
-.bar {padding: 5px; padding-left: 10px; margin: 0 0 6px 0; border-radius: 15px;}
-
-.card-body .header-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start; /* così le altezze possono differire */
-  gap: 10px;               /* spazio orizzontale fra titolo e data */
-}
-
-.card-body .description-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end; /* così le altezze possono differire */
-  gap: 10px;               /* spazio orizzontale fra titolo e data */
-}
-
-.card-body .header-line .title {
-  margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.2;
-}
-
-.card-body .header-line .time {
-  font-size: 1rem;
-  color: #b9c1c9;
-  white-space: nowrap; /* evita che la data vada a capo */
-}
-
-
-/* layout a righe per giorno */
+/* ================================
+   Attività / Timeline
+================================ */
 #attivita {
   display: flex;
   flex-direction: column;
-  /* gap: 14px; */
   margin-bottom: 30px;
 }
 
 .day-row {
   display: grid;
-  grid-template-columns: 80px 1fr; /* label a sinistra fissa, traccia a destra */
+  grid-template-columns: 80px 1fr;
   align-items: center;
   gap: 10px;
 }
 
 .day-label {
   display: flex;
-  flex-direction: row; /* numero sopra abbreviazione */
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   font-family: ui-monospace, monospace;
@@ -134,85 +229,90 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
 }
 
 .day-label .day-num {
-  font-weight: 700; /* bold */
+  font-weight: 700;
   font-size: 1.1rem;
 }
 
 .day-label .day-abbr {
-  font-weight: 400; /* più sottile */
+  font-weight: 400;
   font-size: 0.85rem;
 }
 
-
-/* area timeline del giorno */
-.day-track {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px; /* spazio verticale tra barre nello stesso giorno */
-}
-
-/* barre attività (colore dalla classe categoria) */
-.day-track .bar {
-  display: inline-block;
-  border-radius: 9999px;
-  padding: 6px 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  /* background: #2b3242;  */
-  color: #eaf0f1;
-}
-
-.card,
-.bar {
-  color: #eaf0f1;
-}
-
-
-.day-track .bar .title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  line-height: 1;
-}
-
-
-/* Griglia oraria 17→23 sulla traccia del giorno */
+/* Traccia del giorno */
+/* La traccia fa da contenitore di stacking */
 .day-track {
   position: relative;
 }
 
-.day-row:nth-of-type(odd) .day-track {
-  background-color: rgba(255, 255, 255, 0.05); /* grigio trasparente per night mode */
-  border-radius: 6px; /* opzionale, per smussare */
-}
-
-
-/* 1 ora = 6 * 10min; 10min = var(--vw-per-10min) vw
-   quindi passo = calc(6vw * var(--vw-per-10min))
-   span totale 17→23 = 6 ore = calc(36vw * var(--vw-per-10min)) */
+/* Le linee orarie: sopra al background della traccia… */
 .day-track::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0; /* parte da 17:00 */
-  height: 100%;
-  width: 100%; /* copre tutta la traccia */
+  inset: 0;
   pointer-events: none;
 
+  /* ripeti una linea ogni ora (6 * var(--vw-per-10min)) */
   background-image: repeating-linear-gradient(
     to right,
-    rgba(127, 133, 139, 0.54) 1px,
+    rgba(127,133,139,0.2) 0 1px,       /* linea visibile */
     transparent 1px calc(6vw * var(--vw-per-10min))
   );
-  /* linea iniziale delle 17 */
-  /* border-left: 2px solid rgba(255,255,255,0.25); */
+
 }
+
+/* Qualsiasi contenuto (le bar) sta sopra le linee */
+.day-track > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Se vuoi il “grigio alternato” sulle righe dispari, resta sotto le linee */
+.day-row:nth-of-type(odd) {
+  background-color: rgba(126, 126, 126, 0.15);
+  border-radius: 6px;
+}
+
+
+/* Barre attività */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  margin: 3px 0 3px 0;
+  border-radius: 15px;
+  color: #eaf0f1;
+}
+
+.day-track .bar {
+  display: flex;
+  align-items: center;
+  border-radius: 9999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  height: 32px;          /* altezza uniforme */
+  padding: 0;            /* rimosso il padding */
+  gap: 8px;              /* solo spazio tra icona e testo */
+}
+
+.bar-icon {
+  height: 100%;          /* riempie tutta l’altezza della bar */
+  aspect-ratio: 1 / 1;   /* mantiene proporzione quadrata */
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.day-track .bar .title {
+  line-height: 1;
+  font-size: 0.95rem;
+}
+
+
 
 .orari-header {
   display: grid;
   grid-auto-flow: column;
-  /* 1 ora = 6 * VW_PER_10MIN */
   grid-auto-columns: calc(6vw * var(--vw-per-10min));
   margin-left: 80px;
   font-family: ui-monospace, monospace;
@@ -222,5 +322,5 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
 }
 
 .orari-header span {
-  justify-self: left; /* centra orizzontalmente nella cella */
+  justify-self: left;
 }
