@@ -66,7 +66,7 @@ function isOpen(googleEvent) {
 // -------- mappatura categorie ------------
 function loadEventTypeMap() {
   // Formato:  class: keyword1, keyword2, ...
-  // Esempio riga: "gdr: gdr, rpg"  (vedi tuo file)  :contentReference[oaicite:3]{index=3}
+  // Esempio riga: "gdr: gdr, rpg"  
   const file = new URL('./event_types.txt', import.meta.url).pathname;
   const txt = fs.readFileSync(file, 'utf8');
   const map = new Map(); // keyword -> class
@@ -86,7 +86,7 @@ const EVENT_TYPE_MAP = loadEventTypeMap();
 
 function firstWordLower(s) {
   if (!s) return '';
-  // prendi la prima "parola" e togli punteggiatura comune
+  // prendi la prima parola e togli punteggiatura
   const w = s.trim().split(/\s+/)[0] || '';
   return w.toLowerCase().replace(/[.,;:!?#()\[\]{}"']/g, '');
 }
@@ -95,10 +95,7 @@ function firstWordLower(s) {
 function detectCategoria(description) {
   const first = firstWordLower(description);
   if (!first) return 'default';
-  // match diretto
   if (EVENT_TYPE_MAP.has(first)) return EVENT_TYPE_MAP.get(first);
-  // fallback rapido: alcuni alias nei tuoi dati hanno spazi (es. "roll in the dark") :contentReference[oaicite:4]{index=4}
-  // se la descrizione inizia con più parole che corrispondono a una chiave multiword
   for (const [kw, cls] of EVENT_TYPE_MAP.entries()) {
     if (kw.includes(' ') && description.toLowerCase().startsWith(kw)) return cls;
   }
@@ -106,7 +103,6 @@ function detectCategoria(description) {
 }
 
 function getDriveClient() {
-  // Con googleapis puoi passare direttamente la API key come 'auth'
   return google.drive({ version: 'v3', auth: DRIVE_API_KEY });
 }
 
@@ -129,7 +125,6 @@ async function getRandomImageFromDrive(folderId) {
 }
 
 
-// Arricchisce una lista di item con ev.immagine in base alla categoria
 async function enrichWithImages(items) {
   for (const it of items) {
     const slug = (it.categoria).toLowerCase();
@@ -147,8 +142,6 @@ async function enrichWithImages(items) {
 
 
 // ---------- Normalizzazione campi ----------
-
-
 function normalizeEvent(ev, zone = 'Europe/Rome') {
     const startISO = ev.start?.dateTime || ev.start?.date;
     const endISO   = ev.end?.dateTime   || ev.end?.date;
@@ -156,10 +149,9 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
     const start = DateTime.fromISO(startISO, { zone });
     const end   = DateTime.fromISO(endISO,   { zone });
 
-    const dayKey   = start.toISODate(); // es. "2025-08-15"
-    const dayNum = start.toFormat('dd'); // "13"
-    const dayAbbr = start.setLocale('it').toFormat('ccc').toUpperCase(); // "GIO"
-    // const dayLabel = { num: dayNum, abbr: dayAbbr };
+    const dayKey   = start.toISODate(); 
+    const dayNum = start.toFormat('dd'); 
+    const dayAbbr = start.setLocale('it').toFormat('ccc').toUpperCase(); 
 
 
     let desc = ev.description || '';
@@ -167,7 +159,7 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
     if (desc.includes('desc:')) {
       const parts = desc.split('desc:');
       desc = parts[0].trim();
-      verbose = parts.slice(1).join('desc:').trim(); // tutto ciò che segue
+      verbose = parts.slice(1).join('desc:').trim(); 
     }
 
     let categoria = detectCategoria(desc);
@@ -182,8 +174,6 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
     const durataMinuti = Math.max(0, Math.round(end.diff(start, 'minutes').minutes));
     const riferimento = start.set({ hour: 17, minute: 0 });
     const offsetMinuti = Math.max(0, Math.round(start.diff(riferimento, 'minutes').minutes));
-
-    // if ('segreto' in desc) {return {}}
 
     return {
         id: ev.id,
@@ -208,12 +198,13 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
 // ---------- API ----------
 
 app.get('/immagine/:categoria', async (req, res) => {
-    const categoria = req.params.categoria; // ← qui ce l’hai sempre
+    const categoria = req.params.categoria;
 
     try {
         const driveUrl = await getRandomImageFromDrive(categoria);
         const response = await fetch(driveUrl);
 
+        // se non trova l'immagine
         if (!response.ok) throw new Error(`Drive HTTP ${response.status}`);
 
         res.setHeader('Content-Type', response.headers.get('content-type'));
@@ -221,7 +212,7 @@ app.get('/immagine/:categoria', async (req, res) => {
 
     } catch (err) {
         console.error(`Drive fallito per ${categoria}:`, err.message);
-
+        // fallback con immagine salvata localmente
         const fallbackPath = path.join(__dirname, 'public', 'imgcache', `${categoria}.jpg`);
         if (fs.existsSync(fallbackPath)) {
             res.setHeader('Content-Type', 'image/jpeg');
