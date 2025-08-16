@@ -8,7 +8,9 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = 8080
+const PORT = process.env.PORT || 8080;
+
+
 const CALENDAR_ID = "4b70a04394809659390244a872836e10cc89e9016fdf66cd2f0a40c2a4830729@group.calendar.google.com"
 
 
@@ -268,6 +270,6 @@ app.get('/api/weekly', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server pronto su http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server pronto su http://0.0.0.0:${PORT}`);
 });
