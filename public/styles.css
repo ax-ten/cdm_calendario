@@ -19,16 +19,58 @@ h1 { margin: 0 0 6px 0; font-weight: 700; }
 h2 { margin: 24px 0 12px; font-weight: 600; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .card { background: #14161b; margin-bottom: 8px; border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
-.thumb {
+/* .thumb {
   width: 100%;
   aspect-ratio: 16/3;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   display: block;
+} */
+/* Forza lo sfondo da Drive sopra qualsiasi altro background (anche con !important altrove) */
+.card .thumb.use-drive {
+  background-image: var(--drive-img) !important;
 }
 
-.card-body { padding: var(--pad); display: grid; gap: 8px; }
+.thumb-img {
+  width: 100%;
+  aspect-ratio: 16 / 3; /* Mantiene proporzione 16:3 */
+  object-fit: contain;    /* Copre il box senza deformare */
+  object-position: center; /* Centra il ritaglio */
+  display: block;       /* Evita spazi bianchi dovuti a inline-img */
+}
+
+.thumb-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 5; /* box proporzionato */
+  overflow: hidden;     /* taglia tutto ciò che esce */
+}
+
+.thumb-wrapper .thumb-img {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  transform: translateX(-50%);
+  object-fit: cover;
+}
+
+#schermata-eventi {
+  display: flex;
+  justify-content: space-between; /* h2 a sinistra, span a destra */
+  align-items: center;            /* allineati verticalmente */
+  margin-bottom: 10px;
+}
+
+#schermata-eventi h2 {
+  margin: 0; /* elimina margini verticali extra */
+}
+
+
+
+
+.card-body { padding: 5px; padding-left: 10px; display: grid;}
 .title { margin: 0; font-size: 1.05rem; line-height: 1.2; }
 .meta { font-size: 0.9rem; color: #b9c1c9; display: flex; gap: 10px; flex-wrap: wrap; }
 .meta .cat { padding: 2px 8px; border: 1px solid #2b3242; border-radius: 999px; }
@@ -36,12 +78,19 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .tags span { font-size: 0.8rem; padding: 2px 8px; border: 1px dashed #374050; border-radius: 999px; }
 .screen + .screen { margin-top: 36px; }
-.bar {padding: 5px; padding-left: 10px;margin: 0 0 6px 0; border-radius: 15px;}
+.bar {padding: 5px; padding-left: 10px; margin: 0 0 6px 0; border-radius: 15px;}
 
 .card-body .header-line {
   display: flex;
   justify-content: space-between;
   align-items: flex-start; /* così le altezze possono differire */
+  gap: 10px;               /* spazio orizzontale fra titolo e data */
+}
+
+.card-body .description-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; /* così le altezze possono differire */
   gap: 10px;               /* spazio orizzontale fra titolo e data */
 }
 
@@ -52,7 +101,7 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
 }
 
 .card-body .header-line .time {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #b9c1c9;
   white-space: nowrap; /* evita che la data vada a capo */
 }
@@ -114,6 +163,12 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
   color: #eaf0f1;
 }
 
+.card,
+.bar {
+  color: #eaf0f1;
+}
+
+
 .day-track .bar .title {
   font-weight: 600;
   font-size: 0.95rem;
@@ -146,7 +201,7 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
 
   background-image: repeating-linear-gradient(
     to right,
-    rgba(255,255,255,0.12) 0 1px,
+    rgba(127, 133, 139, 0.54) 1px,
     transparent 1px calc(6vw * var(--vw-per-10min))
   );
   /* linea iniziale delle 17 */
@@ -158,13 +213,13 @@ h2 { margin: 24px 0 12px; font-weight: 600; }
   grid-auto-flow: column;
   /* 1 ora = 6 * VW_PER_10MIN */
   grid-auto-columns: calc(6vw * var(--vw-per-10min));
-  margin-left: 50px;
+  margin-left: 80px;
   font-family: ui-monospace, monospace;
   font-size: 0.85rem;
-  color: #b9c1c9;
+  color: #7f858b;
   user-select: none;
 }
 
 .orari-header span {
-  justify-self: center; /* centra orizzontalmente nella cella */
+  justify-self: left; /* centra orizzontalmente nella cella */
 }

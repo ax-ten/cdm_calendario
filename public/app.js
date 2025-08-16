@@ -1,28 +1,30 @@
 const VW_PER_10MIN = 2;
 document.documentElement.style.setProperty('--vw-per-10min', VW_PER_10MIN);
 
-
 function eventCard(ev) {
   const categoria = ev.categoria || 'default';
-  const tags = ev.tags?.length ? `<div class="tags">${ev.tags.map(t => `<span>${t}</span>`).join('')}</div>` : '';
-  const imgDiv = ev.immagine
-    ? `<div class="thumb" style="background-image:url('${ev.immagine}')"></div>`
-    : `<div class="thumb ${categoria}-img"></div>`;
-
+  const tags = ev.tags?.length
+    ? `<div class="tags">${ev.tags.map(t => `<span class="${categoria}-tag">${t}</span>`).join('')}</div>`
+    : '';
 
   return `
     <article class="card ${categoria}">
-      ${imgDiv}
+      <div class="thumb-wrapper">
+        <img class="thumb thumb-img" src="/immagine/${categoria}">
+      </div>
       <div class="card-body">
         <div class="header-line">
           <h3 class="title">${ev.nome}</h3>
-          <span class="time">${ev.giorno} · ${ev.orainizio}–${ev.orafine}</span>
         </div>
-        ${ev.descrizione ? `<p class="desc">${ev.descrizione}</p>` : ''}
+        <div class="description-line">
+          <span class="time">${ev.giorno} · ${ev.orainizio} - ${ev.orafine}</span>
+          ${tags}
+        </div>
       </div>
     </article>
   `;
 }
+
 
 function activityBar(ev) {
 
@@ -87,8 +89,8 @@ async function loadAndRender() {
   const res = await fetch('/api/weekly');
   const data = await res.json();
 
-  document.getElementById('range').textContent =
-    `Settimana: ${data.range.start} → ${data.range.end} (${data.tz})`;
+  document.getElementById('range').textContent +=
+    `${data.range.start} → ${data.range.end}`;
 
   const eventiEl = document.getElementById('eventi');
   const attivitaEl = document.getElementById('attivita');

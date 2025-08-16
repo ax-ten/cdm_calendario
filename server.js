@@ -11,6 +11,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 8080
 const CALENDAR_ID = "4b70a04394809659390244a872836e10cc89e9016fdf66cd2f0a40c2a4830729@group.calendar.google.com"
 
+// --- DRIVE API KEY (da drive_key.json) ---
+const driveKeyPath = path.join(__dirname, 'drive_key.json');
+const DRIVE_API_KEY = JSON.parse(fs.readFileSync(driveKeyPath, 'utf8')).APIKEY;
+
+// --- Mappa categoria -> FolderID (Drive) ---
+const FOLDER_IDS = {
+  libro:        '1YrG1NvGF3EMi2xkr1zAjhbMd3QWGIl6V',
+  mana:         '19Z4nL7IhDx9Ov4oZJHgUFkYH4OQMVS2f',
+  disegno:      '1mLkzEL66s_OYvoftt3VFA4uqifS9PkyE',
+  gdr:          '18I1scrhzo4n47RAih-IJGHQDVaDmeUXX',
+  gdt:          '1RE2NTe_WXGb57sYHWHoZ-4rdB5YqUiP2',
+};
+ 
 
 const app = express();
 app.use(cors());
@@ -41,6 +54,7 @@ function getWeekRange(zone = 'Europe/Rome') {
 
 
 function isOpen(googleEvent) {
+    if (!googleEvent) {return}
     const s = (googleEvent.description).toLowerCase();
     const isEvent = s.includes('event');
     return isEvent;
@@ -88,6 +102,45 @@ function detectCategoria(description) {
   }
   return 'default';
 }
+
+function getDriveClient() {
+  // Con googleapis puoi passare direttamente la API key come 'auth'
+  return google.drive({ version: 'v3', auth: DRIVE_API_KEY });
+}
+
+async function listPublicImages(folderId) {
+  const drive = getDriveClient();
+  const { data } = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false and mimeType contains 'image/'`,
+    fields: 'files(id,name)',
+    pageSize: 1000,
+  });
+  return data.files || [];
+}
+
+async function getRandomImageFromDrive(folderId) {
+  const files = await listPublicImages(folderId); // files(id,name)
+  if (!files.length) return null;
+  const f = files[Math.floor(Math.random() * files.length)];
+  // invece di un link esterno:
+  return `/img/${f.id}`; // sarà servito dal tuo backend
+}
+
+
+// Arricchisce una lista di item con ev.immagine in base alla categoria
+async function enrichWithImages(items) {
+  for (const it of items) {
+    const slug = (it.categoria).toLowerCase();
+    const folderId = FOLDER_IDS[slug];
+    if (!folderId) {
+        console.log("non ho trovato una cartella per ", slug)
+        continue
+    };
+    const url = await getRandomImageFromDrive(folderId);
+    if (url) it.immagine = url;
+  }
+}
+
 
 
 
@@ -143,6 +196,35 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
 }
 
 // ---------- API ----------
+
+app.get('/immagine/:categoria', async (req, res) => {
+    const categoria = req.params.categoria; // ← qui ce l’hai sempre
+
+    try {
+        const driveUrl = await getRandomImageFromDrive(categoria);
+        const response = await fetch(driveUrl);
+
+        if (!response.ok) throw new Error(`Drive HTTP ${response.status}`);
+
+        res.setHeader('Content-Type', response.headers.get('content-type'));
+        response.body.pipe(res);
+
+    } catch (err) {
+        console.error(`Drive fallito per ${categoria}:`, err.message);
+
+        const fallbackPath = path.join(__dirname, 'public', 'imgcache', `${categoria}.jpg`);
+        if (fs.existsSync(fallbackPath)) {
+            res.setHeader('Content-Type', 'image/jpeg');
+            fs.createReadStream(fallbackPath).pipe(res);
+        } else {
+            res.status(404).send('Nessuna immagine trovata');
+        }
+    }
+});
+
+
+
+
 app.get('/api/weekly', async (req, res) => {
     try {
         const auth = await getAuth();
@@ -166,6 +248,9 @@ app.get('/api/weekly', async (req, res) => {
             if (isOpen(item.raw)) aperti.push(item);
             else chiusi.push(item);
         }
+
+        await enrichWithImages(aperti);
+        // await enrichWithImages(chiusi);
 
         res.json({
             range: human,
