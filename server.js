@@ -198,23 +198,27 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
 }
 
 // ---------- API ----------
-
 app.get('/immagine/:categoria', async (req, res) => {
     const categoria = req.params.categoria;
 
     try {
         const driveUrl = await getRandomImageFromDrive(categoria);
+        console.log("Drive URL:", driveUrl);
+
         const response = await fetch(driveUrl);
 
-        // se non trova l'immagine
         if (!response.ok) throw new Error(`Drive HTTP ${response.status}`);
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        res.setHeader('Content-Type', contentType);
 
-        res.setHeader('Content-Type', response.headers.get('content-type'));
-        response.body.pipe(res);
+        // Usa pipeline invece di pipe diretto
+        const { pipeline } = require('stream');
+        pipeline(response.body, res, (err) => {
+            if (err) console.error("Errore stream:", err);
+        });
 
     } catch (err) {
         console.error(`Drive fallito per ${categoria}:`, err.message);
-        // fallback con immagine salvata localmente
         const fallbackPath = path.join(__dirname, 'public', 'imgcache', `${categoria}.jpg`);
         if (fs.existsSync(fallbackPath)) {
             res.setHeader('Content-Type', 'image/jpeg');
