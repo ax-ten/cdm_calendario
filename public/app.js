@@ -14,7 +14,7 @@ function eventCard(ev) {
   return `
     <article class="card ${categoria}">
       <div class="thumb-wrapper">
-        <img class="thumb thumb-img" src="/immagine/${categoria}">
+        <img class="thumb thumb-img" src="${BASE}/immagine/${categoria}">
       </div>
       <div class="card-body">
         <div class="header-line">
