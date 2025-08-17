@@ -39,7 +39,7 @@ function activityBar(ev) {
 
   return `
     <div class="bar ${cat}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}">
-      <img class="bar-icon" src="/src/${cat}.png" alt="${cat}">
+      <img class="bar-icon" src="${BASE}/src/${cat}.png" alt="${cat}">
       <span class="title">${ev.nome || 'Senza titolo'}</span>
     </div>
   `;
