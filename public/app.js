@@ -2,7 +2,6 @@ const VW_PER_10MIN = 2;
 document.documentElement.style.setProperty('--vw-per-10min', VW_PER_10MIN);
 const BASE = window.location.pathname.startsWith('/calendario') ? '/calendario' : '';
 
-const res = await fetch(`${BASE}/api/weekly?offset=${offset}`);
 
 
 
