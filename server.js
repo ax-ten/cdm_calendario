@@ -202,7 +202,7 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
 }
 
 // ---------- API ----------
-app.get('/immagine/:categoria', async (req, res) => {
+app.get('/calendario/immagine/:categoria', async (req, res) => {
     const categoria = req.params.categoria;
 
     try {
