@@ -53,9 +53,18 @@ function activityBar(ev) {
   const offsetVW = Math.max(0, (ev.offsetMinuti / 10) * VW_PER_10MIN);
   const cat = ev.categoria || 'default';
 
+  // Il logo della sede dice dove si va, che e" l informazione che manca
+  // guardando una barra. La categoria si capisce gia" dal colore e dal nome,
+  // quindi l icona serve meglio a questo. Fuori sede non ha un logo: li"
+  // resta l icona della categoria, come le sedi nuove finche" non ne hanno
+  // uno (l onerror copre quel caso invece di lasciare un'immagine rotta).
+  const iconaCategoria = `${BASE}/src/${cat}.png`;
+  const sedeSlug = ev.sedeEsterna ? '' : (ev.sede || '');
+  const icona = sedeSlug ? `${BASE}/src/sede-${sedeSlug}.jpg` : iconaCategoria;
+
   return `
-    <div class="bar ${cat} sede-segno-${ev.sedeEsterna ? 'esterna' : (ev.sede || 'default')}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
-      <img class="bar-icon" src="${BASE}/src/${cat}.png" alt="${cat}">
+    <div class="bar ${cat}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
+      <img class="bar-icon" src="${icona}" alt="${ev.sedeNome || cat}" onerror="this.onerror=null;this.src='${iconaCategoria}'">
       <span class="title">${ev.nome || 'Senza titolo'}</span>
     </div>
   `;

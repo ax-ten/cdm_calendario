@@ -327,9 +327,9 @@ h2 {
 }
 
 .bar-icon {
-  height: 100%;          
-  aspect-ratio: 1 / 1;   
-  object-fit: contain;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
   flex-shrink: 0;
 }
 
@@ -376,33 +376,7 @@ h2 {
   background: #6b7280;
 }
 .sede-badge.sede-barletta { background: #e2711d; }
-.sede-badge.sede-trani    { background: #1f6f78; }
+/* Il giallo del logo Lampo. Testo scuro: bianco su giallo non si legge. */
+.sede-badge.sede-trani    { background: #f2c200; color: #1b1b1b; }
 .sede-badge.sede-esterna  { background: #6b7280; }
 
-/* Rettangolo pieno all'inizio della barra, prima dell'icona. Sta nel flusso
-   flex apposta: cosi' occupa il suo spazio invece di coprire l'icona. Il
-   border-radius del pillolone piu' overflow:hidden lo tagliano a mezzaluna
-   sul bordo sinistro, ed e' voluto: segue la forma della barra. */
-.bar[class*="sede-segno-"]::before {
-  content: "";
-  flex: 0 0 6px;
-  align-self: stretch;
-  background: #6b7280;
-}
-.bar.sede-segno-barletta::before { background: #e2711d; }
-.bar.sede-segno-trani::before    { background: #1f6f78; }
-.bar.sede-segno-esterna::before  { background: #9ca3af; }
-
-/* Legenda sotto "Altre attivita'" */
-.sede-legenda {
-  display: flex;
-  gap: 1.2em;
-  align-items: center;
-  margin: .4em 0 .2em;
-  font-size: .7em;
-  opacity: .8;
-}
-.sede-legenda span { display: inline-flex; align-items: center; gap: .4em; }
-.sede-legenda i {
-  width: 6px; height: 1em; display: inline-block;
-}
