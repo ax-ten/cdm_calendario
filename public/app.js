@@ -60,7 +60,7 @@ function activityBar(ev) {
   // uno (l onerror copre quel caso invece di lasciare un'immagine rotta).
   const iconaCategoria = `${BASE}/src/${cat}.png`;
   const sedeSlug = ev.sedeEsterna ? '' : (ev.sede || '');
-  const icona = sedeSlug ? `${BASE}/src/sede-${sedeSlug}.jpg` : iconaCategoria;
+  const icona = sedeSlug ? `${BASE}/src/sede-${sedeSlug}.png` : iconaCategoria;
 
   return `
     <div class="bar ${cat}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">

@@ -329,7 +329,9 @@ h2 {
 .bar-icon {
   height: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
+  /* I loghi sono png ritagliati, senza sfondo: `contain` li lascia interi e il
+     colore della barra si vede intorno. */
+  object-fit: contain;
   flex-shrink: 0;
 }
 
