@@ -343,13 +343,13 @@ app.get('/calendario/immagine/:categoria', async (req, res) => {
 
         if (!response.ok) throw new Error(`Drive HTTP ${response.status}`);
         const contentType = response.headers.get('content-type') || 'image/jpeg';
+        // Il file si legge tutto in memoria prima di rispondere, invece di
+        // ristreammarlo: sono locandine, non video, e se lo streaming si rompe
+        // a meta' la risposta e' gia' partita e non si puo' piu' ripiegare
+        // sulla cache locale. Cosi' o va tutto, o si finisce nel catch pulito.
+        const immagine = Buffer.from(await response.arrayBuffer());
         res.setHeader('Content-Type', contentType);
-
-        // Usa pipeline invece di pipe diretto
-        const { pipeline } = require('stream');
-        pipeline(response.body, res, (err) => {
-            if (err) console.error("Errore stream:", err);
-        });
+        res.end(immagine);
 
     } catch (err) {
         console.error(`Drive fallito per ${categoria}:`, err.message);
