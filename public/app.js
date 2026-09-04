@@ -2,6 +2,22 @@ const VW_PER_10MIN = 2;
 document.documentElement.style.setProperty('--vw-per-10min', VW_PER_10MIN);
 const BASE = window.location.pathname.startsWith('/calendario') ? '/calendario' : '';
 
+// Settimana da mostrare: 0 = questa, 1 = la prossima. Di default questa, come
+// prima. Il parametro serve al bot Telegram, che di domenica deve fotografare
+// la settimana che sta per cominciare (?offset=1) e di lunedi' la stessa
+// settimana, ormai corrente (?offset=0).
+const OFFSET = (() => {
+  const raw = new URLSearchParams(window.location.search).get('offset');
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : 0;
+})();
+
+function sedeBadge(ev) {
+  if (!ev.sedeNome) return '';
+  const cls = ev.sedeEsterna ? 'esterna' : (ev.sede || 'default');
+  return `<span class="sede-badge sede-${cls}" title="${ev.sedeIndirizzo || ev.sedeNome}">${ev.sedeNome}</span>`;
+}
+
 
 
 
@@ -20,6 +36,7 @@ function eventCard(ev) {
         <div class="header-line">
           <h1 class="title">${ev.nome}</h3>
           <span class="time"><strong>${ev.giorno}</strong> dalle ${ev.orainizio}</span>
+          ${sedeBadge(ev)}
         </div>
         <div class="description-line">
           ${ev.verbose}
@@ -37,7 +54,7 @@ function activityBar(ev) {
   const cat = ev.categoria || 'default';
 
   return `
-    <div class="bar ${cat}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}">
+    <div class="bar ${cat} sede-dot-${ev.sedeEsterna ? 'esterna' : (ev.sede || 'default')}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
       <img class="bar-icon" src="${BASE}/src/${cat}.png" alt="${cat}">
       <span class="title">${ev.nome || 'Senza titolo'}</span>
     </div>
@@ -100,7 +117,7 @@ function formatDate(dateStr) {
 
 
 
-async function loadAndRender(offset=1) {
+async function loadAndRender(offset=0) {
   const res = await fetch(`${BASE}/api/weekly?offset=${offset}`); 
   const data = await res.json();
 
@@ -115,7 +132,7 @@ async function loadAndRender(offset=1) {
 }
 
 
-loadAndRender();
+loadAndRender(OFFSET);
 document.body.classList.add('day');
 
 document.addEventListener('keydown', (e) => {

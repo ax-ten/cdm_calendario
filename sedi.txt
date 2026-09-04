@@ -1,0 +1,14 @@
+# Mappa delle sedi. Serve per badge, colori e per riconoscere il fuori sede.
+# Formato:  slug | Nome mostrato | parola chiave, altra parola chiave, ...
+# Il match e" case-insensitive e cerca la parola chiave DENTRO `location`.
+#
+# Usa il cognome della via, non l indirizzo intero: "pagano" regge sia
+# "Via M. Pagano, 80" sia "Via Mario Pagano, 78". Non usare il nome della
+# citta: "barletta" matcherebbe anche una libreria di Barletta che non e"
+# una nostra sede, e vogliamo che quella risulti fuori sede.
+#
+# La sede vera di un evento e" il calendario in cui sta (vedi calendari.txt).
+# Queste parole chiave contano solo quando `location` e" valorizzato.
+
+barletta | Hub | alfieri
+trani | La.m.po. | pagano, lampo, la.m.po.

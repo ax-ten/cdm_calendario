@@ -1,0 +1,19 @@
+# Calendari Google da cui leggere gli eventi: uno per sede.
+# Formato:  slug_sede | Calendar ID
+#
+# Lo slug deve combaciare con quello in sedi.txt (serve per badge e colori).
+# La sede di un evento e" il calendario in cui sta: e" il dato piu" affidabile.
+#
+# Per aggiungere una sede:
+#   1. nelle impostazioni del suo calendario Google, "Condividi con persone
+#      specifiche", aggiungi il service account
+#         calendarioig@ccdmbot0.iam.gserviceaccount.com
+#      con permesso "Vedere tutti i dettagli dell evento" (sola lettura);
+#   2. copia il Calendar ID da "Integra calendario" e incollalo qui sotto;
+#   3. systemctl restart calendario
+#
+# Un calendario non leggibile viene saltato, segnalato nei log e in `errori`
+# dentro /api/weekly: il resto del calendario continua a funzionare.
+
+barletta | 4b70a04394809659390244a872836e10cc89e9016fdf66cd2f0a40c2a4830729@group.calendar.google.com
+trani | 007d43501de0147a400c3b8631c33afe378bd0eb49cd250de2ef10bd20433962@group.calendar.google.com

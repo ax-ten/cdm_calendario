@@ -322,3 +322,53 @@ h2 {
 .orari-header span {
   justify-self: left;
 }
+
+
+/* ---------- sedi ---------- */
+/* Badge sulla card evento e pallino colorato sulle barre attivita'. */
+.sede-badge {
+  display: inline-block;
+  margin-left: .6em;
+  padding: .15em .6em;
+  border-radius: 999px;
+  font-size: .62em;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: #fff;
+  background: #6b7280;
+}
+.sede-badge.sede-barletta { background: #e2711d; }
+.sede-badge.sede-trani    { background: #1f6f78; }
+.sede-badge.sede-esterna  { background: #6b7280; }
+
+.bar[class*="sede-dot-"]::before {
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  width: .55em;
+  height: .55em;
+  margin-right: .35em;
+  border-radius: 50%;
+  background: #6b7280;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.bar.sede-dot-barletta::before { background: #e2711d; }
+.bar.sede-dot-trani::before    { background: #1f6f78; }
+.bar.sede-dot-esterna::before  { background: #9ca3af; }
+
+/* Legenda sotto "Altre attivita'" */
+.sede-legenda {
+  display: flex;
+  gap: 1.2em;
+  align-items: center;
+  margin: .4em 0 .2em;
+  font-size: .7em;
+  opacity: .8;
+}
+.sede-legenda span { display: inline-flex; align-items: center; gap: .4em; }
+.sede-legenda i {
+  width: .6em; height: .6em; border-radius: 50%; display: inline-block;
+}

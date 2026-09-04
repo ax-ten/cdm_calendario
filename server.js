@@ -63,7 +63,7 @@ function getWeekRange(offsetWeeks = 0) {
 
 function isOpen(googleEvent) {
     if (!googleEvent) {return}
-    const s = (googleEvent.description).toLowerCase();
+    const s = (googleEvent.description || '').toLowerCase();
     const isEvent = s.includes('event');
     return isEvent;
 }
@@ -78,8 +78,7 @@ function loadEventTypeMap() {
   const map = new Map(); // keyword -> class
   for (const rawLine of txt.split('\n')) {
     const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const [cls, rest] = line.split(':');
+    if (!line || line.startsWith('#')) continue;    const [cls, rest] = line.split(':');
     if (!cls || !rest) continue;
     const className = cls.trim();
     const keywords = rest.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -88,6 +87,98 @@ function loadEventTypeMap() {
   return map;
 }
 const EVENT_TYPE_MAP = loadEventTypeMap();
+
+
+// -------- mappatura sedi ------------
+// La sede si ricava dal campo `location` nativo di Google Calendar, che e' gia'
+// presente nella risposta di events.list: non costa una chiamata in piu'.
+// Formato di sedi.txt:  slug | Nome mostrato | keyword1, keyword2, ...
+function loadSediMap() {
+  const file = new URL('./sedi.txt', import.meta.url).pathname;
+  const sedi = new Map();      // slug -> nome mostrato
+  const keywords = new Map();  // keyword -> slug
+  if (!fs.existsSync(file)) return { sedi, keywords };
+  const txt = fs.readFileSync(file, 'utf8');
+  for (const rawLine of txt.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const parts = line.split('|');
+    if (parts.length < 3) continue;
+    const slug = parts[0].trim();
+    const nome = parts[1].trim();
+    if (!slug) continue;
+    sedi.set(slug, nome || slug);
+    for (const kw of parts[2].split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) {
+      keywords.set(kw, slug);
+    }
+  }
+  return { sedi, keywords };
+}
+const { sedi: SEDI_NOMI, keywords: SEDI_KEYWORDS } = loadSediMap();
+// Sede a cui attribuire gli eventi che non hanno `location` valorizzato.
+const SEDE_DEFAULT = process.env.SEDE_DEFAULT || 'barletta';
+
+// `sedeCalendario` e' la sede da cui arriva l'evento, cioe' il calendario in cui
+// e' stato inserito: e' il dato piu' affidabile che abbiamo. `location` serve
+// solo a riconoscere gli eventi fuori sede.
+function detectSede(location, sedeCalendario) {
+  const raw = String(location || '').trim();
+  const fallback = sedeCalendario || SEDE_DEFAULT;
+  if (!raw) {
+    // Nessuna location: l'evento e' nella sede del suo calendario.
+    return {
+      sede: fallback,
+      sedeNome: SEDI_NOMI.get(fallback) || fallback,
+      sedeEsterna: false,
+      sedeIndirizzo: ''
+    };
+  }
+  const s = raw.toLowerCase();
+  for (const [kw, slug] of SEDI_KEYWORDS) {
+    if (s.includes(kw)) {
+      return {
+        sede: slug,
+        sedeNome: SEDI_NOMI.get(slug) || slug,
+        sedeEsterna: false,
+        sedeIndirizzo: raw
+      };
+    }
+  }
+  // Location valorizzata ma non riconducibile a una nostra sede: fuori sede.
+  // `sedeOrganizza` dice comunque quale sede lo porta avanti.
+  return {
+    sede: 'esterna',
+    sedeNome: raw.split(',')[0].trim(),
+    sedeEsterna: true,
+    sedeIndirizzo: raw,
+    sedeOrganizza: fallback
+  };
+}
+
+
+// -------- calendari (uno per sede) ------------
+// Formato di calendari.txt:  slug_sede | Calendar ID
+// Aggiungere una sede = condividere il suo calendario in sola lettura con il
+// service account e incollare qui l'ID. Nessuna modifica al codice.
+function loadCalendari() {
+  const file = new URL('./calendari.txt', import.meta.url).pathname;
+  const out = [];
+  if (fs.existsSync(file)) {
+    for (const rawLine of fs.readFileSync(file, 'utf8').split('\n')) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const [sede, id] = line.split('|').map(s => s.trim());
+      if (!sede || !id || id.startsWith('INCOLLA')) continue;
+      out.push({ sede, id });
+    }
+  }
+  // Se il file manca o e' vuoto restiamo sul calendario storico: cosi' il
+  // servizio non si pianta mai per una questione di configurazione.
+  if (!out.length) out.push({ sede: SEDE_DEFAULT, id: CALENDAR_ID });
+  return out;
+}
+const CALENDARI = loadCalendari();
+console.log('Calendari configurati:', CALENDARI.map(c => c.sede).join(', '));
 
 
 function firstWordLower(s) {
@@ -148,7 +239,7 @@ async function enrichWithImages(items) {
 
 
 // ---------- Normalizzazione campi ----------
-function normalizeEvent(ev, zone = 'Europe/Rome') {
+function normalizeEvent(ev, zone = 'Europe/Rome', sedeCalendario = null) {
     const startISO = ev.start?.dateTime || ev.start?.date;
     const endISO   = ev.end?.dateTime   || ev.end?.date;
 
@@ -169,6 +260,7 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
     }
 
     let categoria = detectCategoria(desc);
+    const sedeInfo = detectSede(ev.location, sedeCalendario);
 
     const tags = Array.from(
         new Set(
@@ -184,7 +276,9 @@ function normalizeEvent(ev, zone = 'Europe/Rome') {
     return {
         id: ev.id,
         nome: ev.summary || '',
+        startISO: start.toISO(),
         categoria,
+        ...sedeInfo,
         orainizio: start.toFormat('HH:mm'),
         orafine: end.toFormat('HH:mm'),
         giorno: start.setLocale('it').toFormat('EEEE d'),
@@ -234,27 +328,59 @@ app.get('/calendario/immagine/:categoria', async (req, res) => {
 });
 
 
-app.get('/api/weekly', async (req, res) => {
+// La pagina sta sotto /calendario, quindi il client chiama
+// /calendario/api/weekly. Teniamo attivo anche /api/weekly, che e" il percorso
+// storico usato da fuori.
+app.get(['/api/weekly', '/calendario/api/weekly'], async (req, res) => {
   try {
     const offset = parseInt(req.query.offset || "0", 10); // di default 0 = questa settimana
     const auth = await getAuth();
     const calendar = google.calendar({ version: 'v3', auth });
     const { timeMin, timeMax, human } = getWeekRange(offset);
 
-    const { data } = await calendar.events.list({
-      calendarId: CALENDAR_ID,
-      singleEvents: true,
-      timeMin,
-      timeMax,
-      orderBy: 'startTime',
-      maxResults: 2500
+    // Un calendario per sede: li leggiamo tutti e li fondiamo in una settimana
+    // sola. Se un calendario non e' leggibile (tipico: non ancora condiviso col
+    // service account) lo saltiamo e lo segnaliamo, senza far cadere la
+    // risposta: meglio mezzo calendario che una pagina rotta.
+    const errori = [];
+    const perCalendario = await Promise.all(CALENDARI.map(async (c) => {
+      try {
+        const { data } = await calendar.events.list({
+          calendarId: c.id,
+          singleEvents: true,
+          timeMin,
+          timeMax,
+          orderBy: 'startTime',
+          maxResults: 2500
+        });
+        return (data.items || []).map(ev => normalizeEvent(ev, 'Europe/Rome', c.sede));
+      } catch (err) {
+        const msg = String(err?.message || err);
+        console.error(`Calendario "${c.sede}" (${c.id}) non leggibile: ${msg}`);
+        errori.push({ sede: c.sede, errore: msg });
+        return [];
+      }
+    }));
+
+    let items = perCalendario.flat();
+
+    // Lo stesso evento copiato su piu' calendari va contato una volta sola.
+    // Deduplico sull'id e non su nome+orario, perche' la stessa attivita' puo'
+    // girare davvero nelle due sedi alla stessa ora, e sono due eventi distinti.
+    const visti = new Set();
+    items = items.filter(ev => {
+      if (!ev.id || visti.has(ev.id)) return !ev.id;
+      visti.add(ev.id);
+      return true;
     });
 
-    let items = (data.items || []).map(ev => normalizeEvent(ev));
     items = items.filter(ev => {
       const desc = (ev.raw?.description || '').toLowerCase();
       return !desc.includes('segret');
     });
+
+    // Ogni calendario arriva gia' ordinato, ma l'unione no.
+    items.sort((a, b) => String(a.startISO).localeCompare(String(b.startISO)));
 
     const aperti = [], chiusi = [];
     for (const item of items) {
@@ -269,6 +395,8 @@ app.get('/api/weekly', async (req, res) => {
       tz: 'Europe/Rome',
       offset,
       count: { aperti: aperti.length, chiusi: chiusi.length, totale: items.length },
+      sedi: CALENDARI.map(c => c.sede),
+      errori,
       aperti,
       chiusi
     });
