@@ -11,4 +11,4 @@
 # Queste parole chiave contano solo quando `location` e" valorizzato.
 
 barletta | Barletta | alfieri
-trani | La.m.po. | pagano, lampo, la.m.po.
+trani | Trani | pagano, lampo, la.m.po.
