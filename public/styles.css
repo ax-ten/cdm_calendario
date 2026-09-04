@@ -58,10 +58,16 @@ header {
 
 #schermata-eventi h2 {
   margin: 0;
+  font-size: 1.4rem;
+  flex: 0 0 auto;
 }
 
+/* L'intervallo di date e' l'informazione che cambia ogni settimana, quindi non
+   deve mai andare a capo ne' essere tagliato: e' il titolo a cedere spazio. */
 .time-range{
-  font-size: 1.3em;
+  font-size: 1.25rem;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* ================================
@@ -109,9 +115,13 @@ h2 {
 
 .card-body .header-line {
   display: flex;
+  /* Se il titolo non ci sta accanto all'orario, l'orario va a capo e il titolo
+     si prende tutta la riga, invece di essere strizzato su due righe strette
+     con l'orario che gli galleggia a fianco. */
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 10px;
+  gap: 4px 10px;
   border-bottom: 1px solid #d9dfe457; 
   padding-bottom: 2px; 
   margin-bottom: 3px; 
@@ -120,6 +130,17 @@ h2 {
 .card-body .header-line .title {
   font-size: 1.2rem;
   line-height: 1.4;
+  flex: 1 1 auto;
+}
+
+/* Orario e badge della sede sono una cosa sola: se vanno a capo devono farlo
+   insieme, se no il badge resta orfano su una riga tutta sua. */
+.card-body .header-line .header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .card-body .header-line .time {
@@ -289,9 +310,12 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
 
-  height: 32px;          
-  padding: 0;            
-  gap: 8px;              
+  height: 32px;
+  padding: 0;
+  /* Niente gap qui: separerebbe anche il segno della sede dall'icona, e quello
+     deve restarle attaccato. Lo spazio lo mette il titolo, che e' l'unico che
+     lo vuole. */
+  gap: 0;
 }
 
 .bar-icon {
@@ -304,6 +328,7 @@ h2 {
 .day-track .bar .title {
   line-height: 1;
   font-size: 0.95rem;
+  margin-left: 8px;
 }
 
 

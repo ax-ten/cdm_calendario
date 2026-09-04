@@ -34,9 +34,11 @@ function eventCard(ev) {
       </div>
       <div class="card-body">
         <div class="header-line">
-          <h1 class="title">${ev.nome}</h3>
-          <span class="time"><strong>${ev.giorno}</strong> dalle ${ev.orainizio}</span>
-          ${sedeBadge(ev)}
+          <h1 class="title">${ev.nome}</h1>
+          <div class="header-meta">
+            <span class="time"><strong>${ev.giorno}</strong> dalle ${ev.orainizio}</span>
+            ${sedeBadge(ev)}
+          </div>
         </div>
         <div class="description-line">
           ${ev.verbose}

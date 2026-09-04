@@ -218,25 +218,42 @@ async function listPublicImages(folderId) {
   return data.files || [];
 }
 
-async function getRandomImageFromDrive(folderId) {
+// Restituisce l'id di un'immagine a caso della cartella, o null se la cartella
+// non ha immagini visibili. Attenzione: "non visibili" comprende il caso in
+// cui la cartella non e' condivisa in pubblico, perche' la chiamiamo con una
+// API key e non con un utente: Drive risponde una lista vuota, non un errore.
+async function scegliImmagineDrive(folderId) {
   const files = await listPublicImages(folderId); // files(id,name)
   if (!files.length) return null;
-  const f = files[Math.floor(Math.random() * files.length)];
-  // invece di un link esterno:
-  return `/img/${f.id}`; // sarà servito dal tuo backend
+  return files[Math.floor(Math.random() * files.length)].id;
+}
+
+// L'URL di download vero. Contiene la API key, quindi non deve mai finire in
+// una risposta JSON: si usa solo per scaricare lato server e ristreammare.
+function urlDownloadDrive(fileId) {
+  return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${DRIVE_API_KEY}`;
 }
 
 
+// Le schede chiedono la foto a /calendario/immagine/:categoria, che sceglie e
+// scarica al momento. Qui segnaliamo soltanto le categorie che non hanno una
+// cartella o che hanno una cartella senza immagini leggibili, se no una foto
+// che non si vede non lascia traccia da nessuna parte.
 async function enrichWithImages(items) {
+  const gia = new Set();
   for (const it of items) {
-    const slug = (it.categoria).toLowerCase();
+    const slug = (it.categoria || '').toLowerCase();
+    if (gia.has(slug)) continue;
+    gia.add(slug);
     const folderId = FOLDER_IDS[slug];
     if (!folderId) {
-        console.log("non ho trovato una cartella per ", slug)
-        continue
-    };
-    const url = await getRandomImageFromDrive(folderId);
-    if (url) it.immagine = url;
+      console.log(`Nessuna cartella Drive per la categoria "${slug}"`);
+      continue;
+    }
+    const fileId = await scegliImmagineDrive(folderId);
+    if (!fileId) {
+      console.log(`La cartella Drive di "${slug}" non ha immagini visibili: e' vuota oppure non e' condivisa in pubblico`);
+    }
   }
 }
 
@@ -311,10 +328,18 @@ app.get('/calendario/immagine/:categoria', async (req, res) => {
     const categoria = req.params.categoria;
 
     try {
-        const driveUrl = await getRandomImageFromDrive(categoria);
-        console.log("Drive URL:", driveUrl);
+        // Qui passava `categoria` a una funzione che vuole l'id della cartella:
+        // la query a Drive era `'gdr' in parents`, che non trova niente. Poi
+        // faceva fetch di "/img/<id>", un percorso relativo che fetch non sa
+        // risolvere. Risultato: si finiva sempre nel catch e la foto usciva
+        // dalla cache locale, quindi Drive non e' mai stato davvero in uso.
+        const folderId = FOLDER_IDS[categoria.toLowerCase()];
+        if (!folderId) throw new Error(`nessuna cartella Drive per "${categoria}"`);
 
-        const response = await fetch(driveUrl);
+        const fileId = await scegliImmagineDrive(folderId);
+        if (!fileId) throw new Error(`la cartella Drive di "${categoria}" non ha immagini visibili (vuota o non condivisa in pubblico)`);
+
+        const response = await fetch(urlDownloadDrive(fileId));
 
         if (!response.ok) throw new Error(`Drive HTTP ${response.status}`);
         const contentType = response.headers.get('content-type') || 'image/jpeg';
