@@ -33,12 +33,10 @@ function eventCard(ev) {
         <img class="thumb thumb-img" src="${BASE}/immagine/${categoria}">
       </div>
       <div class="card-body">
+        ${sedeBadge(ev)}
         <div class="header-line">
           <h1 class="title">${ev.nome}</h1>
-          <div class="header-meta">
-            <span class="time"><strong>${ev.giorno}</strong> dalle ${ev.orainizio}</span>
-            ${sedeBadge(ev)}
-          </div>
+          <span class="time"><strong>${ev.giorno}</strong> dalle ${ev.orainizio}</span>
         </div>
         <div class="description-line">
           ${ev.verbose}

@@ -50,7 +50,10 @@ header {
 
 #schermata-eventi {
   display: flex;
-  justify-content: space-between; /* h2 a sinistra, span a destra */
+  /* Titolo e intervallo di date si leggono come una frase sola, quindi stanno
+     attaccati a sinistra invece che spinti ai due bordi. */
+  justify-content: flex-start;
+  gap: 10px;
   align-items: baseline;
   margin: 0;
   margin-bottom: 10px;
@@ -66,7 +69,6 @@ header {
    deve mai andare a capo ne' essere tagliato: e' il titolo a cedere spazio. */
 .time-range{
   font-size: 1.25rem;
-  text-align: right;
   white-space: nowrap;
 }
 
@@ -111,6 +113,19 @@ h2 {
 .card-body {
   padding: 5px 10px;
   display: grid;
+  position: relative;
+}
+
+/* Il badge della sede sta fuori dal flusso, appoggiato sopra il titolo e
+   allineato a lui: dentro la riga del titolo finiva in coda all'orario, dove
+   si notava poco. `bottom: 100%` lo mette sopra il bordo del corpo, cioe' sulla
+   foto. */
+.card-body > .sede-badge {
+  position: absolute;
+  z-index: 2;
+  left: 10px;
+  bottom: 100%;
+  margin: 0 0 6px 0;
 }
 
 .card-body .header-line {
@@ -133,21 +148,14 @@ h2 {
   flex: 1 1 auto;
 }
 
-/* Orario e badge della sede sono una cosa sola: se vanno a capo devono farlo
-   insieme, se no il badge resta orfano su una riga tutta sua. */
-.card-body .header-line .header-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
-  margin-left: auto;
-}
-
 .card-body .header-line .time {
   font-size: 1rem;
   color: #d9dfe4;
   white-space: nowrap;
   padding-bottom: 3px;
+  /* Resta a destra anche quando il titolo lungo lo manda a capo da solo. */
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .card-body .description-line {

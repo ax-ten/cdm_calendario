@@ -10,5 +10,5 @@
 # La sede vera di un evento e" il calendario in cui sta (vedi calendari.txt).
 # Queste parole chiave contano solo quando `location` e" valorizzato.
 
-barletta | Hub | alfieri
+barletta | Barletta | alfieri
 trani | La.m.po. | pagano, lampo, la.m.po.
