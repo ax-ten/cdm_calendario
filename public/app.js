@@ -54,7 +54,7 @@ function activityBar(ev) {
   const cat = ev.categoria || 'default';
 
   return `
-    <div class="bar ${cat} sede-dot-${ev.sedeEsterna ? 'esterna' : (ev.sede || 'default')}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
+    <div class="bar ${cat} sede-segno-${ev.sedeEsterna ? 'esterna' : (ev.sede || 'default')}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
       <img class="bar-icon" src="${BASE}/src/${cat}.png" alt="${cat}">
       <span class="title">${ev.nome || 'Senza titolo'}</span>
     </div>

@@ -325,7 +325,7 @@ h2 {
 
 
 /* ---------- sedi ---------- */
-/* Badge sulla card evento e pallino colorato sulle barre attivita'. */
+/* Badge sulla card evento e segnaposto colorato sulle barre attivita'. */
 .sede-badge {
   display: inline-block;
   margin-left: .6em;
@@ -344,20 +344,27 @@ h2 {
 .sede-badge.sede-trani    { background: #1f6f78; }
 .sede-badge.sede-esterna  { background: #6b7280; }
 
-.bar[class*="sede-dot-"]::before {
+/* Il segnaposto sta SOPRA l'icona iniziale, non prima: da elemento flex
+   occupava spazio e spingeva icona e titolo verso destra, cambiando
+   l'allineamento della barra a seconda che la sede fosse nota o meno.
+   Assoluto non sposta niente. Gli inset di 6px lo tengono dentro il raggio
+   del pillolone (h 32, radius 16): a filo di bordo verrebbe tagliato a
+   mezzaluna da overflow:hidden. */
+.bar[class*="sede-segno-"]::before {
   content: "";
-  display: inline-block;
-  flex: 0 0 auto;
-  width: .55em;
-  height: .55em;
-  margin-right: .35em;
-  border-radius: 50%;
+  position: absolute;
+  z-index: 2;
+  left: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
   background: #6b7280;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .25);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45);
 }
-.bar.sede-dot-barletta::before { background: #e2711d; }
-.bar.sede-dot-trani::before    { background: #1f6f78; }
-.bar.sede-dot-esterna::before  { background: #9ca3af; }
+.bar.sede-segno-barletta::before { background: #e2711d; }
+.bar.sede-segno-trani::before    { background: #1f6f78; }
+.bar.sede-segno-esterna::before  { background: #9ca3af; }
 
 /* Legenda sotto "Altre attivita'" */
 .sede-legenda {
@@ -370,5 +377,5 @@ h2 {
 }
 .sede-legenda span { display: inline-flex; align-items: center; gap: .4em; }
 .sede-legenda i {
-  width: .6em; height: .6em; border-radius: 50%; display: inline-block;
+  width: 3px; height: .95em; border-radius: 2px; display: inline-block;
 }
