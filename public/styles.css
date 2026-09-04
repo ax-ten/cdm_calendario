@@ -362,7 +362,9 @@ h2 {
 .sede-badge {
   display: inline-block;
   margin-left: .6em;
-  padding: .15em .6em;
+  /* 2px in piu' sopra: il maiuscoletto senza discendenti sembrava incollato
+     al bordo alto della pillola. */
+  padding: calc(.15em + 2px) .6em .15em;
   border-radius: 999px;
   font-size: .62em;
   font-weight: 700;
