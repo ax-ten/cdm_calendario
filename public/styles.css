@@ -344,23 +344,15 @@ h2 {
 .sede-badge.sede-trani    { background: #1f6f78; }
 .sede-badge.sede-esterna  { background: #6b7280; }
 
-/* Il segnaposto sta SOPRA l'icona iniziale, non prima: da elemento flex
-   occupava spazio e spingeva icona e titolo verso destra, cambiando
-   l'allineamento della barra a seconda che la sede fosse nota o meno.
-   Assoluto non sposta niente. Gli inset di 6px lo tengono dentro il raggio
-   del pillolone (h 32, radius 16): a filo di bordo verrebbe tagliato a
-   mezzaluna da overflow:hidden. */
+/* Rettangolo pieno all'inizio della barra, prima dell'icona. Sta nel flusso
+   flex apposta: cosi' occupa il suo spazio invece di coprire l'icona. Il
+   border-radius del pillolone piu' overflow:hidden lo tagliano a mezzaluna
+   sul bordo sinistro, ed e' voluto: segue la forma della barra. */
 .bar[class*="sede-segno-"]::before {
   content: "";
-  position: absolute;
-  z-index: 2;
-  left: 6px;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 2px;
+  flex: 0 0 6px;
+  align-self: stretch;
   background: #6b7280;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45);
 }
 .bar.sede-segno-barletta::before { background: #e2711d; }
 .bar.sede-segno-trani::before    { background: #1f6f78; }
@@ -377,5 +369,5 @@ h2 {
 }
 .sede-legenda span { display: inline-flex; align-items: center; gap: .4em; }
 .sede-legenda i {
-  width: 3px; height: .95em; border-radius: 2px; display: inline-block;
+  width: 6px; height: 1em; display: inline-block;
 }

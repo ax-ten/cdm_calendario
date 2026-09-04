@@ -115,6 +115,11 @@ function loadSediMap() {
   return { sedi, keywords };
 }
 const { sedi: SEDI_NOMI, keywords: SEDI_KEYWORDS } = loadSediMap();
+// Ora da cui parte la fascia disegnata sotto "Altre attivita'". Le colonne
+// 17..23 nell'header di index.html partono da qui: se si cambia, va cambiato
+// anche li'.
+const ORA_INIZIO_FASCIA = 17;
+
 // Sede a cui attribuire gli eventi che non hanno `location` valorizzato.
 const SEDE_DEFAULT = process.env.SEDE_DEFAULT || 'barletta';
 
@@ -270,8 +275,13 @@ function normalizeEvent(ev, zone = 'Europe/Rome', sedeCalendario = null) {
     );
 
     const durataMinuti = Math.max(0, Math.round(end.diff(start, 'minutes').minutes));
-    const riferimento = start.set({ hour: 17, minute: 0 });
-    const offsetMinuti = Math.max(0, Math.round(start.diff(riferimento, 'minutes').minutes));
+    const riferimento = start.set({ hour: ORA_INIZIO_FASCIA, minute: 0 });
+    const scarto = Math.round(start.diff(riferimento, 'minutes').minutes);
+    const offsetMinuti = Math.max(0, scarto);
+    // Chi comincia prima dell'inizio della fascia non ha un posto dove stare:
+    // l'offset lo schiaccerebbe a zero e la barra si leggerebbe come se
+    // l'evento iniziasse alle ORA_INIZIO_FASCIA, che e' semplicemente falso.
+    const primaDellaFascia = scarto < 0;
 
     return {
         id: ev.id,
@@ -288,6 +298,7 @@ function normalizeEvent(ev, zone = 'Europe/Rome', sedeCalendario = null) {
         immagine: null,
         durataMinuti,
         offsetMinuti,
+        primaDellaFascia,
         dayNum,
         dayAbbr,
         dayKey,
@@ -382,10 +393,19 @@ app.get(['/api/weekly', '/calendario/api/weekly'], async (req, res) => {
     // Ogni calendario arriva gia' ordinato, ma l'unione no.
     items.sort((a, b) => String(a.startISO).localeCompare(String(b.startISO)));
 
-    const aperti = [], chiusi = [];
+    // Gli aperti diventano schede, con l'orario scritto per esteso: li' un
+    // evento della mattina si legge benissimo. I chiusi diventano barre sulla
+    // fascia oraria, che parte dalle ORA_INIZIO_FASCIA, quindi quelli che
+    // cominciano prima vanno lasciati fuori invece che disegnati all'ora
+    // sbagliata.
+    const aperti = [], chiusi = [], fuoriFascia = [];
     for (const item of items) {
       if (isOpen(item.raw)) aperti.push(item);
+      else if (item.primaDellaFascia) fuoriFascia.push(item);
       else chiusi.push(item);
+    }
+    for (const ev of fuoriFascia) {
+      console.log(`Fuori fascia, non disegnato: "${ev.nome}" ${ev.giorno} ${ev.orainizio}`);
     }
 
     await enrichWithImages(aperti);
