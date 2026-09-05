@@ -139,9 +139,6 @@ function loadCategorie() {
   }
   return out;
 }
-const CATEGORIE = loadCategorie();
-console.log('Categorie per l\'app:', CATEGORIE.map(c => c.slug).join(', '));
-
 async function telegram(metodo, payload) {
   const risposta = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${metodo}`, {
     method: 'POST',
@@ -211,6 +208,11 @@ function loadEventTypeMap() {
   return map;
 }
 const EVENT_TYPE_MAP = loadEventTypeMap();
+
+// Dopo EVENT_TYPE_MAP e non prima: loadCategorie ci legge dentro, e un const
+// letto prima della sua riga non e' undefined, e' un errore che ferma tutto.
+const CATEGORIE = loadCategorie();
+console.log('Categorie per l\'app:', CATEGORIE.map(c => c.slug).join(', '));
 
 
 // -------- mappatura sedi ------------
