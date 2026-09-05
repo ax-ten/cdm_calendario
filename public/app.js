@@ -140,7 +140,22 @@ function formatDate(dateStr) {
 
 
 
+// Quante settimane separano il giorno chiesto da quella corrente. L API
+// restituisce una settimana per volta: senza questo, chiedere un giorno della
+// settimana prossima darebbe "nessuna attivita" invece delle sue attivita.
+function offsetPerGiorno(giorno) {
+  const lunediDi = (d) => {
+    const x = new Date(d);
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
+  const differenza = lunediDi(new Date(giorno + 'T12:00:00')) - lunediDi(new Date());
+  return Math.round(differenza / (7 * 24 * 3600 * 1000));
+}
+
 async function loadAndRender(offset=0) {
+  if (GIORNO) offset = offsetPerGiorno(GIORNO);
   const res = await fetch(`${BASE}/api/weekly?offset=${offset}`); 
   const data = await res.json();
 
