@@ -382,11 +382,16 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   background: var(--scheda); border-radius: 12px; padding: 13px; margin-bottom: 10px;
 }
 .riga .quando { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
+.azioni { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .riga button {
-  margin-top: 10px; padding: 7px 12px; border-radius: 9px;
-  background: transparent; color: var(--pieno); font: inherit; font-size: .85rem;
-  cursor: pointer; border: 1px solid var(--pieno);
+  padding: 7px 12px; border-radius: 9px;
+  background: transparent; color: var(--tenue); font: inherit; font-size: .85rem;
+  cursor: pointer; border: 1px solid color-mix(in srgb, var(--tenue) 55%, transparent);
 }
+/* Rosso solo a quello che non si puo' disfare: se lo sono tutti e due, il
+   colore smette di voler dire "attento". */
+.riga button.grave { color: var(--pieno); border-color: var(--pieno); }
+.riga button:disabled { opacity: .5; cursor: default; }
 .vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
 </style>
 </head>
@@ -820,10 +825,18 @@ async function caricaMie() {
       <div class="riga">
         <div>${p.nome || 'senza titolo'}${p.fissa ? ' · ogni settimana' : ''}</div>
         <div class="quando">${quandoTesto(p.inizio, p.fine)} · ${p.sede}</div>
-        <button data-sede="${p.sede}" data-id="${p.id}">Annulla</button>
+        <div class="azioni">
+          <button data-sede="${p.sede}" data-id="${p.id}"
+                  data-cosa="${p.fissa ? 'volta' : 'una'}">
+            ${p.fissa ? 'Salta questa volta' : 'Annulla'}
+          </button>
+          ${p.fissa && p.serieId ? `
+            <button class="grave" data-sede="${p.sede}" data-id="${p.serieId}"
+                    data-cosa="serie">Elimina la serie</button>` : ''}
+        </div>
       </div>`).join('');
     dove.querySelectorAll('button').forEach(b => {
-      b.onclick = () => annulla(b.dataset.sede, b.dataset.id, b);
+      b.onclick = () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
     });
   } catch (err) {
     dove.textContent = err.message;
@@ -837,13 +850,24 @@ function quandoTesto(inizio, fine) {
   return `${giorno}, ${ora(a)}–${ora(b)}`;
 }
 
-function annulla(sede, id, bottone) {
+// cosa: "una" una prenotazione singola, "volta" una sola settimana di
+// un'attivita' fissa, "serie" tutte le settimane.
+const DOMANDE = {
+  una: ['Annullo questa prenotazione?', 'Annullo…', 'Annulla'],
+  volta: ['Salto solo questa settimana? Le prossime restano.',
+          'Salto…', 'Salta questa volta'],
+  serie: ['Elimino tutte le settimane? Non si torna indietro.',
+          'Elimino…', 'Elimina la serie'],
+};
+
+function annulla(sede, id, bottone, cosa = 'una') {
+  const [domanda, mentre, prima] = DOMANDE[cosa] || DOMANDE.una;
   const fai = async () => {
     // Il bottone dice cosa sta succedendo: la chiamata passa da Google e
     // qualche secondo ci mette, e un bottone che non reagisce sembra rotto.
     const riga = bottone.closest('.riga');
-    bottone.disabled = true;
-    bottone.textContent = 'Annullo…';
+    riga.querySelectorAll('button').forEach(b => b.disabled = true);
+    bottone.textContent = mentre;
     try {
       await chiama('annulla', { sede, eventId: id });
       tg?.HapticFeedback?.notificationOccurred('success');
@@ -855,12 +879,12 @@ function annulla(sede, id, bottone) {
       // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
       Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
     } catch (err) {
-      bottone.disabled = false;
-      bottone.textContent = 'Annulla';
+      riga.querySelectorAll('button').forEach(b => b.disabled = false);
+      bottone.textContent = prima;
       tg?.showAlert(err.message);
     }
   };
-  if (tg?.showConfirm) tg.showConfirm('Annullo questa prenotazione?', (si) => si && fai());
+  if (tg?.showConfirm) tg.showConfirm(domanda, (si) => si && fai());
   else fai();
 }
 

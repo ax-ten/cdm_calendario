@@ -305,6 +305,10 @@ export async function miePrenotazioni(auth, calendari, userId, da, a) {
           inizio: ev.start?.dateTime,
           fine: ev.end?.dateTime,
           fissa: ev.extendedProperties?.private?.fissa === 'si',
+          // Con singleEvents gli id sono quelli delle singole occorrenze:
+          // cancellarne uno salta quella settimana. Per chiudere la serie
+          // serve l'id dell'evento madre, che e' un'altra cosa.
+          serieId: ev.recurringEventId || null,
         }));
     })
   );
