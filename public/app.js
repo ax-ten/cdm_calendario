@@ -202,6 +202,13 @@ function renderSoloUnGiorno(data) {
 loadAndRender(OFFSET);
 document.body.classList.add('day');
 
+// ?sfondo=bianco: serve alla versione per le storie, che monta questo
+// screenshot su una tela bianca. Col grigio di sempre si vedrebbe il
+// riquadro incollato sopra.
+if (new URLSearchParams(window.location.search).get('sfondo') === 'bianco') {
+  document.body.style.background = '#ffffff';
+}
+
 document.addEventListener('keydown', (e) => {
   // Evita che lo spazio faccia scroll
   if (e.code === 'Space') {
