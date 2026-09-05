@@ -19,8 +19,6 @@ const ZONA = 'Europe/Rome';
 
 // Ogni sede regge due attivita' insieme, non di piu'.
 export const MAX_CONTEMPORANEI = 2;
-// Quante prenotazioni puo' fare una persona nella stessa settimana.
-export const MAX_A_SETTIMANA = 2;
 // La fascia in cui la sede e' prenotabile.
 export const ORA_MINIMA = 16;
 export const ORA_MASSIMA = 24;
@@ -283,23 +281,20 @@ export async function occupazioneDelMese(auth, calendarId, anno, mese) {
   return fuori;
 }
 
-// Quante prenotazioni ha gia' fatto questa persona nella settimana in cui
-// cade la data chiesta. La settimana e' lunedi-domenica, come la legge chi
-// guarda un calendario.
-export async function prenotazioniDellaSettimana(auth, calendari, userId, data) {
-  const giorno = DateTime.fromISO(data, { zone: ZONA });
-  const inizio = giorno.startOf('week');
-  const fine = inizio.plus({ days: 7 });
-
+// Le prenotazioni di una persona in un intervallo. Una chiamata per
+// calendario e non una per settimana: prima ne servivano venti per riempire
+// una schermata, e si vedeva.
+export async function miePrenotazioni(auth, calendari, userId, da, a) {
   const perCalendario = await Promise.all(
     calendari.map(async (c) => {
       const { data: risposta } = await client(auth).events.list({
         calendarId: c.id,
         singleEvents: true,
-        timeMin: inizio.toISO(),
-        timeMax: fine.toISO(),
+        orderBy: 'startTime',
+        timeMin: da.toISO(),
+        timeMax: a.toISO(),
         privateExtendedProperty: `telegram_id=${userId}`,
-        maxResults: 50,
+        maxResults: 250,
       });
       return (risposta.items || [])
         .filter((ev) => ev.status !== 'cancelled')
@@ -309,6 +304,7 @@ export async function prenotazioniDellaSettimana(auth, calendari, userId, data) 
           nome: ev.summary,
           inizio: ev.start?.dateTime,
           fine: ev.end?.dateTime,
+          fissa: ev.extendedProperties?.private?.fissa === 'si',
         }));
     })
   );

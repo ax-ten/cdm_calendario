@@ -497,7 +497,6 @@ const stato = {
   daOra: 18, aOra: 21,
   mese: null,            // {anno, mese}
   occupazione: {},       // per sede+mese, dal server
-  settimana: 0,          // quante ne ho gia' in quella settimana
   prenotabile: false,
 };
 
@@ -596,13 +595,6 @@ async function scegliGiorno(data) {
   stato.giorno = data;
   disegnaCalendario();
   disegnaFascia();
-  if (!stato.sede) return aggiornaEsito();
-  try {
-    const esito = await chiama('disponibilita', {
-      sede: stato.sede, data, oraInizio: stato.daOra, oraFine: stato.aOra,
-    });
-    stato.settimana = esito.questaSettimana || 0;
-  } catch { /* il conteggio settimanale non e' un motivo per bloccare tutto */ }
   aggiornaEsito();
 }
 
@@ -727,12 +719,6 @@ function aggiornaEsito() {
   const sovrapposti = eventiDelGiorno()
     .filter(ev => ev.a > stato.daOra && ev.da < stato.aOra);
 
-  if (stato.settimana >= stato.limiti.maxASettimana) {
-    dove.innerHTML = `<div class="esito pieno"><b>Hai finito le prenotazioni della settimana</b>
-      <span>Sono ${stato.limiti.maxASettimana} a settimana e in quella ne hai già ${stato.settimana}.</span></div>`;
-    return abilita(false);
-  }
-
   if (sovrapposti.length >= stato.limiti.maxContemporanei) {
     dove.innerHTML = `<div class="esito pieno"><b>In quelle ore non c'è più posto</b>
       <span>Ci sono già ${sovrapposti.length} attività, ed è il massimo per una sede. Sposta l'orario.</span></div>`;
@@ -832,12 +818,12 @@ async function caricaMie() {
     dove.className = '';
     dove.innerHTML = prenotazioni.map(p => `
       <div class="riga">
-        <div>${p.nome || 'senza titolo'}</div>
+        <div>${p.nome || 'senza titolo'}${p.fissa ? ' · ogni settimana' : ''}</div>
         <div class="quando">${quandoTesto(p.inizio, p.fine)} · ${p.sede}</div>
         <button data-sede="${p.sede}" data-id="${p.id}">Annulla</button>
       </div>`).join('');
     dove.querySelectorAll('button').forEach(b => {
-      b.onclick = () => annulla(b.dataset.sede, b.dataset.id);
+      b.onclick = () => annulla(b.dataset.sede, b.dataset.id, b);
     });
   } catch (err) {
     dove.textContent = err.message;
@@ -851,13 +837,28 @@ function quandoTesto(inizio, fine) {
   return `${giorno}, ${ora(a)}–${ora(b)}`;
 }
 
-function annulla(sede, id) {
+function annulla(sede, id, bottone) {
   const fai = async () => {
+    // Il bottone dice cosa sta succedendo: la chiamata passa da Google e
+    // qualche secondo ci mette, e un bottone che non reagisce sembra rotto.
+    const riga = bottone.closest('.riga');
+    bottone.disabled = true;
+    bottone.textContent = 'Annullo…';
     try {
       await chiama('annulla', { sede, eventId: id });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      riga.remove();
+      if (!el('elenco-mie').querySelector('.riga')) {
+        el('elenco-mie').className = 'vuoto';
+        el('elenco-mie').textContent = 'Non hai prenotazioni in arrivo.';
+      }
+      // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
       Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
-      caricaMie();
-    } catch (err) { tg?.showAlert(err.message); }
+    } catch (err) {
+      bottone.disabled = false;
+      bottone.textContent = 'Annulla';
+      tg?.showAlert(err.message);
+    }
   };
   if (tg?.showConfirm) tg.showConfirm('Annullo questa prenotazione?', (si) => si && fai());
   else fai();

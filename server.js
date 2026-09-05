@@ -475,9 +475,6 @@ async function conUtente(req, res, azione) {
 app.use(express.json({ limit: '64kb' }));
 
 app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) => {
-  const auth = await getAuth();
-  const mie = await prenotazioni.prenotazioniDellaSettimana(
-    auth, CALENDARI, utente.id, DateTime.now().setZone('Europe/Rome').toISODate());
   res.json({
     utente,
     bloccato: prenotazioni.eBloccato(utente.id),
@@ -492,10 +489,8 @@ app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) 
       oraMinima: prenotazioni.ORA_MINIMA,
       oraMassima: prenotazioni.ORA_MASSIMA,
       maxContemporanei: prenotazioni.MAX_CONTEMPORANEI,
-      maxASettimana: prenotazioni.MAX_A_SETTIMANA,
       giorniAvanti: prenotazioni.GIORNI_AVANTI,
     },
-    questaSettimana: mie.length,
   });
 }));
 
@@ -510,7 +505,6 @@ app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (
   const auth = await getAuth();
   const { inizio, fine } = prenotazioni.estremi(data, oraInizio, oraFine);
   const sovrapposti = await prenotazioni.occupazione(auth, calendarId, inizio, fine);
-  const mie = await prenotazioni.prenotazioniDellaSettimana(auth, CALENDARI, utente.id, data);
 
   res.json({
     ok: true,
@@ -519,8 +513,6 @@ app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (
     eventi: sovrapposti.map(e => ({ nome: e.nome, inizio: e.inizio, fine: e.fine })),
     pieno: sovrapposti.length >= prenotazioni.MAX_CONTEMPORANEI,
     secondo: sovrapposti.length === 1,
-    questaSettimana: mie.length,
-    limiteSettimanale: mie.length >= prenotazioni.MAX_A_SETTIMANA,
   });
 }));
 
@@ -564,13 +556,6 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   if (sovrapposti.length >= prenotazioni.MAX_CONTEMPORANEI) {
     return res.status(409).json({ errore: 'in quello slot ci sono gia due attivita' });
   }
-  const mie = await prenotazioni.prenotazioniDellaSettimana(auth, CALENDARI, utente.id, data);
-  if (mie.length >= prenotazioni.MAX_A_SETTIMANA) {
-    return res.status(409).json({
-      errore: `hai gia ${mie.length} prenotazioni in quella settimana`,
-    });
-  }
-
   // La parola chiave va in CIMA e da sola: il calendario pubblico guarda la
   // prima parola della descrizione, ed e' cosi' che l'attivita' esce con la
   // sua icona e il suo colore invece che con quelli di default.
@@ -672,15 +657,13 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
 app.post('/prenota/api/mie', (req, res) => conUtente(req, res, async (utente) => {
   const auth = await getAuth();
   const ora = DateTime.now().setZone('Europe/Rome');
-  const tutte = [];
-  for (let settimana = 0; settimana <= 9; settimana++) {
-    const giorno = ora.plus({ weeks: settimana }).toISODate();
-    tutte.push(...await prenotazioni.prenotazioniDellaSettimana(auth, CALENDARI, utente.id, giorno));
-  }
-  const future = tutte
-    .filter(p => DateTime.fromISO(p.fine) > ora)
-    .sort((a, b) => a.inizio.localeCompare(b.inizio));
-  res.json({ prenotazioni: future });
+  const tutte = await prenotazioni.miePrenotazioni(
+    auth, CALENDARI, utente.id, ora, ora.plus({ days: 120 }));
+  res.json({
+    prenotazioni: tutte
+      .filter(p => DateTime.fromISO(p.fine) > ora)
+      .sort((a, b) => a.inizio.localeCompare(b.inizio)),
+  });
 }));
 
 app.post('/prenota/api/annulla', (req, res) => conUtente(req, res, async (utente) => {
