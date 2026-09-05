@@ -25,7 +25,8 @@
 
 body {
   margin: 0;
-  padding: 0 14px 120px;
+  /* Lo spazio in fondo tiene conto della barra dell'esito, che e' fissa. */
+  padding: 0 14px 150px;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--sfondo);
   color: var(--testo);
@@ -104,11 +105,7 @@ h1 {
 /* -------------------------------------------------------------- categorie
    Icona e colore sono gli stessi del calendario pubblico: chi ha visto
    l'attivita' li' la riconosce qui senza leggere. */
-.categorie {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: 8px;
-}
+.categorie { display: grid; gap: 6px; }
 .categoria {
   appearance: none;
   border: 1.5px solid transparent;
@@ -116,26 +113,31 @@ h1 {
   background: var(--scheda);
   color: var(--testo);
   font: inherit;
-  font-size: .72rem;
-  line-height: 1.15;
-  padding: 10px 6px 8px;
+  font-size: .95rem;
+  padding: 10px 12px;
   cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  text-align: center;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
 }
-.categoria img { width: 28px; height: 28px; object-fit: contain; }
+/* La striscia di colore a sinistra e' la stessa che quell'attivita' ha sul
+   calendario pubblico: si riconosce prima di leggere il nome. */
+.categoria .tinta {
+  flex: 0 0 4px;
+  align-self: stretch;
+  border-radius: 3px;
+  background: var(--tinta);
+  opacity: .6;
+}
+.categoria img { width: 26px; height: 26px; object-fit: contain; flex: 0 0 26px; }
+.categoria span.nome { flex: 1; }
 .categoria[aria-pressed="true"] {
   border-color: var(--tinta);
-  background: color-mix(in srgb, var(--tinta) 22%, var(--scheda));
+  background: color-mix(in srgb, var(--tinta) 20%, var(--scheda));
 }
-.categoria .puntino {
-  width: 100%; height: 3px; border-radius: 2px; background: var(--tinta);
-  opacity: .55;
-}
-.categoria[aria-pressed="true"] .puntino { opacity: 1; }
+.categoria[aria-pressed="true"] .tinta { opacity: 1; }
 
 input[type="text"], textarea {
   width: 100%;
@@ -305,7 +307,20 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .interruttore label { font-size: .95rem; }
 .interruttore small { display: block; color: var(--tenue); font-size: .78rem; margin-top: 2px; }
 
-/* ------------------------------------------------------------------ esito */
+/* ------------------------------------------------------------------ esito
+   Fisso in fondo, appoggiato sopra il pulsante Prenota di Telegram: e' la
+   riga che dice cosa manca ancora, e serve mentre si compila, non dopo aver
+   scorso fino in fondo. */
+#blocco-esito {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  background: var(--sfondo);
+  border-top: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent);
+  z-index: 20;
+}
+#blocco-esito[hidden] { display: none; }
+
 .esito {
   border-radius: 12px;
   padding: 12px 14px;
@@ -342,16 +357,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 <!-- ------------------------------------------------------------ prenota -->
 <section class="pannello" id="pannello-prenota" role="tabpanel" aria-labelledby="tab-prenota">
   <h1>Prenota una stanza</h1>
-  <p class="spiega" id="spiega-prenota">…</p>
 
   <div class="campo">
     <span class="titolo">In quale sede</span>
     <div class="sedi" id="sedi"></div>
-  </div>
-
-  <div class="campo">
-    <span class="titolo">Che tipo di attività</span>
-    <div class="categorie" id="categorie"></div>
   </div>
 
   <div class="campo">
@@ -366,6 +375,11 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
       <span><i style="background:var(--occupato)"></i> c'è già qualcosa</span>
       <span><i style="background:var(--pieno)"></i> non c'è più posto</span>
     </div>
+  </div>
+
+  <div class="campo">
+    <span class="titolo">Che tipo di attività</span>
+    <div class="categorie" id="categorie"></div>
   </div>
 
   <div class="campo" id="campo-fascia">
@@ -403,8 +417,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     </div>
   </div>
 
-  <div class="campo" id="blocco-esito"></div>
 </section>
+
+<!-- Sta fuori dai pannelli: e' una barra sua, non un campo del modulo. -->
+<div id="blocco-esito" hidden></div>
 
 <!-- ---------------------------------------------------------------- mie -->
 <section class="pannello" id="pannello-mie" role="tabpanel" aria-labelledby="tab-mie" hidden>
@@ -626,6 +642,7 @@ function trascina(maniglia, quale) {
 // ------------------------------------------------------------------ esito
 function aggiornaEsito() {
   const dove = el('blocco-esito');
+  dove.hidden = el('pannello-prenota').hidden;
 
   if (!stato.sede || !stato.giorno || !stato.categoria) {
     const manca = [
@@ -764,6 +781,7 @@ function mostra(quale) {
   el('pannello-mie').hidden = quale !== 'mie';
   el('tab-prenota').setAttribute('aria-selected', String(quale === 'prenota'));
   el('tab-mie').setAttribute('aria-selected', String(quale === 'mie'));
+  el('blocco-esito').hidden = quale !== 'prenota';
   if (quale === 'mie') { tg?.MainButton.hide(); caricaMie(); }
   else abilita(stato.prenotabile);
 }
@@ -781,11 +799,6 @@ async function avvia() {
   stato.daOra = 18;
   stato.aOra = 21;
 
-  el('spiega-prenota').textContent = info.bloccato
-    ? 'Le tue prenotazioni sono sospese: parlane con lo staff.'
-    : `Dalle ${info.limiti.oraMinima} alle ${info.limiti.oraMassima}, fino a ` +
-      `${info.limiti.maxASettimana} prenotazioni a settimana.`;
-
   el('sedi').innerHTML = info.sedi
     .map(s => `<button data-slug="${s.slug}" aria-pressed="false">${s.nome}</button>`).join('');
   el('sedi').querySelectorAll('button').forEach(b => {
@@ -802,9 +815,9 @@ async function avvia() {
   el('categorie').innerHTML = (info.categorie || []).map(c => `
     <button class="categoria" data-slug="${c.slug}" aria-pressed="false"
             style="--tinta:${c.colore}">
+      <span class="tinta"></span>
       <img src="${c.icona}" alt="" onerror="this.style.visibility='hidden'">
-      <span>${c.nome}</span>
-      <span class="puntino"></span>
+      <span class="nome">${c.nome}</span>
     </button>`).join('');
   el('categorie').querySelectorAll('button').forEach(b => {
     b.onclick = () => {
