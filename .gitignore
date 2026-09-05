@@ -14,3 +14,6 @@ bot_token.txt
 
 # Stato dell app di prenotazione (elenco dei sospesi).
 /dati
+
+# Segreto condiviso col bot per le rotte interne.
+segreto_interno.txt

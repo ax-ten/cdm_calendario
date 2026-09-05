@@ -6,6 +6,7 @@ import { DateTime } from 'luxon';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
 import * as prenotazioni from './prenotazioni.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -597,6 +598,94 @@ app.post('/prenota/api/bloccati', (req, res) => conUtente(req, res, async (utent
   }
   res.json({ bloccati: prenotazioni.elencoBloccati() });
 }));
+
+// ---------- rotte interne, per il bot ----------
+// Il bot non e' una pagina dentro Telegram, quindi non ha un initData da
+// firmare: si autentica con un segreto condiviso. Non riusiamo il token del
+// bot come segreto, perche' chi scoprisse uno avrebbe l'altro.
+function loadSegretoInterno() {
+  try {
+    return fs.readFileSync(path.join(__dirname, 'segreto_interno.txt'), 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
+const SEGRETO_INTERNO = loadSegretoInterno();
+
+function soloBot(req, res) {
+  if (!SEGRETO_INTERNO) {
+    res.status(503).json({ errore: 'manca segreto_interno.txt' });
+    return false;
+  }
+  const dato = req.get('X-Segreto') || '';
+  const a = Buffer.from(dato);
+  const b = Buffer.from(SEGRETO_INTERNO);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    res.status(401).json({ errore: 'non autorizzato' });
+    return false;
+  }
+  return true;
+}
+
+// Chi preme "Apro io" viene scritto nell'evento. Il primo che arriva vince:
+// se due premono insieme, al secondo si dice chi c'era gia' invece di
+// sovrascriverlo.
+app.post('/prenota/api/interno/apre', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { sede, eventId, chi } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  try {
+    const gia = await prenotazioni.segnaChiApre(await getAuthScrittura(), calendarId, eventId, chi);
+    res.json({ ok: true, giaPreso: gia });
+  } catch (err) {
+    console.error('apre:', err.message);
+    res.status(500).json({ errore: err.message });
+  }
+});
+
+// Le prenotazioni di domani, per il promemoria.
+app.post('/prenota/api/interno/domani', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  try {
+    const auth = await getAuth();
+    const domani = DateTime.now().setZone('Europe/Rome').plus({ days: 1 });
+    const inizio = domani.startOf('day');
+    const fine = domani.endOf('day');
+
+    const perCalendario = await Promise.all(CALENDARI.map(async (c) => {
+      const { data } = await google.calendar({ version: 'v3', auth }).events.list({
+        calendarId: c.id,
+        singleEvents: true,
+        orderBy: 'startTime',
+        timeMin: inizio.toISO(),
+        timeMax: fine.toISO(),
+        maxResults: 50,
+      });
+      return (data.items || [])
+        // Solo quelle nate dall'app: gli altri eventi del calendario non
+        // hanno un proprietario a cui mandare un promemoria.
+        .filter(ev => ev.extendedProperties?.private?.telegram_id)
+        .map(ev => ({
+          id: ev.id,
+          sede: c.sede,
+          sedeNome: SEDI_NOMI.get(c.sede) || c.sede,
+          titolo: ev.summary || 'senza titolo',
+          inizio: ev.start?.dateTime,
+          fine: ev.end?.dateTime,
+          telegramId: ev.extendedProperties.private.telegram_id,
+          richiedente: ev.extendedProperties.private.richiedente || '',
+          serveApertura: ev.extendedProperties.private.serve_apertura === 'si',
+          apre: ev.extendedProperties.private.apre || null,
+        }));
+    }));
+
+    res.json({ prenotazioni: perCalendario.flat() });
+  } catch (err) {
+    console.error('domani:', err.message);
+    res.status(500).json({ errore: err.message });
+  }
+});
 
 // ---------- API ----------
 app.get('/calendario/immagine/:categoria', async (req, res) => {
