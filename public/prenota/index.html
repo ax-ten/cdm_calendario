@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Prenota una sede</title>
+<title>Prenota una stanza</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* I colori arrivano da Telegram: l'app deve sembrare parte dell'app che la
@@ -99,7 +99,7 @@ textarea { resize: vertical; min-height: 64px; }
 </head>
 <body>
 
-<h1>Prenota una sede</h1>
+<h1>Prenota una stanza</h1>
 <div class="sottotitolo" id="saluto">…</div>
 
 <div class="schede" role="tablist">
@@ -256,7 +256,7 @@ async function controlla() {
   } else if (esito.secondo) {
     const altri = esito.eventi.map(e => e.nome).join(', ');
     pezzi.push(avviso('attenzione', 'Sarai il secondo',
-      `In quelle ore c'e gia: ${altri}. Si puo, la sala regge due attivita insieme, ma avvisa l'altro gruppo.`));
+      `In quelle ore c'e gia: ${altri}. Si puo, la sede regge due attivita insieme, ma avvisa l'altro gruppo.`));
   } else {
     pezzi.push(avviso('ok', 'Libero', 'In quelle ore non c\'e nessun altro.'));
   }
@@ -287,7 +287,7 @@ function aggiornaBottone(attivo) {
 async function prenota() {
   const titolo = elemento('titolo').value.trim();
   if (!titolo) {
-    tg?.showAlert('Scrivi cosa ci fai: allo staff serve per sapere chi c\'e in sala.');
+    tg?.showAlert('Scrivi cosa ci fai: allo staff serve per sapere chi c\'e nella stanza.');
     return;
   }
   tg?.MainButton.showProgress();

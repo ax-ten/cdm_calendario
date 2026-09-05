@@ -1,4 +1,4 @@
-// Prenotazione delle sale, per l'app dentro Telegram.
+// Prenotazione delle stanze, per l'app dentro Telegram.
 //
 // Sta qui e non nel bot perche' qui ci sono gia' le chiavi di Google e la
 // mappa sede -> calendario: le credenziali restano in un posto solo.
@@ -17,7 +17,7 @@ import { google } from 'googleapis';
 
 const ZONA = 'Europe/Rome';
 
-// Le sale sono grandi abbastanza per due attivita' insieme, non di piu'.
+// Ogni sede regge due attivita' insieme, non di piu'.
 export const MAX_CONTEMPORANEI = 2;
 // Quante prenotazioni puo' fare una persona nella stessa settimana.
 export const MAX_A_SETTIMANA = 2;
