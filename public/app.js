@@ -12,6 +12,20 @@ const OFFSET = (() => {
   return Number.isFinite(n) ? n : 0;
 })();
 
+// ?giorno=oggi oppure ?giorno=2026-09-14: mostra solo quel giorno, tutto in
+// forma di barre. Serve a /calendario oggi, che deve dire cosa succede stasera
+// e non fotografare tutta la settimana per farlo.
+const GIORNO = (() => {
+  const raw = new URLSearchParams(window.location.search).get('giorno');
+  if (!raw) return null;
+  if (raw === 'oggi') {
+    // In locale, non in UTC: alle 23 di sera toISOString() darebbe domani.
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+})();
+
 function sedeBadge(ev) {
   if (!ev.sedeNome) return '';
   const cls = ev.sedeEsterna ? 'esterna' : (ev.sede || 'default');
@@ -130,14 +144,43 @@ async function loadAndRender(offset=0) {
   const res = await fetch(`${BASE}/api/weekly?offset=${offset}`); 
   const data = await res.json();
 
-  document.getElementById('range').textContent +=
-    `${formatDate(data.range.start)} → ${formatDate(data.range.end)}`;
-
   const eventiEl = document.getElementById('eventi');
   const attivitaEl = document.getElementById('attivita');
 
+  if (GIORNO) {
+    renderSoloUnGiorno(data);
+    return;
+  }
+
+  document.getElementById('range').textContent +=
+    `${formatDate(data.range.start)} → ${formatDate(data.range.end)}`;
+
   eventiEl.innerHTML = data.aperti.map(eventCard).join('');
   attivitaEl.innerHTML = renderActivitiesByDay(data.chiusi);
+}
+
+// La vista di un giorno solo: niente schede in cima, tutto diventa una barra.
+// Le schede servono a promuovere le attivita aperte nella settimana; qui la
+// domanda e "cosa c'e stasera", e la risposta si legge meglio in una riga sola.
+function renderSoloUnGiorno(data) {
+  document.getElementById('schermata-eventi').hidden = true;
+  document.getElementById('eventi').hidden = true;
+
+  const delGiorno = [...data.aperti, ...data.chiusi]
+    // Chi comincia prima della fascia disegnata non ha un posto dove stare, e
+    // metterlo al bordo sinistro direbbe un orario falso.
+    .filter(ev => ev.dayKey === GIORNO && !ev.primaDellaFascia)
+    .sort((a, b) => String(a.startISO).localeCompare(String(b.startISO)));
+
+  const titolo = document.querySelector('#schermata-attivita h4');
+  const quando = new Date(GIORNO + 'T12:00:00');
+  titolo.textContent = quando.toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  }).replace(/^./, c => c.toUpperCase());
+
+  document.getElementById('attivita').innerHTML = delGiorno.length
+    ? renderActivitiesByDay(delGiorno)
+    : '<p class="niente">Nessuna attivita in programma.</p>';
 }
 
 

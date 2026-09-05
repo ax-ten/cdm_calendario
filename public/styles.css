@@ -382,3 +382,8 @@ h2 {
 .sede-badge.sede-trani    { background: #f2c200; color: #1b1b1b; }
 .sede-badge.sede-esterna  { background: #6b7280; }
 
+/* Vista di un giorno solo (?giorno=), quando non c'e' niente in programma. */
+.niente {
+  color: #7f858b;
+  margin: 12px 0 0;
+}
