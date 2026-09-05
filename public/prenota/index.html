@@ -90,14 +90,20 @@ h1 {
 .sedi { display: flex; gap: 8px; }
 .sedi button {
   flex: 1;
-  padding: 13px 8px;
+  padding: 11px 8px;
   border: 1.5px solid transparent;
   border-radius: 12px;
   background: var(--scheda);
   color: var(--testo);
   font: inherit;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
 }
+.sedi small { color: var(--tenue); font-size: .72rem; }
+.sedi button[aria-pressed="true"] small { color: inherit; opacity: .8; }
 .sedi button[aria-pressed="true"] {
   border-color: var(--accento);
   color: var(--accento);
@@ -322,17 +328,14 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 #blocco-esito[hidden] { display: none; }
 
-.esito {
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: var(--scheda);
-  border-left: 4px solid var(--tenue);
-  font-size: .9rem;
-}
-.esito.libero { border-left-color: var(--libero); }
-.esito.attenzione { border-left-color: var(--occupato); }
-.esito.pieno { border-left-color: var(--pieno); }
-.esito b { display: block; margin-bottom: 2px; font-size: .95rem; }
+/* Niente cornice ne' riquadro: la barra e' gia' un contenitore suo. Lo stato
+   lo dice il colore della prima riga, che e' l'unica cosa che serve leggere
+   di corsa. */
+.esito { font-size: .88rem; }
+.esito b { display: block; font-size: .95rem; }
+.esito.libero b { color: var(--libero); }
+.esito.attenzione b { color: var(--occupato); }
+.esito.pieno b { color: var(--pieno); }
 .esito span { color: var(--tenue); }
 
 /* -------------------------------------------------------------------- mie */
@@ -651,8 +654,7 @@ function aggiornaEsito() {
       !stato.categoria ? 'il tipo di attività' : null,
       !stato.giorno ? 'il giorno' : null,
     ].filter(Boolean);
-    dove.innerHTML = `<div class="esito"><b>Manca ${manca.join(', ')}</b>
-      <span>poi ti dico se è libero.</span></div>`;
+    dove.innerHTML = `<div class="esito"><b>Manca ${manca.join(', ')}</b></div>`;
     return abilita(false);
   }
 
@@ -800,8 +802,11 @@ async function avvia() {
   stato.daOra = 18;
   stato.aOra = 21;
 
-  el('sedi').innerHTML = info.sedi
-    .map(s => `<button data-slug="${s.slug}" aria-pressed="false">${s.nome}</button>`).join('');
+  el('sedi').innerHTML = info.sedi.map(s => `
+    <button data-slug="${s.slug}" aria-pressed="false">
+      <span>${s.nome}</span>
+      ${s.indirizzo ? `<small>${s.indirizzo}</small>` : ''}
+    </button>`).join('');
   el('sedi').querySelectorAll('button').forEach(b => {
     b.onclick = async () => {
       stato.sede = b.dataset.slug;

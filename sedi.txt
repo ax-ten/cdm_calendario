@@ -1,5 +1,9 @@
 # Mappa delle sedi. Serve per badge, colori e per riconoscere il fuori sede.
-# Formato:  slug | Nome mostrato | parola chiave, altra parola chiave, ...
+# Formato:  slug | Nome mostrato | parole chiave, ... | Indirizzo
+#
+# L indirizzo e" facoltativo e serve solo all app di prenotazione, che lo
+# scrive sotto al nome della sede: "Trani" da solo non dice a nessuno dove
+# andare.
 # Il match e" case-insensitive e cerca la parola chiave DENTRO `location`.
 #
 # Usa il cognome della via, non l indirizzo intero: "pagano" regge sia
@@ -10,5 +14,5 @@
 # La sede vera di un evento e" il calendario in cui sta (vedi calendari.txt).
 # Queste parole chiave contano solo quando `location` e" valorizzato.
 
-barletta | Barletta | alfieri
-trani | Trani | pagano, lampo, la.m.po.
+barletta | Barletta | alfieri | Via Alfieri 9
+trani | Trani | pagano, lampo, la.m.po. | Via M. Pagano 80

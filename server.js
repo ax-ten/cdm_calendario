@@ -223,7 +223,8 @@ function loadSediMap() {
   const file = new URL('./sedi.txt', import.meta.url).pathname;
   const sedi = new Map();      // slug -> nome mostrato
   const keywords = new Map();  // keyword -> slug
-  if (!fs.existsSync(file)) return { sedi, keywords };
+  const indirizzi = new Map(); // slug -> indirizzo, se c'e'
+  if (!fs.existsSync(file)) return { sedi, keywords, indirizzi };
   const txt = fs.readFileSync(file, 'utf8');
   for (const rawLine of txt.split('\n')) {
     const line = rawLine.trim();
@@ -237,10 +238,11 @@ function loadSediMap() {
     for (const kw of parts[2].split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) {
       keywords.set(kw, slug);
     }
+    if (parts[3] && parts[3].trim()) indirizzi.set(slug, parts[3].trim());
   }
-  return { sedi, keywords };
+  return { sedi, keywords, indirizzi };
 }
-const { sedi: SEDI_NOMI, keywords: SEDI_KEYWORDS } = loadSediMap();
+const { sedi: SEDI_NOMI, keywords: SEDI_KEYWORDS, indirizzi: SEDI_INDIRIZZI } = loadSediMap();
 // Ora da cui parte la fascia disegnata sotto "Altre attivita'". Le colonne
 // 17..23 nell'header di index.html partono da qui: se si cambia, va cambiato
 // anche li'.
@@ -480,7 +482,11 @@ app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) 
     utente,
     bloccato: prenotazioni.eBloccato(utente.id),
     staff: await eStaff(utente.id),
-    sedi: CALENDARI.map(c => ({ slug: c.sede, nome: SEDI_NOMI.get(c.sede) || c.sede })),
+    sedi: CALENDARI.map(c => ({
+      slug: c.sede,
+      nome: SEDI_NOMI.get(c.sede) || c.sede,
+      indirizzo: SEDI_INDIRIZZI.get(c.sede) || '',
+    })),
     categorie: CATEGORIE,
     limiti: {
       oraMinima: prenotazioni.ORA_MINIMA,
