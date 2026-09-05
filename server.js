@@ -6,6 +6,7 @@ import { DateTime } from 'luxon';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import * as prenotazioni from './prenotazioni.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -35,6 +36,9 @@ app.use(cors());
 // app.use(express.static('public'));
 // esponi tutto ciò che sta in /public
 app.use('/calendario', express.static(path.join(__dirname, 'public')));
+// L'app di prenotazione sta su un percorso suo: e' un'altra cosa dal
+// calendario che si guarda, anche se legge gli stessi calendari.
+app.use('/prenota', express.static(path.join(__dirname, 'public', 'prenota')));
 
 
 // ---------- AUTH ----------
@@ -46,6 +50,76 @@ async function getAuth() {
     scopes: [
         'https://www.googleapis.com/auth/calendar.readonly']
   });
+}
+
+// Auth separata per la scrittura. Il calendario pubblico continua a leggere
+// con la sua, in sola lettura: se un giorno le prenotazioni vanno storte, il
+// calendario che vede tutto il mondo non si porta dietro il problema.
+async function getAuthScrittura() {
+  return new google.auth.JWT({
+    keyFile: path.join(__dirname, 'calendar_key.json'),
+    scopes: ['https://www.googleapis.com/auth/calendar.events'],
+  });
+}
+
+// Token del bot: serve a verificare la firma dei dati che Telegram passa
+// all'app, e a mandare la richiesta allo staff. Sta in un file suo, fuori dal
+// repo, come le chiavi di Google.
+function loadBotToken() {
+  const file = path.join(__dirname, 'bot_token.txt');
+  try {
+    return fs.readFileSync(file, 'utf8').trim();
+  } catch {
+    console.error('bot_token.txt mancante: l\'app di prenotazione resta spenta');
+    return '';
+  }
+}
+const BOT_TOKEN = loadBotToken();
+
+// Formato di staff.txt:  slug_sede | chat_id del gruppo staff
+function loadStaff() {
+  const file = new URL('./staff.txt', import.meta.url).pathname;
+  const out = new Map();
+  if (fs.existsSync(file)) {
+    for (const rawLine of fs.readFileSync(file, 'utf8').split('\n')) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const [sede, chat] = line.split('|').map(x => x.trim());
+      if (sede && chat) out.set(sede, chat);
+    }
+  }
+  return out;
+}
+const STAFF = loadStaff();
+
+async function telegram(metodo, payload) {
+  const risposta = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${metodo}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const esito = await risposta.json();
+  if (!esito.ok) throw new Error(`${metodo}: ${esito.description}`);
+  return esito.result;
+}
+
+// Staff = chi sta in uno dei gruppi staff, qualunque. Lo chiediamo a Telegram
+// invece di tenere una lista da aggiornare a mano: chi entra o esce dal gruppo
+// e' gia' la decisione, e una lista finirebbe subito fuori sincrono.
+async function eStaff(userId) {
+  for (const chatId of STAFF.values()) {
+    try {
+      const membro = await telegram('getChatMember', { chat_id: chatId, user_id: userId });
+      if (['creator', 'administrator', 'member'].includes(membro.status)) return true;
+    } catch (err) {
+      console.error(`getChatMember su ${chatId}:`, err.message);
+    }
+  }
+  return false;
+}
+
+function calendarioDi(sede) {
+  return CALENDARI.find(c => c.sede === sede)?.id || null;
 }
 
 // ---------- settimana corrente ----------
@@ -322,6 +396,207 @@ function normalizeEvent(ev, zone = 'Europe/Rome', sedeCalendario = null) {
         raw: ev
     };
 }
+
+// ---------- app di prenotazione ----------
+// Ogni richiesta porta l'initData di Telegram e viene verificata: e' l'unica
+// cosa che impedisce a chi conosce l'URL di prenotare a nome di altri.
+async function conUtente(req, res, azione) {
+  if (!BOT_TOKEN) {
+    return res.status(503).json({ errore: 'app non configurata: manca bot_token.txt' });
+  }
+  let utente;
+  try {
+    utente = prenotazioni.verificaInitData(req.body?.initData || '', BOT_TOKEN);
+  } catch (err) {
+    return res.status(401).json({ errore: `identita non verificata: ${err.message}` });
+  }
+  try {
+    await azione(utente);
+  } catch (err) {
+    console.error('prenotazioni:', err);
+    res.status(500).json({ errore: err.message || String(err) });
+  }
+}
+
+app.use(express.json({ limit: '64kb' }));
+
+app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) => {
+  const auth = await getAuth();
+  const mie = await prenotazioni.prenotazioniDellaSettimana(
+    auth, CALENDARI, utente.id, DateTime.now().setZone('Europe/Rome').toISODate());
+  res.json({
+    utente,
+    bloccato: prenotazioni.eBloccato(utente.id),
+    staff: await eStaff(utente.id),
+    sedi: CALENDARI.map(c => ({ slug: c.sede, nome: SEDI_NOMI.get(c.sede) || c.sede })),
+    limiti: {
+      oraMinima: prenotazioni.ORA_MINIMA,
+      oraMassima: prenotazioni.ORA_MASSIMA,
+      maxContemporanei: prenotazioni.MAX_CONTEMPORANEI,
+      maxASettimana: prenotazioni.MAX_A_SETTIMANA,
+      giorniAvanti: prenotazioni.GIORNI_AVANTI,
+    },
+    questaSettimana: mie.length,
+  });
+}));
+
+app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (utente) => {
+  const { sede, data, oraInizio, oraFine } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+
+  const guai = prenotazioni.validaRichiesta({ data, oraInizio, oraFine });
+  if (guai.length) return res.json({ ok: false, guai });
+
+  const auth = await getAuth();
+  const { inizio, fine } = prenotazioni.estremi(data, oraInizio, oraFine);
+  const sovrapposti = await prenotazioni.occupazione(auth, calendarId, inizio, fine);
+  const mie = await prenotazioni.prenotazioniDellaSettimana(auth, CALENDARI, utente.id, data);
+
+  res.json({
+    ok: true,
+    guai: [],
+    occupati: sovrapposti.length,
+    eventi: sovrapposti.map(e => ({ nome: e.nome, inizio: e.inizio, fine: e.fine })),
+    pieno: sovrapposti.length >= prenotazioni.MAX_CONTEMPORANEI,
+    secondo: sovrapposti.length === 1,
+    questaSettimana: mie.length,
+    limiteSettimanale: mie.length >= prenotazioni.MAX_A_SETTIMANA,
+  });
+}));
+
+app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente) => {
+  const { sede, data, oraInizio, oraFine, titolo, note, serveApertura } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!titolo || !String(titolo).trim()) {
+    return res.status(400).json({ errore: 'serve un titolo' });
+  }
+  if (prenotazioni.eBloccato(utente.id)) {
+    return res.status(403).json({ errore: 'le tue prenotazioni sono state sospese dallo staff' });
+  }
+
+  const guai = prenotazioni.validaRichiesta({ data, oraInizio, oraFine });
+  if (guai.length) return res.status(400).json({ errore: guai.join('; ') });
+
+  const auth = await getAuth();
+  const { inizio, fine } = prenotazioni.estremi(data, oraInizio, oraFine);
+
+  // I controlli si rifanno qui e non solo nell'app: l'app e' pagina web, e una
+  // pagina web si puo' riscrivere.
+  const sovrapposti = await prenotazioni.occupazione(auth, calendarId, inizio, fine);
+  if (sovrapposti.length >= prenotazioni.MAX_CONTEMPORANEI) {
+    return res.status(409).json({ errore: 'in quello slot ci sono gia due attivita' });
+  }
+  const mie = await prenotazioni.prenotazioniDellaSettimana(auth, CALENDARI, utente.id, data);
+  if (mie.length >= prenotazioni.MAX_A_SETTIMANA) {
+    return res.status(409).json({
+      errore: `hai gia ${mie.length} prenotazioni in quella settimana`,
+    });
+  }
+
+  const descrizione = [
+    String(note || '').trim(),
+    `Prenotata da ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''} via Telegram.`,
+  ].filter(Boolean).join('\n');
+
+  const evento = await prenotazioni.creaPrenotazione(await getAuthScrittura(), calendarId, {
+    titolo: String(titolo).trim(),
+    descrizione,
+    inizio,
+    fine,
+    utente,
+    serveApertura: Boolean(serveApertura),
+  });
+
+  let avvisoStaff = null;
+  if (serveApertura) {
+    const chatStaff = STAFF.get(sede);
+    if (!chatStaff) {
+      avvisoStaff = 'nessun gruppo staff configurato per questa sede';
+    } else {
+      try {
+        await telegram('sendMessage', {
+          chat_id: chatStaff,
+          text:
+            `Serve qualcuno che apra ${SEDI_NOMI.get(sede) || sede}.\n` +
+            `${inizio.setLocale('it').toFormat('cccc d MMMM')}, ` +
+            `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}\n` +
+            `${String(titolo).trim()}\n` +
+            `Chiede ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`,
+          reply_markup: {
+            inline_keyboard: [[{
+              text: 'Apro io',
+              callback_data: `apre:${sede}:${evento.id}`,
+            }]],
+          },
+        });
+      } catch (err) {
+        // La prenotazione c'e' comunque: meglio dirlo a chi ha prenotato che
+        // annullare tutto perche' un messaggio non e' partito.
+        avvisoStaff = `non sono riuscito ad avvisare lo staff: ${err.message}`;
+      }
+    }
+  }
+
+  res.json({
+    ok: true,
+    eventId: evento.id,
+    secondo: sovrapposti.length === 1,
+    avvisoStaff,
+  });
+}));
+
+app.post('/prenota/api/mie', (req, res) => conUtente(req, res, async (utente) => {
+  const auth = await getAuth();
+  const ora = DateTime.now().setZone('Europe/Rome');
+  const tutte = [];
+  for (let settimana = 0; settimana <= 9; settimana++) {
+    const giorno = ora.plus({ weeks: settimana }).toISODate();
+    tutte.push(...await prenotazioni.prenotazioniDellaSettimana(auth, CALENDARI, utente.id, giorno));
+  }
+  const future = tutte
+    .filter(p => DateTime.fromISO(p.fine) > ora)
+    .sort((a, b) => a.inizio.localeCompare(b.inizio));
+  res.json({ prenotazioni: future });
+}));
+
+app.post('/prenota/api/annulla', (req, res) => conUtente(req, res, async (utente) => {
+  const { sede, eventId } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+
+  const evento = await prenotazioni.leggiPrenotazione(await getAuthScrittura(), calendarId, eventId);
+  const proprietario = evento.extendedProperties?.private?.telegram_id;
+  // Si annulla la propria, o qualsiasi se si e' staff.
+  if (proprietario !== utente.id && !(await eStaff(utente.id))) {
+    return res.status(403).json({ errore: 'non e una tua prenotazione' });
+  }
+  await prenotazioni.annullaPrenotazione(await getAuthScrittura(), calendarId, eventId);
+  res.json({ ok: true });
+}));
+
+app.post('/prenota/api/blocca', (req, res) => conUtente(req, res, async (utente) => {
+  if (!(await eStaff(utente.id))) {
+    return res.status(403).json({ errore: 'solo lo staff puo bloccare' });
+  }
+  const { userId, nome, sblocca: togli } = req.body || {};
+  if (!userId) return res.status(400).json({ errore: 'serve userId' });
+
+  if (togli) {
+    res.json({ ok: true, sbloccato: prenotazioni.sblocca(userId) });
+  } else {
+    prenotazioni.blocca(userId, nome || '', utente.nome);
+    res.json({ ok: true });
+  }
+}));
+
+app.post('/prenota/api/bloccati', (req, res) => conUtente(req, res, async (utente) => {
+  if (!(await eStaff(utente.id))) {
+    return res.status(403).json({ errore: 'solo lo staff' });
+  }
+  res.json({ bloccati: prenotazioni.elencoBloccati() });
+}));
 
 // ---------- API ----------
 app.get('/calendario/immagine/:categoria', async (req, res) => {

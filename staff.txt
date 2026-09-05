@@ -1,0 +1,12 @@
+# Gruppi Telegram dello staff, uno per sede.
+# Formato:  slug_sede | chat_id
+#
+# Lo slug deve combaciare con quello in sedi.txt e calendari.txt.
+# Serve a due cose: mandare li' la richiesta quando qualcuno chiede che gli
+# aprano la sede, e capire chi e' staff (chi sta in uno di questi gruppi puo'
+# bloccare le prenotazioni di qualcun altro).
+#
+# L'ID si scopre scrivendo /info nel gruppo.
+
+barletta | -1002406222010
+trani    | -1003281208234

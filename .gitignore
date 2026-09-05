@@ -8,3 +8,9 @@ credentials.json
 calendar_key.json
 
 drive_key.json
+# Token del bot Telegram: serve a verificare la firma dei dati che Telegram
+# passa all app di prenotazione. Come le chiavi di Google, sta solo sul server.
+bot_token.txt
+
+# Stato dell app di prenotazione (elenco dei sospesi).
+/dati
