@@ -534,7 +534,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
         await telegram('sendMessage', {
           chat_id: chatStaff,
           text:
-            `Serve qualcuno che apra ${SEDI_NOMI.get(sede) || sede}.\n` +
+            `Serve qualcuno che apra la sede di ${SEDI_NOMI.get(sede) || sede}.\n` +
             `${inizio.setLocale('it').toFormat('cccc d MMMM')}, ` +
             `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}\n` +
             `${String(titolo).trim()}\n` +
