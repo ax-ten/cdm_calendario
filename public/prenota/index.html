@@ -464,6 +464,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
   <div class="campo">
     <div class="interruttore">
+      <input type="checkbox" id="avvisa">
+      <div>
+        <label for="avvisa">Dillo nel gruppo grande</label>
+        <small>Un messaggio con cosa, dove e quando. Per le attività fisse
+        parte una volta sola, non ogni settimana.</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="campo">
+    <div class="interruttore">
       <input type="checkbox" id="fissa">
       <div>
         <label for="fissa">È un'attività fissa</label>
@@ -769,6 +780,7 @@ async function prenota() {
       note: el('note').value.trim(),
       serveApertura: el('apertura').checked,
       fissa: el('fissa').checked,
+      avvisa: el('avvisa').checked,
     });
 
     if (esito.inAttesa) {
@@ -784,6 +796,7 @@ async function prenota() {
       el('note').value = '';
       el('apertura').checked = false;
       el('fissa').checked = false;
+      el('avvisa').checked = false;
       return;
     }
 
@@ -791,6 +804,8 @@ async function prenota() {
     if (esito.secondo) righe.push('Sei il secondo in quelle ore: avvisa l’altro gruppo.');
     if (esito.avvisoStaff) righe.push(esito.avvisoStaff);
     else if (el('apertura').checked) righe.push('Ho chiesto allo staff di aprire.');
+    if (esito.avvisoGruppo) righe.push(esito.avvisoGruppo);
+    else if (el('avvisa').checked) righe.push('L’ho detto nel gruppo grande.');
 
     tg?.HapticFeedback?.notificationOccurred('success');
     tg?.showPopup?.({ title: 'Fatto', message: righe.join('\n'), buttons: [{ type: 'ok' }] });
@@ -799,6 +814,7 @@ async function prenota() {
     el('note').value = '';
     el('apertura').checked = false;
     el('fissa').checked = false;
+    el('avvisa').checked = false;
     delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
     await caricaMese();
     await scegliGiorno(stato.giorno);

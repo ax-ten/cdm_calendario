@@ -93,6 +93,49 @@ function loadStaff() {
 }
 const STAFF = loadStaff();
 
+// Formato di gruppi.txt:  nome | chat_id. Per ora serve solo "pubblico",
+// cioe' il gruppo grande dove si annunciano le prenotazioni.
+function loadGruppi() {
+  const file = new URL('./gruppi.txt', import.meta.url).pathname;
+  const out = new Map();
+  if (!fs.existsSync(file)) return out;
+  for (const rawLine of fs.readFileSync(file, 'utf8').split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const [nome, chat] = line.split('|').map(x => x.trim());
+    if (nome && chat) out.set(nome, chat);
+  }
+  return out;
+}
+const GRUPPI = loadGruppi();
+
+// L'annuncio nel gruppo grande: cosa, dove, quando. Non e' un invito
+// automatico - alcune attivita' sono a porte chiuse - quindi dice quello che
+// e' successo e basta, e chi vuole aggiungere altro lo scrive di suo.
+async function annunciaNelGruppo({ sede, titolo, note, inizio, fine, utente, ogni }) {
+  const chat = GRUPPI.get('pubblico');
+  if (!chat) return 'nessun gruppo pubblico configurato';
+  const quando = ogni
+    ? `Ogni ${inizio.setLocale('it').toFormat('cccc')}, ` +
+      `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`
+    : `${inizio.setLocale('it').toFormat('cccc d MMMM')}, ` +
+      `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`;
+  try {
+    await telegram('sendMessage', {
+      chat_id: chat,
+      text: [
+        `${quando} — ${SEDI_NOMI.get(sede) || sede}`,
+        titolo,
+        note || '',
+        `Organizza ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`,
+      ].filter(Boolean).join('\n'),
+    });
+    return null;
+  } catch (err) {
+    return `non ho annunciato nel gruppo: ${err.message}`;
+  }
+}
+
 // Formato di categorie.txt:  slug | Nome mostrato
 //
 // Per ogni categoria servono tre cose oltre al nome: la parola chiave da
@@ -532,7 +575,7 @@ app.post('/prenota/api/mese', (req, res) => conUtente(req, res, async () => {
 
 app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, data, oraInizio, oraFine, titolo, note, serveApertura, categoria,
-          fissa } = req.body || {};
+          fissa, avvisa } = req.body || {};
   const calendarId = calendarioDi(sede);
   if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
   if (!titolo || !String(titolo).trim()) {
@@ -568,6 +611,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
       titolo: String(titolo).trim(),
       note: String(note || '').trim(),
       serveApertura: Boolean(serveApertura),
+      avvisa: Boolean(avvisa),
       utente,
     });
     const chatStaff = STAFF.get(sede);
@@ -646,11 +690,20 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
     }
   }
 
+  let avvisoGruppo = null;
+  if (avvisa) {
+    avvisoGruppo = await annunciaNelGruppo({
+      sede, titolo: String(titolo).trim(), note: String(note || '').trim(),
+      inizio, fine, utente, ogni: false,
+    });
+  }
+
   res.json({
     ok: true,
     eventId: evento.id,
     secondo: sovrapposti.length === 1,
     avvisoStaff,
+    avvisoGruppo,
   });
 }));
 
@@ -779,6 +832,16 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
         fissa: true,
       });
     prenotazioni.chiudiRichiesta(id);
+
+    // Una volta sola, non ogni settimana: il gruppo grande non deve ricevere
+    // lo stesso annuncio all'infinito.
+    if (richiesta.avvisa) {
+      await annunciaNelGruppo({
+        sede: richiesta.sede, titolo: richiesta.titolo, note: richiesta.note,
+        inizio, fine, utente: richiesta.utente, ogni: true,
+      });
+    }
+
     res.json({
       ok: true,
       eventId: evento.id,

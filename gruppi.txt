@@ -1,0 +1,8 @@
+# Gruppi Telegram che non sono staff.
+# Formato:  nome | chat_id
+#
+# Sta in un file suo e non in staff.txt apposta: da staff.txt il server
+# ricava anche CHI e' staff, e finirci dentro il gruppo grande vorrebbe dire
+# che chiunque ne fa parte puo' sospendere le prenotazioni degli altri.
+
+pubblico | -1001309586738
