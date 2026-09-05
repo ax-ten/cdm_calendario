@@ -141,9 +141,17 @@ h1 {
   background: var(--tinta);
   opacity: .75;
 }
+/* Alta quanto la riga e senza margini: la limita il bordo del pulsante, non
+   uno spazio intorno. Sono immagini quadrate e piene fino al bordo, quindi
+   cover non taglia niente. */
 .categoria img {
-  width: 26px; height: 26px; object-fit: contain; flex: 0 0 26px;
-  margin: 5px 0 5px 8px;
+  align-self: stretch;
+  aspect-ratio: 1;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+  flex: 0 0 auto;
+  margin: 0;
 }
 .categoria span.nome { flex: 1; padding: 8px 12px 8px 10px; }
 .categoria[aria-pressed="true"] {
@@ -328,6 +336,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .quanto b { font-weight: 600; }
 .quanto span { color: var(--tenue); }
 
+/* Sulle barre di quello che c'e' gia' il nome ci sta di rado per intero. Sul
+   computer basta il tooltip del browser, ma li' dentro si sta col dito:
+   toccando la barra il nome compare qui sotto. */
+.gia-nome {
+  margin: 4px 0 0;
+  min-height: 1.2em;
+  font-size: .82rem;
+  color: var(--tenue);
+}
+.gia-nome b { color: var(--testo); font-weight: 600; }
+
 /* ------------------------------------------------------------ interruttore */
 .interruttore {
   display: flex; align-items: flex-start; gap: 12px;
@@ -415,6 +434,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
                 aria-label="Ora di fine" aria-valuemin="16" aria-valuemax="24"></button>
       </div>
       <p class="quanto" id="quanto"></p>
+      <p class="gia-nome" id="gia-nome"></p>
     </div>
   </div>
 
@@ -614,10 +634,26 @@ function disegnaFascia() {
     barra.style.width = (percentuale(fino) - percentuale(da)) + '%';
     barra.style.top = (6 + (i % 2) * 18) + 'px';
     barra.textContent = ev.nome;
+    // title: il tooltip del browser, per chi usa Telegram da computer.
+    barra.title = `${ev.nome} · ${oraTesto(ev.da)}-${oraTesto(ev.a)}`;
+    barra.addEventListener('pointerdown', (e) => { e.stopPropagation(); mostraGia(ev); });
+    barra.addEventListener('mouseenter', () => mostraGia(ev));
     pista.appendChild(barra);
   });
 
+  el('gia-nome').textContent = '';
   aggiornaManiglie();
+}
+
+
+let sbiadisci = null;
+function mostraGia(ev) {
+  clearTimeout(sbiadisci);
+  el('gia-nome').innerHTML =
+    `<b>${ev.nome}</b> · ${oraTesto(ev.da)}–${oraTesto(ev.a)}`;
+  // Si toglie da solo: serve mentre si guarda quella barra, non e" una riga
+  // in piu' da leggere per sempre.
+  sbiadisci = setTimeout(() => { el('gia-nome').textContent = ''; }, 6000);
 }
 
 function aggiornaManiglie() {
