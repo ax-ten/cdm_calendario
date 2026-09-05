@@ -8,176 +8,389 @@
 <style>
 /* I colori arrivano da Telegram: l'app deve sembrare parte dell'app che la
    ospita, e chi la usa col tema scuro non deve prendersi una pagina bianca in
-   faccia. I fallback servono per quando si apre la pagina in un browser
-   normale, tipo mentre la si sviluppa. */
+   faccia. I fallback servono ad aprirla in un browser normale. */
 :root {
   --sfondo: var(--tg-theme-bg-color, #17212b);
-  --sfondo-scheda: var(--tg-theme-secondary-bg-color, #232e3c);
+  --scheda: var(--tg-theme-secondary-bg-color, #232e3c);
   --testo: var(--tg-theme-text-color, #f5f5f5);
   --tenue: var(--tg-theme-hint-color, #8a9aa9);
   --accento: var(--tg-theme-button-color, #4a9ee0);
   --su-accento: var(--tg-theme-button-text-color, #fff);
-  --pericolo: #d9534f;
-  --attenzione: #d9a441;
-  --ok: #4caf7d;
+  --occupato: #e0a92a;
+  --pieno: #d9534f;
+  --libero: #4caf7d;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  padding: 12px 12px 96px;
+  padding: 0 14px 120px;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--sfondo);
   color: var(--testo);
   font-size: 16px;
-  line-height: 1.4;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
 }
 
-h1 { font-size: 1.15rem; margin: 0 0 2px; }
-.sottotitolo { color: var(--tenue); font-size: .85rem; margin-bottom: 14px; }
-
-.schede { display: flex; gap: 6px; margin-bottom: 14px; }
-.schede button {
-  flex: 1; padding: 9px 4px; border: 0; border-radius: 10px;
-  background: var(--sfondo-scheda); color: var(--tenue);
-  font: inherit; font-size: .9rem; cursor: pointer;
+/* ------------------------------------------------------------------- tab */
+.tab {
+  display: flex;
+  gap: 26px;
+  border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent);
+  margin-bottom: 20px;
+  position: sticky;
+  top: 0;
+  background: var(--sfondo);
+  z-index: 5;
 }
-.schede button[aria-selected="true"] { background: var(--accento); color: var(--su-accento); }
+.tab button {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--tenue);
+  font: inherit;
+  font-size: .95rem;
+  padding: 14px 0 11px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab button[aria-selected="true"] {
+  color: var(--testo);
+  border-bottom-color: var(--accento);
+}
+.tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: 2px; }
+
+h1 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+.spiega { color: var(--tenue); font-size: .9rem; margin: 0 0 22px; }
 
 .pannello[hidden] { display: none; }
 
-.campo { margin-bottom: 14px; }
-.campo > label { display: block; font-size: .82rem; color: var(--tenue); margin-bottom: 6px; }
-
-.scelte { display: flex; gap: 8px; flex-wrap: wrap; }
-.scelte button {
-  flex: 1 1 40%; padding: 12px 8px; border: 2px solid transparent; border-radius: 12px;
-  background: var(--sfondo-scheda); color: var(--testo); font: inherit; cursor: pointer;
+/* ----------------------------------------------------------------- campi */
+.campo { margin-bottom: 22px; }
+.campo > label,
+.campo > .titolo {
+  display: block;
+  font-size: .8rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--tenue);
+  margin-bottom: 9px;
 }
-.scelte button[aria-pressed="true"] { border-color: var(--accento); }
 
-input[type="date"], input[type="text"], select, textarea {
-  width: 100%; padding: 11px; border: 0; border-radius: 10px;
-  background: var(--sfondo-scheda); color: var(--testo); font: inherit;
+.sedi { display: flex; gap: 8px; }
+.sedi button {
+  flex: 1;
+  padding: 13px 8px;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  background: var(--scheda);
+  color: var(--testo);
+  font: inherit;
+  cursor: pointer;
 }
-textarea { resize: vertical; min-height: 64px; }
-
-.orari { display: flex; gap: 8px; align-items: center; }
-.orari select { flex: 1; }
-.orari span { color: var(--tenue); }
-
-.interruttore {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--sfondo-scheda); padding: 12px; border-radius: 12px;
+.sedi button[aria-pressed="true"] {
+  border-color: var(--accento);
+  color: var(--accento);
 }
-.interruttore input { width: 20px; height: 20px; accent-color: var(--accento); }
-.interruttore div { flex: 1; }
-.interruttore small { display: block; color: var(--tenue); font-size: .78rem; }
 
-.avviso {
-  border-radius: 12px; padding: 11px 12px; margin-bottom: 12px; font-size: .88rem;
-  background: var(--sfondo-scheda); border-left: 4px solid var(--tenue);
+input[type="text"], textarea {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--scheda);
+  color: var(--testo);
+  font: inherit;
 }
-.avviso.ok { border-left-color: var(--ok); }
-.avviso.attenzione { border-left-color: var(--attenzione); }
-.avviso.pericolo { border-left-color: var(--pericolo); }
-.avviso b { display: block; margin-bottom: 2px; }
+textarea { resize: vertical; min-height: 62px; }
+input:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accento);
+  outline-offset: 1px;
+}
 
-.riga {
-  background: var(--sfondo-scheda); border-radius: 12px; padding: 12px;
+/* ------------------------------------------------------------ calendario */
+.mese {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
 }
-.riga .quando { color: var(--tenue); font-size: .84rem; }
-.riga button {
-  margin-top: 8px; padding: 8px 12px; border: 0; border-radius: 9px;
-  background: transparent; color: var(--pericolo); font: inherit; font-size: .85rem;
-  cursor: pointer; border: 1px solid var(--pericolo);
+.mese strong { font-size: .98rem; font-weight: 600; text-transform: capitalize; }
+.mese button {
+  appearance: none;
+  border: 0;
+  background: var(--scheda);
+  color: var(--testo);
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  cursor: pointer;
 }
-.vuoto { color: var(--tenue); text-align: center; padding: 28px 8px; }
+.mese button:disabled { opacity: .3; cursor: default; }
+
+.griglia {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.griglia .intestazione {
+  text-align: center;
+  font-size: .68rem;
+  color: var(--tenue);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding-bottom: 4px;
+}
+.giorno {
+  appearance: none;
+  border: 1.5px solid transparent;
+  background: none;
+  color: var(--testo);
+  font: inherit;
+  font-size: .92rem;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+}
+.giorno:disabled { color: color-mix(in srgb, var(--tenue) 45%, transparent); cursor: default; }
+.giorno[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
+.giorno .segno {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: transparent;
+}
+.giorno.occupato .segno { background: var(--occupato); }
+.giorno.pieno .segno { background: var(--pieno); }
+.giorno[aria-pressed="true"] .segno { box-shadow: 0 0 0 1.5px var(--su-accento); }
+.giorno.vuoto { visibility: hidden; }
+
+.legenda {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: .76rem;
+  color: var(--tenue);
+}
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+/* ----------------------------------------------------------------- fascia
+   La stessa forma del calendario pubblico: una riga di ore con sopra le
+   barre di quello che c'e' gia'. Cosi' l'orario non si sceglie alla cieca. */
+.fascia { user-select: none; touch-action: none; }
+
+.ore {
+  display: flex;
+  justify-content: space-between;
+  font-size: .68rem;
+  color: var(--tenue);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.pista {
+  position: relative;
+  height: 58px;
+  background: var(--scheda);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tacca {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: color-mix(in srgb, var(--tenue) 25%, transparent);
+}
+.gia {
+  position: absolute;
+  height: 15px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--occupato) 55%, transparent);
+  font-size: .64rem;
+  line-height: 15px;
+  padding: 0 5px;
+  color: var(--testo);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.scelta {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: color-mix(in srgb, var(--accento) 32%, transparent);
+  border-left: 2px solid var(--accento);
+  border-right: 2px solid var(--accento);
+}
+.maniglia {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 34px;
+  margin-left: -17px;
+  background: none;
+  border: 0;
+  cursor: ew-resize;
+  padding: 0;
+}
+.maniglia::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px; height: 26px;
+  border-radius: 3px;
+  background: var(--accento);
+}
+.quanto {
+  margin-top: 8px;
+  font-size: .9rem;
+  font-variant-numeric: tabular-nums;
+}
+.quanto b { font-weight: 600; }
+.quanto span { color: var(--tenue); }
+
+/* ------------------------------------------------------------ interruttore */
+.interruttore {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--scheda); padding: 13px; border-radius: 12px;
+}
+.interruttore input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accento); flex: 0 0 auto; }
+.interruttore label { font-size: .95rem; }
+.interruttore small { display: block; color: var(--tenue); font-size: .78rem; margin-top: 2px; }
+
+/* ------------------------------------------------------------------ esito */
+.esito {
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--scheda);
+  border-left: 4px solid var(--tenue);
+  font-size: .9rem;
+}
+.esito.libero { border-left-color: var(--libero); }
+.esito.attenzione { border-left-color: var(--occupato); }
+.esito.pieno { border-left-color: var(--pieno); }
+.esito b { display: block; margin-bottom: 2px; font-size: .95rem; }
+.esito span { color: var(--tenue); }
+
+/* -------------------------------------------------------------------- mie */
+.riga {
+  background: var(--scheda); border-radius: 12px; padding: 13px; margin-bottom: 10px;
+}
+.riga .quando { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
+.riga button {
+  margin-top: 10px; padding: 7px 12px; border-radius: 9px;
+  background: transparent; color: var(--pieno); font: inherit; font-size: .85rem;
+  cursor: pointer; border: 1px solid var(--pieno);
+}
+.vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
 </style>
 </head>
 <body>
 
-<h1>Prenota una stanza</h1>
-<div class="sottotitolo" id="saluto">…</div>
+<nav class="tab" role="tablist">
+  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota">Prenota</button>
+  <button role="tab" id="tab-mie" aria-selected="false" aria-controls="pannello-mie">Le mie prenotazioni</button>
+</nav>
 
-<div class="schede" role="tablist">
-  <button role="tab" id="tab-prenota" aria-selected="true">Prenota</button>
-  <button role="tab" id="tab-mie" aria-selected="false">Le mie</button>
-  <button role="tab" id="tab-staff" aria-selected="false" hidden>Staff</button>
-</div>
-
-<!-- ---------------------------------------------------------- prenota -->
-<section class="pannello" id="pannello-prenota">
-  <div id="blocco-avvisi"></div>
+<!-- ------------------------------------------------------------ prenota -->
+<section class="pannello" id="pannello-prenota" role="tabpanel" aria-labelledby="tab-prenota">
+  <h1>Prenota una stanza</h1>
+  <p class="spiega" id="spiega-prenota">…</p>
 
   <div class="campo">
-    <label>Sede</label>
-    <div class="scelte" id="sedi"></div>
+    <span class="titolo">In quale sede</span>
+    <div class="sedi" id="sedi"></div>
   </div>
 
   <div class="campo">
-    <label for="data">Giorno</label>
-    <input type="date" id="data">
+    <span class="titolo">Che giorno</span>
+    <div class="mese">
+      <button id="mese-prima" aria-label="Mese precedente">‹</button>
+      <strong id="mese-nome">…</strong>
+      <button id="mese-dopo" aria-label="Mese successivo">›</button>
+    </div>
+    <div class="griglia" id="calendario"></div>
+    <div class="legenda">
+      <span><i style="background:var(--occupato)"></i> c'è già qualcosa</span>
+      <span><i style="background:var(--pieno)"></i> non c'è più posto</span>
+    </div>
   </div>
 
-  <div class="campo">
-    <label>Orario</label>
-    <div class="orari">
-      <select id="ora-inizio"></select>
-      <span>→</span>
-      <select id="ora-fine"></select>
+  <div class="campo" id="campo-fascia">
+    <span class="titolo">Da che ora a che ora</span>
+    <div class="fascia">
+      <div class="ore" id="ore"></div>
+      <div class="pista" id="pista">
+        <div class="scelta" id="scelta"></div>
+        <button class="maniglia" id="maniglia-inizio" role="slider"
+                aria-label="Ora di inizio" aria-valuemin="16" aria-valuemax="24"></button>
+        <button class="maniglia" id="maniglia-fine" role="slider"
+                aria-label="Ora di fine" aria-valuemin="16" aria-valuemax="24"></button>
+      </div>
+      <p class="quanto" id="quanto"></p>
     </div>
   </div>
 
   <div class="campo">
     <label for="titolo">Cosa ci fai</label>
-    <input type="text" id="titolo" maxlength="80" placeholder="Serata di gioco, riunione, prova…">
+    <input type="text" id="titolo" maxlength="80" placeholder="Serata di gioco, prova, riunione…">
   </div>
 
   <div class="campo">
-    <label for="note">Note (facoltative)</label>
-    <textarea id="note" maxlength="400" placeholder="Quante persone, cosa serve…"></textarea>
+    <label for="note">Note per lo staff, se servono</label>
+    <textarea id="note" maxlength="400" placeholder="Quante persone, cosa vi serve…"></textarea>
   </div>
 
   <div class="campo">
     <div class="interruttore">
       <input type="checkbox" id="apertura">
       <div>
-        <label for="apertura" style="margin:0;color:var(--testo)">Serve che qualcuno apra</label>
-        <small>Avviso io lo staff della sede</small>
+        <label for="apertura">Serve che qualcuno venga ad aprire</label>
+        <small>Lo chiedo io allo staff della sede</small>
       </div>
     </div>
   </div>
+
+  <div class="campo" id="blocco-esito"></div>
 </section>
 
-<!-- ------------------------------------------------------------- mie -->
-<section class="pannello" id="pannello-mie" hidden>
+<!-- ---------------------------------------------------------------- mie -->
+<section class="pannello" id="pannello-mie" role="tabpanel" aria-labelledby="tab-mie" hidden>
+  <h1>Controlla le tue prenotazioni</h1>
+  <p class="spiega">Quelle che devono ancora arrivare. Puoi annullarle da qui.</p>
   <div id="elenco-mie" class="vuoto">…</div>
-</section>
-
-<!-- ----------------------------------------------------------- staff -->
-<section class="pannello" id="pannello-staff" hidden>
-  <div class="campo">
-    <label for="blocca-id">Sospendi le prenotazioni di qualcuno</label>
-    <input type="text" id="blocca-id" inputmode="numeric" placeholder="user id (si legge con /info)">
-  </div>
-  <div class="campo">
-    <button id="blocca-vai" style="width:100%;padding:12px;border:0;border-radius:12px;background:var(--pericolo);color:#fff;font:inherit">
-      Sospendi
-    </button>
-  </div>
-  <div id="elenco-bloccati"></div>
 </section>
 
 <script>
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-const stato = { sede: null, limiti: null, staff: false, bloccato: false, controllo: null };
+const MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+              'luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const GIORNI = ['lun','mar','mer','gio','ven','sab','dom'];
 
-function elemento(id) { return document.getElementById(id); }
+const stato = {
+  limiti: null,
+  sede: null,
+  giorno: null,          // "YYYY-MM-DD"
+  daOra: 18, aOra: 21,
+  mese: null,            // {anno, mese}
+  occupazione: {},       // per sede+mese, dal server
+  settimana: 0,          // quante ne ho gia' in quella settimana
+  prenotabile: false,
+};
+
+const el = (id) => document.getElementById(id);
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
 async function chiama(percorso, dati = {}) {
   const risposta = await fetch(`/prenota/api/${percorso}`, {
@@ -190,128 +403,258 @@ async function chiama(percorso, dati = {}) {
   return esito;
 }
 
-function avviso(tipo, titolo, testo) {
-  return `<div class="avviso ${tipo}"><b>${titolo}</b>${testo || ''}</div>`;
+function oraTesto(h) {
+  return `${String(Math.floor(h)).padStart(2,'0')}:${h % 1 ? '30' : '00'}`;
 }
 
-// ---------------------------------------------------------------- orari
-function riempiOrari(min, max) {
-  const inizio = elemento('ora-inizio');
-  const fine = elemento('ora-fine');
-  // Mezz'ore: "dalle 18 alle 20:30" e' una richiesta normale, obbligare all'ora
-  // piena farebbe prenotare mezz'ora in piu' a tutti.
-  for (let h = min; h < max; h += 0.5) inizio.add(new Option(etichettaOra(h), h));
-  for (let h = min + 0.5; h <= max; h += 0.5) fine.add(new Option(etichettaOra(h), h));
-  inizio.value = 18;
-  fine.value = 21;
-}
+// ------------------------------------------------------------- calendario
+function chiaveMese() { return `${stato.sede}|${stato.mese.anno}-${stato.mese.mese}`; }
 
-function etichettaOra(h) {
-  const ore = Math.floor(h);
-  const minuti = h % 1 ? '30' : '00';
-  return `${String(ore).padStart(2, '0')}:${minuti}`;
-}
-
-// ------------------------------------------------------- disponibilita
-let attesa = null;
-function controllaTraPoco() {
-  clearTimeout(attesa);
-  attesa = setTimeout(controlla, 250);
-}
-
-async function controlla() {
-  const blocco = elemento('blocco-avvisi');
-  if (!stato.sede || !elemento('data').value) {
-    blocco.innerHTML = avviso('', 'Scegli sede e giorno', '');
-    aggiornaBottone(false);
-    return;
+async function caricaMese() {
+  const chiave = chiaveMese();
+  if (!stato.occupazione[chiave]) {
+    try {
+      const { giorni } = await chiama('mese', {
+        sede: stato.sede, anno: stato.mese.anno, mese: stato.mese.mese,
+      });
+      stato.occupazione[chiave] = giorni;
+    } catch {
+      // Senza i dati il calendario si disegna lo stesso: meglio poter
+      // scegliere un giorno che una griglia vuota.
+      stato.occupazione[chiave] = {};
+    }
   }
+  disegnaCalendario();
+}
 
-  blocco.innerHTML = avviso('', 'Controllo…', '');
-  let esito;
+function disegnaCalendario() {
+  const { anno, mese } = stato.mese;
+  const dati = stato.occupazione[chiaveMese()] || {};
+  const oggi = new Date(); oggi.setHours(0,0,0,0);
+  const ultimo = new Date(oggi.getTime() + stato.limiti.giorniAvanti * 86400000);
+
+  el('mese-nome').textContent = `${MESI[mese-1]} ${anno}`;
+  el('mese-prima').disabled = new Date(anno, mese-1, 1) <= new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+  el('mese-dopo').disabled = new Date(anno, mese-1, 1) >= new Date(ultimo.getFullYear(), ultimo.getMonth(), 1);
+
+  const pezzi = GIORNI.map(g => `<div class="intestazione">${g}</div>`);
+  const primo = new Date(anno, mese-1, 1);
+  const vuoti = (primo.getDay() + 6) % 7;   // la settimana comincia di lunedi
+  for (let i = 0; i < vuoti; i++) pezzi.push('<div class="giorno vuoto"></div>');
+
+  const quanti = new Date(anno, mese, 0).getDate();
+  for (let g = 1; g <= quanti; g++) {
+    const data = new Date(anno, mese-1, g);
+    const chiave = iso(data);
+    const info = dati[chiave] || { occupati: 0, pieno: false };
+    const fuori = data < oggi || data > ultimo;
+    const classe = ['giorno'];
+    if (info.pieno) classe.push('pieno');
+    else if (info.occupati > 0) classe.push('occupato');
+    pezzi.push(
+      `<button class="${classe.join(' ')}" data-data="${chiave}"` +
+      `${fuori || info.pieno ? ' disabled' : ''}` +
+      ` aria-pressed="${stato.giorno === chiave}">` +
+      `<span>${g}</span><span class="segno"></span></button>`
+    );
+  }
+  el('calendario').innerHTML = pezzi.join('');
+  el('calendario').querySelectorAll('.giorno[data-data]').forEach(b => {
+    b.onclick = () => scegliGiorno(b.dataset.data);
+  });
+}
+
+async function scegliGiorno(data) {
+  stato.giorno = data;
+  disegnaCalendario();
+  disegnaFascia();
   try {
-    esito = await chiama('disponibilita', {
-      sede: stato.sede,
-      data: elemento('data').value,
-      oraInizio: elemento('ora-inizio').value,
-      oraFine: elemento('ora-fine').value,
+    const esito = await chiama('disponibilita', {
+      sede: stato.sede, data, oraInizio: stato.daOra, oraFine: stato.aOra,
     });
-  } catch (err) {
-    blocco.innerHTML = avviso('pericolo', 'Non riesco a controllare', err.message);
-    aggiornaBottone(false);
-    return;
-  }
-
-  stato.controllo = esito;
-  const pezzi = [];
-  let prenotabile = true;
-
-  if (!esito.ok) {
-    pezzi.push(avviso('pericolo', 'Non va bene', esito.guai.join('; ')));
-    prenotabile = false;
-  } else if (esito.pieno) {
-    pezzi.push(avviso('pericolo', 'Slot pieno',
-      `Ci sono gia ${esito.occupati} attivita in quelle ore, ed e il massimo. Prova un altro orario.`));
-    prenotabile = false;
-  } else if (esito.secondo) {
-    const altri = esito.eventi.map(e => e.nome).join(', ');
-    pezzi.push(avviso('attenzione', 'Sarai il secondo',
-      `In quelle ore c'e gia: ${altri}. Si puo, la sede regge due attivita insieme, ma avvisa l'altro gruppo.`));
-  } else {
-    pezzi.push(avviso('ok', 'Libero', 'In quelle ore non c\'e nessun altro.'));
-  }
-
-  if (esito.limiteSettimanale) {
-    pezzi.push(avviso('pericolo', 'Hai finito le prenotazioni della settimana',
-      `Sono ${stato.limiti.maxASettimana} a settimana e ne hai gia ${esito.questaSettimana}.`));
-    prenotabile = false;
-  } else if (esito.questaSettimana > 0) {
-    pezzi.push(avviso('', 'Nota',
-      `In quella settimana hai gia ${esito.questaSettimana} prenotazione/i su ${stato.limiti.maxASettimana}.`));
-  }
-
-  blocco.innerHTML = pezzi.join('');
-  aggiornaBottone(prenotabile && !stato.bloccato);
+    stato.settimana = esito.questaSettimana || 0;
+  } catch { /* il conteggio settimanale non e' un motivo per bloccare tutto */ }
+  aggiornaEsito();
 }
 
-function aggiornaBottone(attivo) {
+// ----------------------------------------------------------------- fascia
+function eventiDelGiorno() {
+  const dati = stato.occupazione[chiaveMese()] || {};
+  return (dati[stato.giorno]?.eventi) || [];
+}
+
+function percentuale(h) {
+  const { oraMinima: a, oraMassima: b } = stato.limiti;
+  return ((h - a) / (b - a)) * 100;
+}
+
+function disegnaFascia() {
+  const { oraMinima: a, oraMassima: b } = stato.limiti;
+
+  el('ore').innerHTML = '';
+  for (let h = a; h <= b; h++) el('ore').insertAdjacentHTML('beforeend', `<span>${h}</span>`);
+
+  const pista = el('pista');
+  pista.querySelectorAll('.tacca, .gia').forEach(n => n.remove());
+  for (let h = a + 1; h < b; h++) {
+    const t = document.createElement('div');
+    t.className = 'tacca';
+    t.style.left = percentuale(h) + '%';
+    pista.appendChild(t);
+  }
+
+  // Quello che c'e' gia', impilato: due barre alla stessa ora vogliono dire
+  // che quel pezzo di serata e' pieno, e si deve vedere.
+  eventiDelGiorno().forEach((ev, i) => {
+    const da = Math.max(ev.da, a), fino = Math.min(ev.a, b);
+    if (fino <= da) return;
+    const barra = document.createElement('div');
+    barra.className = 'gia';
+    barra.style.left = percentuale(da) + '%';
+    barra.style.width = (percentuale(fino) - percentuale(da)) + '%';
+    barra.style.top = (6 + (i % 2) * 18) + 'px';
+    barra.textContent = ev.nome;
+    pista.appendChild(barra);
+  });
+
+  aggiornaManiglie();
+}
+
+function aggiornaManiglie() {
+  el('scelta').style.left = percentuale(stato.daOra) + '%';
+  el('scelta').style.width = (percentuale(stato.aOra) - percentuale(stato.daOra)) + '%';
+  el('maniglia-inizio').style.left = percentuale(stato.daOra) + '%';
+  el('maniglia-fine').style.left = percentuale(stato.aOra) + '%';
+  el('maniglia-inizio').setAttribute('aria-valuenow', stato.daOra);
+  el('maniglia-fine').setAttribute('aria-valuenow', stato.aOra);
+
+  const durata = stato.aOra - stato.daOra;
+  const ore = Math.floor(durata);
+  const minuti = durata % 1 ? 30 : 0;
+  el('quanto').innerHTML =
+    `<b>${oraTesto(stato.daOra)} – ${oraTesto(stato.aOra)}</b> ` +
+    `<span>· ${ore ? ore + 'h' : ''}${minuti ? ' 30′' : ''}</span>`;
+}
+
+function oraDaPosizione(clientX) {
+  const { oraMinima: a, oraMassima: b } = stato.limiti;
+  const r = el('pista').getBoundingClientRect();
+  const frazione = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  return Math.round((a + frazione * (b - a)) * 2) / 2;   // scatti di mezz'ora
+}
+
+function trascina(maniglia, quale) {
+  const muovi = (ev) => {
+    const h = oraDaPosizione(ev.clientX);
+    if (quale === 'inizio') stato.daOra = Math.min(h, stato.aOra - 0.5);
+    else stato.aOra = Math.max(h, stato.daOra + 0.5);
+    aggiornaManiglie();
+    aggiornaEsito();
+  };
+  maniglia.addEventListener('pointerdown', (ev) => {
+    maniglia.setPointerCapture(ev.pointerId);
+    maniglia.addEventListener('pointermove', muovi);
+  });
+  const finito = (ev) => {
+    maniglia.removeEventListener('pointermove', muovi);
+    try { maniglia.releasePointerCapture(ev.pointerId); } catch {}
+  };
+  maniglia.addEventListener('pointerup', finito);
+  maniglia.addEventListener('pointercancel', finito);
+
+  // Chi non puo' trascinare (tastiera, lettore di schermo) deve poter
+  // comunque scegliere l'orario.
+  maniglia.addEventListener('keydown', (ev) => {
+    const passo = ev.key === 'ArrowLeft' ? -0.5 : ev.key === 'ArrowRight' ? 0.5 : 0;
+    if (!passo) return;
+    ev.preventDefault();
+    if (quale === 'inizio') {
+      stato.daOra = Math.max(stato.limiti.oraMinima, Math.min(stato.daOra + passo, stato.aOra - 0.5));
+    } else {
+      stato.aOra = Math.min(stato.limiti.oraMassima, Math.max(stato.aOra + passo, stato.daOra + 0.5));
+    }
+    aggiornaManiglie();
+    aggiornaEsito();
+  });
+}
+
+// ------------------------------------------------------------------ esito
+function aggiornaEsito() {
+  const dove = el('blocco-esito');
+
+  if (!stato.sede || !stato.giorno) {
+    dove.innerHTML = `<div class="esito"><b>Scegli sede e giorno</b>
+      <span>poi ti dico se è libero.</span></div>`;
+    return abilita(false);
+  }
+
+  const sovrapposti = eventiDelGiorno()
+    .filter(ev => ev.a > stato.daOra && ev.da < stato.aOra);
+
+  if (stato.settimana >= stato.limiti.maxASettimana) {
+    dove.innerHTML = `<div class="esito pieno"><b>Hai finito le prenotazioni della settimana</b>
+      <span>Sono ${stato.limiti.maxASettimana} a settimana e in quella ne hai già ${stato.settimana}.</span></div>`;
+    return abilita(false);
+  }
+
+  if (sovrapposti.length >= stato.limiti.maxContemporanei) {
+    dove.innerHTML = `<div class="esito pieno"><b>In quelle ore non c'è più posto</b>
+      <span>Ci sono già ${sovrapposti.length} attività, ed è il massimo per una sede. Sposta l'orario.</span></div>`;
+    return abilita(false);
+  }
+
+  if (sovrapposti.length === 1) {
+    dove.innerHTML = `<div class="esito attenzione"><b>Sarai il secondo</b>
+      <span>In quelle ore c'è già ${sovrapposti[0].nome}. Si può, ma avvisa l'altro gruppo.</span></div>`;
+    return abilita(true);
+  }
+
+  dove.innerHTML = `<div class="esito libero"><b>Libero</b>
+    <span>${oraTesto(stato.daOra)}–${oraTesto(stato.aOra)}, non c'è nessun altro.</span></div>`;
+  abilita(true);
+}
+
+function abilita(si) {
+  stato.prenotabile = si;
   if (!tg?.MainButton) return;
-  const suPrenota = !elemento('pannello-prenota').hidden;
-  if (!suPrenota) { tg.MainButton.hide(); return; }
+  if (el('pannello-prenota').hidden) return tg.MainButton.hide();
   tg.MainButton.setText('Prenota');
   tg.MainButton.show();
-  attivo ? tg.MainButton.enable() : tg.MainButton.disable();
+  si ? tg.MainButton.enable() : tg.MainButton.disable();
 }
 
-// ------------------------------------------------------------ prenota
+// ---------------------------------------------------------------- prenota
 async function prenota() {
-  const titolo = elemento('titolo').value.trim();
+  const titolo = el('titolo').value.trim();
   if (!titolo) {
-    tg?.showAlert('Scrivi cosa ci fai: allo staff serve per sapere chi c\'e nella stanza.');
+    tg?.showAlert('Scrivi cosa ci fai: allo staff serve per sapere chi c’è.');
     return;
   }
   tg?.MainButton.showProgress();
   try {
     const esito = await chiama('prenota', {
       sede: stato.sede,
-      data: elemento('data').value,
-      oraInizio: elemento('ora-inizio').value,
-      oraFine: elemento('ora-fine').value,
+      data: stato.giorno,
+      oraInizio: stato.daOra,
+      oraFine: stato.aOra,
       titolo,
-      note: elemento('note').value.trim(),
-      serveApertura: elemento('apertura').checked,
+      note: el('note').value.trim(),
+      serveApertura: el('apertura').checked,
     });
     const righe = ['Prenotato.'];
-    if (esito.secondo) righe.push('Sei il secondo in quelle ore: avvisa l\'altro gruppo.');
+    if (esito.secondo) righe.push('Sei il secondo in quelle ore: avvisa l’altro gruppo.');
     if (esito.avvisoStaff) righe.push(esito.avvisoStaff);
-    else if (elemento('apertura').checked) righe.push('Ho avvisato lo staff della sede.');
+    else if (el('apertura').checked) righe.push('Ho chiesto allo staff di aprire.');
+
     tg?.HapticFeedback?.notificationOccurred('success');
     tg?.showPopup?.({ title: 'Fatto', message: righe.join('\n'), buttons: [{ type: 'ok' }] });
-    elemento('titolo').value = '';
-    elemento('note').value = '';
-    elemento('apertura').checked = false;
-    controlla();
-    caricaMie();
+
+    el('titolo').value = '';
+    el('note').value = '';
+    el('apertura').checked = false;
+    delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
+    await caricaMese();
+    await scegliGiorno(stato.giorno);
   } catch (err) {
     tg?.showAlert(err.message);
   } finally {
@@ -319,9 +662,9 @@ async function prenota() {
   }
 }
 
-// --------------------------------------------------------------- mie
+// -------------------------------------------------------------------- mie
 async function caricaMie() {
-  const dove = elemento('elenco-mie');
+  const dove = el('elenco-mie');
   dove.className = 'vuoto';
   dove.textContent = 'Carico…';
   try {
@@ -334,26 +677,29 @@ async function caricaMie() {
     dove.innerHTML = prenotazioni.map(p => `
       <div class="riga">
         <div>${p.nome || 'senza titolo'}</div>
-        <div class="quando">${formatta(p.inizio, p.fine)} · ${p.sede}</div>
+        <div class="quando">${quandoTesto(p.inizio, p.fine)} · ${p.sede}</div>
         <button data-sede="${p.sede}" data-id="${p.id}">Annulla</button>
       </div>`).join('');
-    dove.querySelectorAll('button').forEach(b => b.onclick = () => annulla(b.dataset.sede, b.dataset.id));
+    dove.querySelectorAll('button').forEach(b => {
+      b.onclick = () => annulla(b.dataset.sede, b.dataset.id);
+    });
   } catch (err) {
     dove.textContent = err.message;
   }
 }
 
-function formatta(inizio, fine) {
+function quandoTesto(inizio, fine) {
   const a = new Date(inizio), b = new Date(fine);
   const giorno = a.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   const ora = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-  return `${giorno}, ${ora(a)}-${ora(b)}`;
+  return `${giorno}, ${ora(a)}–${ora(b)}`;
 }
 
 function annulla(sede, id) {
   const fai = async () => {
     try {
       await chiama('annulla', { sede, eventId: id });
+      Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
       caricaMie();
     } catch (err) { tg?.showAlert(err.message); }
   };
@@ -361,38 +707,14 @@ function annulla(sede, id) {
   else fai();
 }
 
-// ------------------------------------------------------------- staff
-async function caricaBloccati() {
-  try {
-    const { bloccati } = await chiama('bloccati');
-    elemento('elenco-bloccati').innerHTML = bloccati.length
-      ? bloccati.map(b => `
-          <div class="riga">
-            <div>${b.nome || b.id}</div>
-            <div class="quando">id ${b.id} · sospeso da ${b.daChi}</div>
-            <button data-id="${b.id}">Riattiva</button>
-          </div>`).join('')
-      : '<div class="vuoto">Nessuno sospeso.</div>';
-    elemento('elenco-bloccati').querySelectorAll('button').forEach(b => {
-      b.onclick = async () => {
-        await chiama('blocca', { userId: b.dataset.id, sblocca: true });
-        caricaBloccati();
-      };
-    });
-  } catch (err) {
-    elemento('elenco-bloccati').innerHTML = `<div class="vuoto">${err.message}</div>`;
-  }
-}
-
-// -------------------------------------------------------------- avvio
+// ------------------------------------------------------------------ avvio
 function mostra(quale) {
-  for (const nome of ['prenota', 'mie', 'staff']) {
-    elemento(`pannello-${nome}`).hidden = nome !== quale;
-    elemento(`tab-${nome}`).setAttribute('aria-selected', String(nome === quale));
-  }
-  if (quale === 'mie') caricaMie();
-  if (quale === 'staff') caricaBloccati();
-  aggiornaBottone(Boolean(stato.controllo && !stato.controllo.pieno));
+  el('pannello-prenota').hidden = quale !== 'prenota';
+  el('pannello-mie').hidden = quale !== 'mie';
+  el('tab-prenota').setAttribute('aria-selected', String(quale === 'prenota'));
+  el('tab-mie').setAttribute('aria-selected', String(quale === 'mie'));
+  if (quale === 'mie') { tg?.MainButton.hide(); caricaMie(); }
+  else abilita(stato.prenotabile);
 }
 
 async function avvia() {
@@ -405,52 +727,55 @@ async function avvia() {
   }
 
   stato.limiti = info.limiti;
-  stato.staff = info.staff;
-  stato.bloccato = info.bloccato;
+  stato.daOra = 18;
+  stato.aOra = 21;
 
-  elemento('saluto').textContent = info.bloccato
-    ? 'Le tue prenotazioni sono sospese dallo staff.'
-    : `Ciao ${info.utente.nome}. Massimo ${info.limiti.maxASettimana} prenotazioni a settimana.`;
+  el('spiega-prenota').textContent = info.bloccato
+    ? 'Le tue prenotazioni sono sospese: parlane con lo staff.'
+    : `Dalle ${info.limiti.oraMinima} alle ${info.limiti.oraMassima}, fino a ` +
+      `${info.limiti.maxASettimana} prenotazioni a settimana.`;
 
-  elemento('sedi').innerHTML = info.sedi.map(s =>
-    `<button data-slug="${s.slug}" aria-pressed="false">${s.nome}</button>`).join('');
-  elemento('sedi').querySelectorAll('button').forEach(b => {
-    b.onclick = () => {
+  el('sedi').innerHTML = info.sedi
+    .map(s => `<button data-slug="${s.slug}" aria-pressed="false">${s.nome}</button>`).join('');
+  el('sedi').querySelectorAll('button').forEach(b => {
+    b.onclick = async () => {
       stato.sede = b.dataset.slug;
-      elemento('sedi').querySelectorAll('button').forEach(x =>
-        x.setAttribute('aria-pressed', String(x === b)));
-      controllaTraPoco();
+      el('sedi').querySelectorAll('button')
+        .forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      await caricaMese();
+      if (stato.giorno) await scegliGiorno(stato.giorno);
+      else aggiornaEsito();
     };
   });
 
   const oggi = new Date();
-  const fra = new Date(oggi.getTime() + info.limiti.giorniAvanti * 86400000);
-  const iso = (d) => d.toISOString().slice(0, 10);
-  elemento('data').min = iso(oggi);
-  elemento('data').max = iso(fra);
-  elemento('data').value = iso(oggi);
+  stato.mese = { anno: oggi.getFullYear(), mese: oggi.getMonth() + 1 };
+  el('mese-prima').onclick = () => cambiaMese(-1);
+  el('mese-dopo').onclick = () => cambiaMese(1);
 
-  riempiOrari(info.limiti.oraMinima, info.limiti.oraMassima);
+  disegnaFascia();
+  trascina(el('maniglia-inizio'), 'inizio');
+  trascina(el('maniglia-fine'), 'fine');
 
-  if (info.staff) elemento('tab-staff').hidden = false;
-
-  ['data', 'ora-inizio', 'ora-fine'].forEach(id =>
-    elemento(id).addEventListener('change', controllaTraPoco));
-  elemento('tab-prenota').onclick = () => mostra('prenota');
-  elemento('tab-mie').onclick = () => mostra('mie');
-  elemento('tab-staff').onclick = () => mostra('staff');
-  elemento('blocca-vai').onclick = async () => {
-    const id = elemento('blocca-id').value.trim();
-    if (!id) return;
-    try {
-      await chiama('blocca', { userId: id });
-      elemento('blocca-id').value = '';
-      caricaBloccati();
-    } catch (err) { tg?.showAlert(err.message); }
-  };
-
+  el('tab-prenota').onclick = () => mostra('prenota');
+  el('tab-mie').onclick = () => mostra('mie');
   tg?.MainButton.onClick(prenota);
-  controlla();
+
+  if (info.bloccato) {
+    el('pannello-prenota').querySelectorAll('input, textarea, button')
+      .forEach(n => n.disabled = true);
+  }
+  aggiornaEsito();
+}
+
+function cambiaMese(passo) {
+  let { anno, mese } = stato.mese;
+  mese += passo;
+  if (mese < 1) { mese = 12; anno--; }
+  if (mese > 12) { mese = 1; anno++; }
+  stato.mese = { anno, mese };
+  if (stato.sede) caricaMese();
+  else disegnaCalendario();
 }
 
 avvia();

@@ -190,6 +190,57 @@ export async function occupazione(auth, calendarId, inizio, fine) {
     });
 }
 
+// Com'e' messo ogni giorno del mese, per disegnare il calendario dell'app.
+// Un giorno e' "pieno" quando in tutta la fascia non resta mezz'ora libera:
+// non basta che sia occupato, deve essere impossibile infilarcisi.
+export async function occupazioneDelMese(auth, calendarId, anno, mese) {
+  const primo = DateTime.fromObject({ year: anno, month: mese, day: 1 }, { zone: ZONA });
+  const dopo = primo.plus({ months: 1 });
+
+  const { data } = await client(auth).events.list({
+    calendarId,
+    singleEvents: true,
+    orderBy: 'startTime',
+    timeMin: primo.toISO(),
+    timeMax: dopo.toISO(),
+    maxResults: 500,
+  });
+
+  const perGiorno = new Map();
+  for (const ev of data.items || []) {
+    if (ev.status === 'cancelled') continue;
+    const inizio = DateTime.fromISO(ev.start?.dateTime || ev.start?.date, { zone: ZONA });
+    const fine = DateTime.fromISO(ev.end?.dateTime || ev.end?.date, { zone: ZONA });
+    if (!inizio.isValid || !fine.isValid) continue;
+
+    const giorno = inizio.toISODate();
+    if (!perGiorno.has(giorno)) perGiorno.set(giorno, []);
+    perGiorno.get(giorno).push({
+      nome: ev.summary || 'senza titolo',
+      // In ore decimali dalla mezzanotte: e' la stessa unita' con cui l'app
+      // disegna la fascia, cosi' non deve riconvertire niente.
+      da: inizio.hour + inizio.minute / 60,
+      a: fine.hour + fine.minute / 60 + (fine.toISODate() !== giorno ? 24 : 0),
+    });
+  }
+
+  const fuori = {};
+  for (const [giorno, eventi] of perGiorno) {
+    const dentro = eventi.filter(e => e.a > ORA_MINIMA && e.da < ORA_MASSIMA);
+    let mezzoreLibere = 0;
+    for (let h = ORA_MINIMA; h < ORA_MASSIMA; h += 0.5) {
+      const insieme = dentro.filter(e => e.a > h && e.da < h + 0.5).length;
+      if (insieme < MAX_CONTEMPORANEI) mezzoreLibere++;
+    }
+    fuori[giorno] = {
+      occupati: dentro.length,
+      pieno: dentro.length > 0 && mezzoreLibere === 0,
+      eventi: dentro,
+    };
+  }
+  return fuori;
+}
+
 // Quante prenotazioni ha gia' fatto questa persona nella settimana in cui
 // cade la data chiesta. La settimana e' lunedi-domenica, come la legge chi
 // guarda un calendario.

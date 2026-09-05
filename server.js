@@ -466,6 +466,20 @@ app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (
   });
 }));
 
+// Un mese per volta: l'app disegna il calendario e sa gia' quali giorni sono
+// occupati e quali non hanno piu' un buco, senza chiedere giorno per giorno.
+app.post('/prenota/api/mese', (req, res) => conUtente(req, res, async () => {
+  const { sede, anno, mese } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  const a = Number(anno), m = Number(mese);
+  if (!Number.isInteger(a) || !Number.isInteger(m) || m < 1 || m > 12) {
+    return res.status(400).json({ errore: 'anno o mese non validi' });
+  }
+  const auth = await getAuth();
+  res.json({ giorni: await prenotazioni.occupazioneDelMese(auth, calendarId, a, m) });
+}));
+
 app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, data, oraInizio, oraFine, titolo, note, serveApertura } = req.body || {};
   const calendarId = calendarioDi(sede);
@@ -577,28 +591,6 @@ app.post('/prenota/api/annulla', (req, res) => conUtente(req, res, async (utente
   res.json({ ok: true });
 }));
 
-app.post('/prenota/api/blocca', (req, res) => conUtente(req, res, async (utente) => {
-  if (!(await eStaff(utente.id))) {
-    return res.status(403).json({ errore: 'solo lo staff puo bloccare' });
-  }
-  const { userId, nome, sblocca: togli } = req.body || {};
-  if (!userId) return res.status(400).json({ errore: 'serve userId' });
-
-  if (togli) {
-    res.json({ ok: true, sbloccato: prenotazioni.sblocca(userId) });
-  } else {
-    prenotazioni.blocca(userId, nome || '', utente.nome);
-    res.json({ ok: true });
-  }
-}));
-
-app.post('/prenota/api/bloccati', (req, res) => conUtente(req, res, async (utente) => {
-  if (!(await eStaff(utente.id))) {
-    return res.status(403).json({ errore: 'solo lo staff' });
-  }
-  res.json({ bloccati: prenotazioni.elencoBloccati() });
-}));
-
 // ---------- rotte interne, per il bot ----------
 // Il bot non e' una pagina dentro Telegram, quindi non ha un initData da
 // firmare: si autentica con un segreto condiviso. Non riusiamo il token del
@@ -642,6 +634,26 @@ app.post('/prenota/api/interno/apre', async (req, res) => {
     console.error('apre:', err.message);
     res.status(500).json({ errore: err.message });
   }
+});
+
+// Sospendere qualcuno e' cosa da staff, e lo staff sta nei gruppi Telegram:
+// il posto giusto e' un comando li' dentro, non una scheda nell'app che il
+// 95% di chi la apre non deve nemmeno vedere.
+app.post('/prenota/api/interno/blocca', (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { userId, nome, daChi, sblocca: togli } = req.body || {};
+  if (!userId) return res.status(400).json({ errore: 'serve userId' });
+  if (togli) {
+    res.json({ ok: true, sbloccato: prenotazioni.sblocca(userId) });
+  } else {
+    prenotazioni.blocca(userId, nome || '', daChi || 'staff');
+    res.json({ ok: true });
+  }
+});
+
+app.post('/prenota/api/interno/bloccati', (req, res) => {
+  if (!soloBot(req, res)) return;
+  res.json({ bloccati: prenotazioni.elencoBloccati() });
 });
 
 // Le prenotazioni di domani, per il promemoria.
