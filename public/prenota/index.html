@@ -138,7 +138,9 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
 .griglia {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr) e non 1fr: 1fr non scende sotto la larghezza minima del
+     contenuto, e le sette colonne sforavano a destra. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 3px;
 }
 .griglia .intestazione {
@@ -468,6 +470,7 @@ async function scegliGiorno(data) {
   stato.giorno = data;
   disegnaCalendario();
   disegnaFascia();
+  if (!stato.sede) return aggiornaEsito();
   try {
     const esito = await chiama('disponibilita', {
       sede: stato.sede, data, oraInizio: stato.daOra, oraFine: stato.aOra,
@@ -752,6 +755,7 @@ async function avvia() {
   stato.mese = { anno: oggi.getFullYear(), mese: oggi.getMonth() + 1 };
   el('mese-prima').onclick = () => cambiaMese(-1);
   el('mese-dopo').onclick = () => cambiaMese(1);
+  disegnaCalendario();
 
   disegnaFascia();
   trascina(el('maniglia-inizio'), 'inizio');
