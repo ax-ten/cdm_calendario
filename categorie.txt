@@ -1,0 +1,22 @@
+# Categorie proposte nell app di prenotazione, in quest ordine.
+# Formato:  slug | Nome mostrato
+#
+# Lo slug deve essere una delle classi di event_types.txt: da li' il server
+# ricava la parola chiave da scrivere in cima alla descrizione dell evento,
+# che e' quello che fa apparire l icona e il colore giusti sul calendario
+# pubblico. Il colore lo legge da public/colori_appuntamenti.css, l icona e'
+# public/src/<slug>.png (se manca, si usa default.png).
+#
+# Togliere o riordinare una riga cambia l app, senza toccare il codice.
+
+gdr        | Giochi di Ruolo
+gdt        | Giochi da Tavolo
+mana       | Mana Vault
+libro      | Mondi tra le Righe
+disegno    | Mondi di Grafite
+penna      | Scrittura creativa
+gaming     | Videogiochi
+frullatori | Stampa 3D
+roll       | Roll in the Dark
+riunione   | Riunione
+default    | Altro

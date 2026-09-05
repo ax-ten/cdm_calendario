@@ -93,6 +93,55 @@ function loadStaff() {
 }
 const STAFF = loadStaff();
 
+// Formato di categorie.txt:  slug | Nome mostrato
+//
+// Per ogni categoria servono tre cose oltre al nome: la parola chiave da
+// scrivere in cima alla descrizione (e' l'unico modo che ha il calendario di
+// riconoscere il tipo di attivita'), il colore, e l'icona. Nessuna delle tre
+// si riscrive qui: la parola arriva da event_types.txt, il colore dal CSS dei
+// colori, l'icona e' un file in public/src. Cosi' non esistono due verita'.
+function loadCategorie() {
+  const file = new URL('./categorie.txt', import.meta.url).pathname;
+  if (!fs.existsSync(file)) return [];
+
+  // La prima parola chiave di ogni classe: e' garantito che il calendario la
+  // riconosca, mentre il nome della classe a volte non e' fra le sue chiavi
+  // (per "libro" le chiavi sono lettura, bookclub, book...).
+  const primaParola = new Map();
+  for (const [kw, cls] of EVENT_TYPE_MAP.entries()) {
+    if (!primaParola.has(cls)) primaParola.set(cls, kw);
+  }
+
+  const colori = new Map();
+  const cssColori = fs.readFileSync(
+    path.join(__dirname, 'public', 'colori_appuntamenti.css'), 'utf8');
+  for (const m of cssColori.matchAll(/^\.([a-z0-9]+)\s*\{\s*background:\s*(#[0-9A-Fa-f]{3,8})/gm)) {
+    colori.set(m[1], m[2]);
+  }
+
+  const out = [];
+  for (const rawLine of fs.readFileSync(file, 'utf8').split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const [slug, nome] = line.split('|').map(x => x.trim());
+    if (!slug || !nome) continue;
+    out.push({
+      slug,
+      nome,
+      // "default" non ha una parola chiave: e' quello che esce quando non se
+      // ne riconosce nessuna, quindi non se ne scrive nessuna.
+      parola: slug === 'default' ? '' : (primaParola.get(slug) || slug),
+      colore: colori.get(slug) || colori.get('default') || '#6b7280',
+      icona: fs.existsSync(path.join(__dirname, 'public', 'src', slug + '.png'))
+        ? `/calendario/src/${slug}.png`
+        : '/calendario/src/default.png',
+    });
+  }
+  return out;
+}
+const CATEGORIE = loadCategorie();
+console.log('Categorie per l\'app:', CATEGORIE.map(c => c.slug).join(', '));
+
 async function telegram(metodo, payload) {
   const risposta = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${metodo}`, {
     method: 'POST',
@@ -430,6 +479,7 @@ app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) 
     bloccato: prenotazioni.eBloccato(utente.id),
     staff: await eStaff(utente.id),
     sedi: CALENDARI.map(c => ({ slug: c.sede, nome: SEDI_NOMI.get(c.sede) || c.sede })),
+    categorie: CATEGORIE,
     limiti: {
       oraMinima: prenotazioni.ORA_MINIMA,
       oraMassima: prenotazioni.ORA_MASSIMA,
@@ -481,12 +531,15 @@ app.post('/prenota/api/mese', (req, res) => conUtente(req, res, async () => {
 }));
 
 app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente) => {
-  const { sede, data, oraInizio, oraFine, titolo, note, serveApertura } = req.body || {};
+  const { sede, data, oraInizio, oraFine, titolo, note, serveApertura, categoria } =
+    req.body || {};
   const calendarId = calendarioDi(sede);
   if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
   if (!titolo || !String(titolo).trim()) {
     return res.status(400).json({ errore: 'serve un titolo' });
   }
+  const tipo = CATEGORIE.find(c => c.slug === categoria);
+  if (!tipo) return res.status(400).json({ errore: 'serve la categoria' });
   if (prenotazioni.eBloccato(utente.id)) {
     return res.status(403).json({ errore: 'le tue prenotazioni sono state sospese dallo staff' });
   }
@@ -510,7 +563,11 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
     });
   }
 
+  // La parola chiave va in CIMA e da sola: il calendario pubblico guarda la
+  // prima parola della descrizione, ed e' cosi' che l'attivita' esce con la
+  // sua icona e il suo colore invece che con quelli di default.
   const descrizione = [
+    tipo.parola,
     String(note || '').trim(),
     `Prenotata da ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''} via Telegram.`,
   ].filter(Boolean).join('\n');
