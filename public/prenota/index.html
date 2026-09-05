@@ -121,25 +121,31 @@ h1 {
   color: var(--testo);
   font: inherit;
   font-size: .92rem;
-  padding: 6px 10px;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   text-align: left;
   width: 100%;
+  /* Cosi' la striscia di colore viene tagliata dal raggio dell'angolo invece
+     di sporgere: e' quello che le da' la forma a mezzaluna sul bordo. */
+  overflow: hidden;
 }
-/* La striscia di colore a sinistra e' la stessa che quell'attivita' ha sul
-   calendario pubblico: si riconosce prima di leggere il nome. */
+/* Il colore e' lo stesso che quell'attivita' ha sul calendario pubblico: si
+   riconosce prima di leggere il nome. Riempie i primi 20px da bordo a bordo,
+   senza margini. */
 .categoria .tinta {
-  flex: 0 0 4px;
+  flex: 0 0 20px;
   align-self: stretch;
-  border-radius: 3px;
   background: var(--tinta);
-  opacity: .6;
+  opacity: .75;
 }
-.categoria img { width: 22px; height: 22px; object-fit: contain; flex: 0 0 22px; }
-.categoria span.nome { flex: 1; }
+.categoria img {
+  width: 26px; height: 26px; object-fit: contain; flex: 0 0 26px;
+  margin: 5px 0 5px 8px;
+}
+.categoria span.nome { flex: 1; padding: 8px 12px 8px 10px; }
 .categoria[aria-pressed="true"] {
   border-color: var(--tinta);
   background: color-mix(in srgb, var(--tinta) 20%, var(--scheda));
