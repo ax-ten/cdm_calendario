@@ -112,7 +112,7 @@ h1 {
 /* -------------------------------------------------------------- categorie
    Icona e colore sono gli stessi del calendario pubblico: chi ha visto
    l'attivita' li' la riconosce qui senza leggere. */
-.categorie { display: grid; gap: 6px; }
+.categorie { display: grid; gap: 4px; }
 .categoria {
   appearance: none;
   border: 1.5px solid transparent;
@@ -120,12 +120,12 @@ h1 {
   background: var(--scheda);
   color: var(--testo);
   font: inherit;
-  font-size: .95rem;
-  padding: 10px 12px;
+  font-size: .92rem;
+  padding: 6px 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: left;
   width: 100%;
 }
@@ -138,7 +138,7 @@ h1 {
   background: var(--tinta);
   opacity: .6;
 }
-.categoria img { width: 26px; height: 26px; object-fit: contain; flex: 0 0 26px; }
+.categoria img { width: 22px; height: 22px; object-fit: contain; flex: 0 0 22px; }
 .categoria span.nome { flex: 1; }
 .categoria[aria-pressed="true"] {
   border-color: var(--tinta);
@@ -180,6 +180,23 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   cursor: pointer;
 }
 .mese button:disabled { opacity: .3; cursor: default; }
+
+/* Leggere il calendario di una sede vuol dire chiedere a Google: passa
+   qualche secondo, e senza un segno sembra che l'app si sia piantata. */
+.rotella {
+  width: 15px; height: 15px;
+  border: 2px solid color-mix(in srgb, var(--tenue) 40%, transparent);
+  border-top-color: var(--accento);
+  border-radius: 50%;
+  animation: gira .7s linear infinite;
+  margin-left: 8px;
+}
+.mese strong { display: inline-flex; align-items: center; }
+@keyframes gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .rotella { animation-duration: 2.4s; }
+}
+.griglia.in-attesa { opacity: .45; }
 
 .griglia {
   display: grid;
@@ -311,8 +328,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   background: var(--scheda); padding: 13px; border-radius: 12px;
 }
 .interruttore input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accento); flex: 0 0 auto; }
-.interruttore label { font-size: .95rem; }
-.interruttore small { display: block; color: var(--tenue); font-size: .78rem; margin-top: 2px; }
+.interruttore label { font-size: .95rem; flex: 1; }
 
 /* ------------------------------------------------------------------ esito
    Fisso in fondo, appoggiato sopra il pulsante Prenota di Telegram: e' la
@@ -381,11 +397,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     </div>
   </div>
 
-  <div class="campo">
-    <span class="titolo">Che tipo di attività</span>
-    <div class="categorie" id="categorie"></div>
-  </div>
-
   <div class="campo" id="campo-fascia">
     <span class="titolo">Da che ora a che ora</span>
     <div class="fascia">
@@ -402,8 +413,13 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   </div>
 
   <div class="campo">
+    <span class="titolo">Che tipo di attività</span>
+    <div class="categorie" id="categorie"></div>
+  </div>
+
+  <div class="campo">
     <label for="titolo">Cosa ci fai</label>
-    <input type="text" id="titolo" maxlength="80" placeholder="Serata di gioco, prova, riunione…">
+    <input type="text" id="titolo" maxlength="80" placeholder="Torneo Risiko, sfido Tore a Monopoli…">
   </div>
 
   <div class="campo">
@@ -414,10 +430,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   <div class="campo">
     <div class="interruttore">
       <input type="checkbox" id="apertura">
-      <div>
-        <label for="apertura">Serve che qualcuno venga ad aprire</label>
-        <small>Lo chiedo io allo staff della sede</small>
-      </div>
+      <label for="apertura">Ho bisogno che qualcuno venga ad aprire la sede</label>
     </div>
   </div>
 
@@ -474,9 +487,23 @@ function oraTesto(h) {
 // ------------------------------------------------------------- calendario
 function chiaveMese() { return `${stato.sede}|${stato.mese.anno}-${stato.mese.mese}`; }
 
+function attesaMese(si) {
+  el('calendario').classList.toggle('in-attesa', si);
+  const gia = el('mese-nome').querySelector('.rotella');
+  if (si && !gia) {
+    const r = document.createElement('span');
+    r.className = 'rotella';
+    r.setAttribute('aria-label', 'sto controllando');
+    el('mese-nome').appendChild(r);
+  } else if (!si && gia) {
+    gia.remove();
+  }
+}
+
 async function caricaMese() {
   const chiave = chiaveMese();
   if (!stato.occupazione[chiave]) {
+    attesaMese(true);
     try {
       const { giorni } = await chiama('mese', {
         sede: stato.sede, anno: stato.mese.anno, mese: stato.mese.mese,
@@ -486,6 +513,8 @@ async function caricaMese() {
       // Senza i dati il calendario si disegna lo stesso: meglio poter
       // scegliere un giorno che una griglia vuota.
       stato.occupazione[chiave] = {};
+    } finally {
+      attesaMese(false);
     }
   }
   disegnaCalendario();
@@ -654,7 +683,7 @@ function aggiornaEsito() {
       !stato.categoria ? 'il tipo di attività' : null,
       !stato.giorno ? 'il giorno' : null,
     ].filter(Boolean);
-    dove.innerHTML = `<div class="esito"><b>Manca ${manca.join(', ')}</b></div>`;
+    dove.innerHTML = `<div class="esito"><span>Manca ${manca.join(', ')}</span></div>`;
     return abilita(false);
   }
 
