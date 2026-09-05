@@ -539,8 +539,8 @@ app.post('/prenota/api/mese', (req, res) => conUtente(req, res, async () => {
 }));
 
 app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente) => {
-  const { sede, data, oraInizio, oraFine, titolo, note, serveApertura, categoria } =
-    req.body || {};
+  const { sede, data, oraInizio, oraFine, titolo, note, serveApertura, categoria,
+          fissa } = req.body || {};
   const calendarId = calendarioDi(sede);
   if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
   if (!titolo || !String(titolo).trim()) {
@@ -574,6 +574,48 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   // La parola chiave va in CIMA e da sola: il calendario pubblico guarda la
   // prima parola della descrizione, ed e' cosi' che l'attivita' esce con la
   // sua icona e il suo colore invece che con quelli di default.
+  // Un'attivita' fissa occupa quella fascia tutte le settimane: la approva lo
+  // staff prima che esista, se no una richiesta di uno diventa una decisione
+  // per tutti.
+  if (fissa) {
+    const idRichiesta = prenotazioni.salvaRichiesta({
+      sede, data, oraInizio, oraFine, categoria,
+      titolo: String(titolo).trim(),
+      note: String(note || '').trim(),
+      serveApertura: Boolean(serveApertura),
+      utente,
+    });
+    const chatStaff = STAFF.get(sede);
+    if (!chatStaff) {
+      prenotazioni.chiudiRichiesta(idRichiesta);
+      return res.status(500).json({ errore: 'nessun gruppo staff per questa sede' });
+    }
+    try {
+      await telegram('sendMessage', {
+        chat_id: chatStaff,
+        text:
+          `Richiesta di attivita fissa a ${SEDI_NOMI.get(sede) || sede}.\n` +
+          `${String(titolo).trim()}\n` +
+          `Ogni ${inizio.setLocale('it').toFormat('cccc')}, ` +
+          `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}, ` +
+          `dal ${inizio.setLocale('it').toFormat('d MMMM')}\n` +
+          (serveApertura ? 'Chiede che qualcuno apra.\n' : '') +
+          (String(note || '').trim() ? String(note).trim() + '\n' : '') +
+          `Chiede ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: 'Approva', callback_data: `fissa:si:${idRichiesta}` },
+            { text: 'Rifiuta', callback_data: `fissa:no:${idRichiesta}` },
+          ]],
+        },
+      });
+    } catch (err) {
+      prenotazioni.chiudiRichiesta(idRichiesta);
+      return res.status(500).json({ errore: `non ho avvisato lo staff: ${err.message}` });
+    }
+    return res.json({ ok: true, inAttesa: true });
+  }
+
   const descrizione = [
     tipo.parola,
     String(note || '').trim(),
@@ -721,6 +763,76 @@ app.post('/prenota/api/interno/bloccati', (req, res) => {
   res.json({ bloccati: prenotazioni.elencoBloccati() });
 });
 
+// Lo staff ha detto si a un'attivita' fissa: adesso l'evento nasce, e si
+// ripete ogni settimana.
+app.post('/prenota/api/interno/approva', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { id, daChi } = req.body || {};
+  const richiesta = prenotazioni.leggiRichiesta(id);
+  if (!richiesta) return res.status(404).json({ errore: 'richiesta non trovata' });
+
+  const calendarId = calendarioDi(richiesta.sede);
+  const tipo = CATEGORIE.find(c => c.slug === richiesta.categoria);
+  const { inizio, fine } = prenotazioni.estremi(
+    richiesta.data, richiesta.oraInizio, richiesta.oraFine);
+
+  const descrizione = [
+    tipo ? tipo.parola : '',
+    richiesta.note,
+    `Attivita fissa proposta da ${richiesta.utente.nome}` +
+    `${richiesta.utente.username ? ' (@' + richiesta.utente.username + ')' : ''}` +
+    ` e approvata da ${daChi || 'staff'}.`,
+  ].filter(Boolean).join('\n');
+
+  try {
+    const evento = await prenotazioni.creaPrenotazione(
+      await getAuthScrittura(), calendarId, {
+        titolo: richiesta.titolo,
+        descrizione,
+        inizio,
+        fine,
+        utente: richiesta.utente,
+        serveApertura: richiesta.serveApertura,
+        fissa: true,
+      });
+    prenotazioni.chiudiRichiesta(id);
+    res.json({
+      ok: true,
+      eventId: evento.id,
+      richiesta,
+      quando: `${inizio.setLocale('it').toFormat('cccc')} ` +
+              `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
+    });
+  } catch (err) {
+    console.error('approva:', err.message);
+    res.status(500).json({ errore: err.message });
+  }
+});
+
+app.post('/prenota/api/interno/rifiuta', (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { id } = req.body || {};
+  const richiesta = prenotazioni.leggiRichiesta(id);
+  if (!richiesta) return res.status(404).json({ errore: 'richiesta non trovata' });
+  prenotazioni.chiudiRichiesta(id);
+  res.json({ ok: true, richiesta });
+});
+
+// Salta una settimana di un'attivita' fissa: cancella quell'istanza sola.
+app.post('/prenota/api/interno/salta', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { sede, istanzaId } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  try {
+    await prenotazioni.saltaIstanza(await getAuthScrittura(), calendarId, istanzaId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('salta:', err.message);
+    res.status(500).json({ errore: err.message });
+  }
+});
+
 // Le prenotazioni di domani, per il promemoria.
 app.post('/prenota/api/interno/domani', async (req, res) => {
   if (!soloBot(req, res)) return;
@@ -753,6 +865,7 @@ app.post('/prenota/api/interno/domani', async (req, res) => {
           telegramId: ev.extendedProperties.private.telegram_id,
           richiedente: ev.extendedProperties.private.richiedente || '',
           serveApertura: ev.extendedProperties.private.serve_apertura === 'si',
+          fissa: ev.extendedProperties.private.fissa === 'si',
           apre: ev.extendedProperties.private.apre || null,
         }));
     }));

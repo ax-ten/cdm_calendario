@@ -29,6 +29,7 @@ export const GIORNI_AVANTI = 60;
 
 const DIR = path.dirname(new URL(import.meta.url).pathname);
 const FILE_BLOCCATI = path.join(DIR, 'dati', 'bloccati.json');
+const FILE_RICHIESTE = path.join(DIR, 'dati', 'richieste.json');
 
 
 // ---------- identita' di chi apre l'app ----------
@@ -116,6 +117,47 @@ export function sblocca(userId) {
 
 export function elencoBloccati() {
   return Object.entries(leggiBloccati()).map(([id, v]) => ({ id, ...v }));
+}
+
+
+// ---------- richieste di attivita' fisse, in attesa dello staff ----------
+// Un'attivita' che si ripete ogni settimana occupa la sala per sempre: la
+// decide lo staff, non chi la chiede. Finche' non e' approvata non esiste
+// sul calendario, quindi vive qui.
+function leggiRichieste() {
+  try {
+    return JSON.parse(fs.readFileSync(FILE_RICHIESTE, 'utf8'));
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.error('richieste.json illeggibile:', err.message);
+    return {};
+  }
+}
+
+function scriviRichieste(dati) {
+  fs.mkdirSync(path.dirname(FILE_RICHIESTE), { recursive: true });
+  const provvisorio = FILE_RICHIESTE + '.tmp';
+  fs.writeFileSync(provvisorio, JSON.stringify(dati, null, 2));
+  fs.renameSync(provvisorio, FILE_RICHIESTE);
+}
+
+export function salvaRichiesta(richiesta) {
+  const dati = leggiRichieste();
+  const id = crypto.randomBytes(6).toString('hex');
+  dati[id] = { ...richiesta, quando: DateTime.now().setZone(ZONA).toISO() };
+  scriviRichieste(dati);
+  return id;
+}
+
+export function leggiRichiesta(id) {
+  return leggiRichieste()[id] || null;
+}
+
+export function chiudiRichiesta(id) {
+  const dati = leggiRichieste();
+  if (!dati[id]) return false;
+  delete dati[id];
+  scriviRichieste(dati);
+  return true;
 }
 
 
@@ -274,26 +316,68 @@ export async function prenotazioniDellaSettimana(auth, calendari, userId, data) 
 }
 
 export async function creaPrenotazione(auth, calendarId, {
-  titolo, descrizione, inizio, fine, utente, serveApertura,
+  titolo, descrizione, inizio, fine, utente, serveApertura, fissa,
 }) {
-  const { data } = await client(auth).events.insert({
-    calendarId,
-    requestBody: {
-      summary: titolo,
-      description: descrizione || '',
-      start: { dateTime: inizio.toISO(), timeZone: ZONA },
-      end: { dateTime: fine.toISO(), timeZone: ZONA },
-      extendedProperties: {
-        private: {
-          telegram_id: String(utente.id),
-          richiedente: utente.nome,
-          username: utente.username || '',
-          serve_apertura: serveApertura ? 'si' : 'no',
-        },
+  const corpo = {
+    summary: titolo,
+    description: descrizione || '',
+    start: { dateTime: inizio.toISO(), timeZone: ZONA },
+    end: { dateTime: fine.toISO(), timeZone: ZONA },
+    extendedProperties: {
+      private: {
+        telegram_id: String(utente.id),
+        richiedente: utente.nome,
+        username: utente.username || '',
+        serve_apertura: serveApertura ? 'si' : 'no',
+        fissa: fissa ? 'si' : 'no',
       },
     },
+  };
+  // Un'attivita' fissa e' un evento solo che si ripete: cosi' la si sposta o
+  // la si chiude in un posto solo, invece di avere cinquantadue eventi
+  // slegati che nessuno sa piu' governare.
+  if (fissa) corpo.recurrence = ['RRULE:FREQ=WEEKLY'];
+
+  const { data } = await client(auth).events.insert({
+    calendarId,
+    requestBody: corpo,
   });
   return data;
+}
+
+// Le prossime occorrenze delle attivita' fisse nate dal bot, con dentro chi
+// le ha proposte: servono alla conferma settimanale.
+export async function istanzeFisse(auth, calendari, da, a) {
+  const perCalendario = await Promise.all(calendari.map(async (c) => {
+    const { data } = await client(auth).events.list({
+      calendarId: c.id,
+      singleEvents: true,          // le ricorrenze arrivano gia' srotolate
+      orderBy: 'startTime',
+      timeMin: da.toISO(),
+      timeMax: a.toISO(),
+      privateExtendedProperty: 'fissa=si',
+      maxResults: 100,
+    });
+    return (data.items || [])
+      .filter((ev) => ev.status !== 'cancelled')
+      .map((ev) => ({
+        id: ev.id,
+        sede: c.sede,
+        titolo: ev.summary || 'senza titolo',
+        inizio: ev.start?.dateTime,
+        fine: ev.end?.dateTime,
+        telegramId: ev.extendedProperties?.private?.telegram_id || null,
+        richiedente: ev.extendedProperties?.private?.richiedente || '',
+        serveApertura: ev.extendedProperties?.private?.serve_apertura === 'si',
+      }));
+  }));
+  return perCalendario.flat();
+}
+
+// Salta una sola settimana: si cancella quell'istanza, non la serie. L'id di
+// un'istanza e' gia' quello giusto da passare a delete.
+export async function saltaIstanza(auth, calendarId, istanzaId) {
+  await client(auth).events.delete({ calendarId, eventId: istanzaId });
 }
 
 export async function leggiPrenotazione(auth, calendarId, eventId) {

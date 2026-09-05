@@ -131,7 +131,7 @@ h1 {
   /* Un'altezza definita serve all'icona: e' lei a stirarsi fino ai bordi, e
      senza un'altezza da cui partire sarebbe la sua dimensione naturale a
      decidere quanto e' alta la riga. */
-  height: 40px;
+  height: 35px;
   /* Cosi' la striscia di colore viene tagliata dal raggio dell'angolo invece
      di sporgere: e' quello che le da' la forma a mezzaluna sul bordo. */
   overflow: hidden;
@@ -340,16 +340,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .quanto b { font-weight: 600; }
 .quanto span { color: var(--tenue); }
 
-/* Sulle barre di quello che c'e' gia' il nome ci sta di rado per intero. Sul
-   computer basta il tooltip del browser, ma li' dentro si sta col dito:
-   toccando la barra il nome compare qui sotto. */
-.gia-nome {
-  margin: 4px 0 0;
-  min-height: 1.2em;
-  font-size: .82rem;
-  color: var(--tenue);
-}
-.gia-nome b { color: var(--testo); font-weight: 600; }
 
 /* ------------------------------------------------------------ interruttore */
 .interruttore {
@@ -358,6 +348,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 .interruttore input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accento); flex: 0 0 auto; }
 .interruttore label { font-size: .95rem; flex: 1; }
+.interruttore > div { flex: 1; }
+.interruttore small {
+  display: block; color: var(--tenue); font-size: .78rem; margin-top: 3px;
+}
 
 /* ------------------------------------------------------------------ esito
    Fisso in fondo, appoggiato sopra il pulsante Prenota di Telegram: e' la
@@ -438,7 +432,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
                 aria-label="Ora di fine" aria-valuemin="16" aria-valuemax="24"></button>
       </div>
       <p class="quanto" id="quanto"></p>
-      <p class="gia-nome" id="gia-nome"></p>
     </div>
   </div>
 
@@ -461,6 +454,18 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     <div class="interruttore">
       <input type="checkbox" id="apertura">
       <label for="apertura">Ho bisogno che qualcuno venga ad aprire la sede</label>
+    </div>
+  </div>
+
+  <div class="campo">
+    <div class="interruttore">
+      <input type="checkbox" id="fissa">
+      <div>
+        <label for="fissa">È un'attività fissa</label>
+        <small>Si ripete ogni settimana alla stessa ora. La deve approvare lo
+        staff, e poi ti chiedo conferma il giorno prima invece di riavvisare
+        tutti ogni volta.</small>
+      </div>
     </div>
   </div>
 
@@ -640,24 +645,10 @@ function disegnaFascia() {
     barra.textContent = ev.nome;
     // title: il tooltip del browser, per chi usa Telegram da computer.
     barra.title = `${ev.nome} · ${oraTesto(ev.da)}-${oraTesto(ev.a)}`;
-    barra.addEventListener('pointerdown', (e) => { e.stopPropagation(); mostraGia(ev); });
-    barra.addEventListener('mouseenter', () => mostraGia(ev));
     pista.appendChild(barra);
   });
 
-  el('gia-nome').textContent = '';
   aggiornaManiglie();
-}
-
-
-let sbiadisci = null;
-function mostraGia(ev) {
-  clearTimeout(sbiadisci);
-  el('gia-nome').innerHTML =
-    `<b>${ev.nome}</b> · ${oraTesto(ev.da)}–${oraTesto(ev.a)}`;
-  // Si toglie da solo: serve mentre si guarda quella barra, non e" una riga
-  // in piu' da leggere per sempre.
-  sbiadisci = setTimeout(() => { el('gia-nome').textContent = ''; }, 6000);
 }
 
 function aggiornaManiglie() {
@@ -786,7 +777,25 @@ async function prenota() {
       categoria: stato.categoria,
       note: el('note').value.trim(),
       serveApertura: el('apertura').checked,
+      fissa: el('fissa').checked,
     });
+
+    if (esito.inAttesa) {
+      tg?.HapticFeedback?.notificationOccurred('success');
+      tg?.showPopup?.({
+        title: 'Richiesta mandata',
+        message: 'Lo staff della sede deve approvarla. Ti scrivo appena ' +
+                 'decidono: se dicono di sì, finisce sul calendario tutte le ' +
+                 'settimane.',
+        buttons: [{ type: 'ok' }],
+      });
+      el('titolo').value = '';
+      el('note').value = '';
+      el('apertura').checked = false;
+      el('fissa').checked = false;
+      return;
+    }
+
     const righe = ['Prenotato.'];
     if (esito.secondo) righe.push('Sei il secondo in quelle ore: avvisa l’altro gruppo.');
     if (esito.avvisoStaff) righe.push(esito.avvisoStaff);
@@ -798,6 +807,7 @@ async function prenota() {
     el('titolo').value = '';
     el('note').value = '';
     el('apertura').checked = false;
+    el('fissa').checked = false;
     delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
     await caricaMese();
     await scegliGiorno(stato.giorno);
