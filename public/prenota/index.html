@@ -87,6 +87,16 @@ h1 {
   margin-bottom: 9px;
 }
 
+/* Le etichette sono maiuscoletto, e una frase intera in maiuscoletto si urla
+   invece di leggersi. Le istruzioni stanno qui sotto, scritte normali. */
+.campo > .aiuto {
+  display: block;
+  font-size: .84rem;
+  line-height: 1.35;
+  color: var(--tenue);
+  margin: -4px 0 9px;
+}
+
 .sedi { display: flex; gap: 8px; }
 .sedi button {
   flex: 1;
@@ -507,7 +517,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   <h1>Prenota una stanza</h1>
 
   <div class="campo">
-    <span class="titolo">Scegli una sede per vedere le date disponibili</span>
+    <span class="titolo">Sede</span>
+    <span class="aiuto">Scegli una sede per vedere le date disponibili.</span>
     <div class="sedi" id="sedi"></div>
   </div>
 
@@ -526,7 +537,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   </div>
 
   <div class="campo" id="campo-fascia">
-    <span class="titolo">Da che ora a che ora</span>
+    <span class="titolo">Orario</span>
     <div class="fascia">
       <div class="ore" id="ore"></div>
       <div class="pista" id="pista">
@@ -546,6 +557,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   </div>
 
   <div class="campo">
+    <div class="interruttore">
+      <input type="checkbox" id="vetrina">
+      <div>
+        <label for="vetrina">In Vetrina</label>
+        <small>Mettilo in cima agli altri eventi, utilizza solo se è un evento
+        aperto a tutti.</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="campo">
     <label for="titolo">Nome attività</label>
     <input type="text" id="titolo" maxlength="80" required list="serie-note"
            placeholder="Giochi da tavolo, il nome della tua campagna gdr…">
@@ -561,17 +583,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   <div class="campo">
     <div class="interruttore">
       <input type="checkbox" id="apertura">
-      <label for="apertura">Ho bisogno che qualcuno venga ad aprire la sede</label>
-    </div>
-  </div>
-
-  <div class="campo">
-    <div class="interruttore">
-      <input type="checkbox" id="vetrina">
       <div>
-        <label for="vetrina">In Vetrina</label>
-        <small>Mettilo in cima agli altri eventi, utilizza solo se è un evento
-        aperto a tutti.</small>
+        <label for="apertura">Serve che qualcuno apra</label>
+        <small>La richiesta arriva allo staff della sede. Chi risponde «Apro io»
+        finisce dentro l'evento e lo ricordo a lui la sera prima.</small>
       </div>
     </div>
   </div>
@@ -951,6 +966,25 @@ async function caricaSerie() {
   return stato.serie;
 }
 
+// Una serie che si ripete elenca otto date nei prossimi due mesi, e otto date
+// non si leggono. Se lo stesso giorno della settimana torna piu' volte alla
+// stessa ora e nella stessa sede, la data esatta non aggiunge niente: e"
+// "ogni mercoledi". Quando invece capita una volta sola, il giorno serve.
+function quandoSerie(date) {
+  const gruppi = new Map();
+  for (const d of date) {
+    const settimana = String(d.giorno).split(' ')[0];
+    const chiave = `${settimana}|${d.sedeNome}|${d.orainizio}`;
+    if (!gruppi.has(chiave)) {
+      gruppi.set(chiave, { settimana, giorno: d.giorno, sede: d.sedeNome, ora: d.orainizio, quante: 0 });
+    }
+    gruppi.get(chiave).quante++;
+  }
+  return [...gruppi.values()]
+    .map(g => `${g.quante > 1 ? 'ogni ' + g.settimana : g.giorno} ${g.sede} ${g.ora}`)
+    .join(', ');
+}
+
 function aggiornaSerie() {
   const nota = el('serie-nota');
   const nome = el('titolo').value.trim();
@@ -964,8 +998,7 @@ function aggiornaSerie() {
     nota.textContent = 'Nessun altro evento con questo nome: nascerà una tessera sua.';
     return;
   }
-  const quando = trovata.date
-    .map(d => `${d.giorno} ${d.sedeNome} ${d.orainizio}`).join(', ');
+  const quando = quandoSerie(trovata.date);
   const nome_forte = document.createElement('b');
   nome_forte.textContent = trovata.nome;
   nota.textContent = 'Si unirà a ';
