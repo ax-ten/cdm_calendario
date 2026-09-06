@@ -1050,7 +1050,7 @@ function mostraAnteprima(testo) {
   return new Promise((risolvi) => {
     const finestra = el('anteprima');
     el('anteprima-testo').textContent = testo;
-    // Un'attivita" fissa non parte subito: prima la guarda lo staff, e
+    // Un'attivita" periodica non parte subito: prima la guarda lo staff, e
     // l'annuncio esce con la sua approvazione. Dirlo qui evita di far
     // aspettare in chat un messaggio che non arrivera' oggi.
     el('anteprima-avvertenza').textContent = el('fissa').checked
@@ -1208,7 +1208,7 @@ function quandoTesto(inizio, fine) {
 }
 
 // cosa: "una" una prenotazione singola, "volta" una sola settimana di
-// un'attivita' fissa, "serie" tutte le settimane.
+// un'attivita' periodica, "serie" tutte le settimane.
 const DOMANDE = {
   una: ['Annullo questa prenotazione?', 'Annullo…', 'Annulla'],
   volta: ['Salto solo questa settimana? Le prossime restano.',
@@ -1246,7 +1246,7 @@ function annulla(sede, id, bottone, cosa = 'una') {
 }
 
 // Ripeterla ogni settimana non e' una modifica alla propria prenotazione: e'
-// un'attivita' fissa, e quelle occupano la stanza per sempre, percio' le
+// un'attivita' periodica, e quelle occupano la stanza per sempre, percio' le
 // decide lo staff. Finche' non risponde, la serata di questa settimana resta
 // dov'e': chi chiede non rischia di perdere anche quella.
 function rendiSettimanale(sede, id, bottone) {

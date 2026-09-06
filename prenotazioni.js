@@ -118,7 +118,7 @@ export function elencoBloccati() {
 }
 
 
-// ---------- richieste di attivita' fisse, in attesa dello staff ----------
+// -------- richieste di attivita' periodiche, in attesa dello staff --------
 // Un'attivita' che si ripete ogni settimana occupa la stanza per sempre: la
 // decide lo staff, non chi la chiede. Finche' non e' approvata non esiste
 // sul calendario, quindi vive qui.
@@ -333,7 +333,7 @@ export async function creaPrenotazione(auth, calendarId, {
       },
     },
   };
-  // Un'attivita' fissa e' un evento solo che si ripete: cosi' la si sposta o
+  // Un'attivita' periodica e' un evento solo che si ripete: cosi' la si sposta
   // la si chiude in un posto solo, invece di avere cinquantadue eventi
   // slegati che nessuno sa piu' governare.
   if (fissa) corpo.recurrence = ['RRULE:FREQ=WEEKLY'];
@@ -345,7 +345,7 @@ export async function creaPrenotazione(auth, calendarId, {
   return data;
 }
 
-// Le prossime occorrenze delle attivita' fisse nate dal bot, con dentro chi
+// Le prossime occorrenze delle attivita' periodiche nate dal bot, con dentro chi
 // le ha proposte: servono alla conferma settimanale.
 export async function istanzeFisse(auth, calendari, da, a) {
   const perCalendario = await Promise.all(calendari.map(async (c) => {

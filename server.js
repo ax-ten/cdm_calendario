@@ -695,7 +695,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   // La parola chiave va in CIMA e da sola: il calendario pubblico guarda la
   // prima parola della descrizione, ed e' cosi' che l'attivita' esce con la
   // sua icona e il suo colore invece che con quelli di default.
-  // Un'attivita' fissa occupa quella fascia tutte le settimane: la approva lo
+  // Un'attivita' periodica occupa quella fascia tutte le settimane: la approva
   // staff prima che esista, se no una richiesta di uno diventa una decisione
   // per tutti.
   if (fissa) {
@@ -904,7 +904,7 @@ app.post('/prenota/api/annulla', (req, res) => conUtente(req, res, async (utente
 
 // La descrizione la scriviamo noi: parola chiave in cima, note in mezzo, in
 // fondo la riga di chi ha prenotato (e volendo chi apre). Per rifare l'evento
-// come attivita' fissa servono solo le note: il resto lo riscrive chi approva.
+// come attivita' periodica servono solo le note: il resto lo riscrive chi approva.
 function noteDallEvento(descrizione) {
   return String(descrizione || '')
     .split('\n')
@@ -915,8 +915,8 @@ function noteDallEvento(descrizione) {
     .trim();
 }
 
-// Una prenotazione che diventa settimanale e' un'attivita' fissa come le
-// altre, e le fisse le decide lo staff: stessa richiesta, stessi due pulsanti,
+// Una prenotazione che diventa settimanale e' un'attivita' periodica come le
+// altre, e quelle le decide lo staff: stessa richiesta, stessi due pulsanti,
 // stesso percorso. L'evento di partenza resta dov'e' finche' non si approva,
 // se no chi chiede rischia di perdere anche la settimana che aveva gia'.
 app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (utente) => {
@@ -1062,7 +1062,7 @@ app.post('/prenota/api/interno/bloccati', (req, res) => {
   res.json({ bloccati: prenotazioni.elencoBloccati() });
 });
 
-// Lo staff ha detto si a un'attivita' fissa: adesso l'evento nasce, e si
+// Lo staff ha detto si a un'attivita' periodica: adesso l'evento nasce, e si
 // ripete ogni settimana.
 app.post('/prenota/api/interno/approva', async (req, res) => {
   if (!soloBot(req, res)) return;
@@ -1141,7 +1141,7 @@ app.post('/prenota/api/interno/rifiuta', (req, res) => {
   res.json({ ok: true, richiesta });
 });
 
-// Salta una settimana di un'attivita' fissa: cancella quell'istanza sola.
+// Salta una settimana di un'attivita' periodica: cancella quell'istanza sola.
 app.post('/prenota/api/interno/salta', async (req, res) => {
   if (!soloBot(req, res)) return;
   const { sede, istanzaId } = req.body || {};
