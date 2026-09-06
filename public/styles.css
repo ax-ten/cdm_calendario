@@ -127,42 +127,28 @@ h2 {
    allineato a lui: dentro la riga del titolo finiva in coda all'orario, dove
    si notava poco. `bottom: 100%` lo mette sopra il bordo del corpo, cioe' sulla
    foto. */
-.card-body > .sede-badge {
+.card-body > .sedi-card {
   position: absolute;
   z-index: 2;
   left: 10px;
   bottom: 100%;
   margin: 0 0 6px 0;
-}
-
-.card-body .header-line {
   display: flex;
-  /* Se il titolo non ci sta accanto all'orario, l'orario va a capo e il titolo
-     si prende tutta la riga, invece di essere strizzato su due righe strette
-     con l'orario che gli galleggia a fianco. */
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 4px 10px;
-  border-bottom: 1px solid #d9dfe457; 
-  padding-bottom: 2px; 
-  margin-bottom: 3px; 
+  gap: 6px;
+}
+.card-body > .sedi-card .sede-badge { margin-left: 0; }
+
+/* Sopra la riga cosa e', sotto quando: vale per una data come per cinque,
+   e la riga separa sempre le stesse due cose. */
+.card-body .header-line {
+  border-bottom: 1px solid #d9dfe457;
+  padding-bottom: 3px;
+  margin-bottom: 5px;
 }
 
 .card-body .header-line .title {
   font-size: 1.2rem;
   line-height: 1.4;
-  flex: 1 1 auto;
-}
-
-.card-body .header-line .time {
-  font-size: 1rem;
-  color: #d9dfe4;
-  white-space: nowrap;
-  padding-bottom: 3px;
-  /* Resta a destra anche quando il titolo lungo lo manda a capo da solo. */
-  flex: 0 0 auto;
-  margin-left: auto;
 }
 
 /* Le date di una serie. Il giorno a sinistra e l'ora a destra come nella
@@ -176,16 +162,14 @@ h2 {
   grid-template-columns: auto auto 1fr;
   align-items: center;
   gap: 2px 8px;
-  margin-bottom: 4px;
   font-size: 1rem;
   color: #d9dfe4;
 }
 
 .card-body .riga-data { display: contents; }
 .card-body .riga-data .ora { justify-self: end; white-space: nowrap; }
-/* Dentro la riga lo spazio lo mette il gap, e la targhetta tiene la sua
-   larghezza invece di stirarsi per riempire la colonna. */
-.card-body .riga-data .sede-badge { margin-left: 0; justify-self: start; }
+/* Il colore della sede sta sulla foto: qui basta il nome, scritto. */
+.card-body .riga-data .dove { color: #b9c1c9; }
 
 .card-body .description-line {
   display: flex;

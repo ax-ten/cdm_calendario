@@ -42,19 +42,22 @@ function eventCard(ev) {
     : '';
 
   const date = ev.date || [];
-  // Con una data sola la scheda resta quella di sempre: giorno e ora in coda
-  // al titolo, targhetta della sede appoggiata sulla foto. E" il caso di
-  // quasi tutti gli eventi, e non c e" motivo di cambiarglielo.
-  const unaData = date.length <= 1;
-  // La targhetta sta sulla foto solo se vale per tutta la scheda. Quando le
-  // date sono in sedi diverse dice dove si va, quindi va sulla riga della
-  // data: e" li" che l'informazione e" vera.
-  const unaSede = date.every(d => d.sede === date[0].sede);
 
+  // Le targhette colorate stanno tutte sulla foto, una accanto all'altra
+  // quando l'evento gira in tutt'e due le sedi: e" l'unico posto in cui il
+  // colore dice qualcosa a colpo d'occhio. Ripeterle su ogni riga sarebbe
+  // uno sfarfallio di pillole gialle e arancioni dentro un elenco.
+  const sedi = [];
+  for (const d of date) {
+    if (d.sedeNome && !sedi.some(s => s.sede === d.sede)) sedi.push(d);
+  }
+
+  // Nelle righe la sede si scrive e basta, e solo quando cambia da riga a
+  // riga: con una sede sola lo dice gia" la targhetta sulla foto.
   const righe = date.map(d => `
     <div class="riga-data">
       <strong>${d.giorno}</strong>
-      ${unaSede ? '<span></span>' : sedeBadge(d)}
+      <span class="dove">${sedi.length > 1 ? d.sedeNome : ''}</span>
       <span class="ora">dalle ${d.orainizio}</span>
     </div>`).join('');
 
@@ -64,17 +67,12 @@ function eventCard(ev) {
         <img class="thumb thumb-img" src="${BASE}/immagine/${categoria}">
       </div>
       <div class="card-body">
-        ${unaSede ? sedeBadge(date[0] || ev) : ''}
+        <div class="sedi-card">${sedi.map(sedeBadge).join('')}</div>
         <div class="header-line">
           <h1 class="title">${ev.nome}</h1>
-          ${unaData && date[0]
-            ? `<span class="time"><strong>${date[0].giorno}</strong> dalle ${date[0].orainizio}</span>`
-            : ''}
+          <div class="description-line">${ev.verbose}</div>
         </div>
-        ${unaData ? '' : `<div class="date">${righe}</div>`}
-        <div class="description-line">
-          ${ev.verbose}
-        </div>
+        <div class="date">${righe}</div>
       </div>
     </article>
   `;
