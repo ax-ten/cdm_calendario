@@ -1,5 +1,5 @@
 # Categorie proposte nell app di prenotazione, in quest ordine.
-# Formato:  slug | Nome mostrato
+# Formato:  slug | Nome mostrato | esempio per il campo del nome
 #
 # Lo slug deve essere una delle classi di event_types.txt: da li' il server
 # ricava la parola chiave da scrivere in cima alla descrizione dell evento,
@@ -7,11 +7,16 @@
 # pubblico. Il colore lo legge da public/colori_appuntamenti.css, l icona e'
 # public/src/<slug>.png (se manca, si usa default.png).
 #
+# L esempio e' facoltativo: e' il testo grigio che compare nel campo "Nome
+# attivita" quando si sceglie questa categoria. Serve a far capire che tipo di
+# nome ci va, che non e' lo stesso per una campagna di ruolo e per una serata
+# di giochi da tavolo.
+#
 # Togliere o riordinare una riga cambia l app, senza toccare il codice.
 
-gdr        | Giochi di Ruolo
-gdt        | Giochi da Tavolo
-mana       | Giochi di Carte Collezionabili
-libro      | Club di Lettura
-gaming     | Videogiochi
-default    | Altro
+gdr        | Giochi di Ruolo                | D&D - Nome campagna
+gdt        | Giochi da Tavolo               | Il nome del gioco, o semplicemente «Boardgames»
+mana       | Giochi di Carte Collezionabili | Mana Vault, o Serata Pokémon
+libro      | Club di Lettura                | Nome del libro di cui discuteremo
+gaming     | Videogiochi                    | Cosa giocheremo o streameremo
+default    | Altro                          | Serata powerpoint

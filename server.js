@@ -174,11 +174,14 @@ function loadCategorie() {
   for (const rawLine of fs.readFileSync(file, 'utf8').split('\n')) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#')) continue;
-    const [slug, nome] = line.split('|').map(x => x.trim());
+    const [slug, nome, esempio] = line.split('|').map(x => x.trim());
     if (!slug || !nome) continue;
     out.push({
       slug,
       nome,
+      // Il testo grigio del campo del nome: cambia con la categoria, perche'
+      // "D&D - Nome campagna" e "Serata Pokemon" non si suggeriscono insieme.
+      esempio: esempio || '',
       // "default" non ha una parola chiave: e' quello che esce quando non se
       // ne riconosce nessuna, quindi non se ne scrive nessuna.
       parola: slug === 'default' ? '' : (primaParola.get(slug) || slug),

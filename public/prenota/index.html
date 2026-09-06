@@ -675,8 +675,13 @@ const stato = {
   mese: null,            // {anno, mese}
   occupazione: {},       // per sede+mese, dal server
   serie: null,           // le serie gia' in vetrina, lette alla prima spunta
+  esempi: {},            // slug categoria -> testo grigio del campo del nome
   prenotabile: false,
 };
+
+// Prima di scegliere una categoria non si sa che esempio dare, quindi si
+// danno i due estremi.
+const ESEMPIO_GENERICO = 'Giochi da tavolo, il nome della tua campagna gdr…';
 
 const el = (id) => document.getElementById(id);
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1346,11 +1351,18 @@ async function avvia() {
       <img src="${c.icona}" alt="" onerror="this.style.visibility='hidden'">
       <span class="nome">${c.nome}</span>
     </button>`).join('');
+  // Che nome ci vada non e' la stessa domanda per una campagna di ruolo e per
+  // una serata di giochi da tavolo: l'esempio nel campo cambia con la
+  // categoria, e i testi stanno in categorie.txt insieme al resto.
+  stato.esempi = Object.fromEntries(
+    (info.categorie || []).filter(c => c.esempio).map(c => [c.slug, c.esempio]));
+
   el('categorie').querySelectorAll('button').forEach(b => {
     b.onclick = () => {
       stato.categoria = b.dataset.slug;
       el('categorie').querySelectorAll('button')
         .forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      el('titolo').placeholder = stato.esempi[stato.categoria] || ESEMPIO_GENERICO;
       aggiornaEsito();
     };
   });
