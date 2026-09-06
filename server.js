@@ -734,6 +734,98 @@ app.post('/prenota/api/annulla', (req, res) => conUtente(req, res, async (utente
   res.json({ ok: true });
 }));
 
+// La descrizione la scriviamo noi: parola chiave in cima, note in mezzo, in
+// fondo la riga di chi ha prenotato (e volendo chi apre). Per rifare l'evento
+// come attivita' fissa servono solo le note: il resto lo riscrive chi approva.
+function noteDallEvento(descrizione) {
+  return String(descrizione || '')
+    .split('\n')
+    .filter((riga, i) => !(i === 0 && EVENT_TYPE_MAP.has(riga.trim().toLowerCase())))
+    .filter((riga) => !/^(Prenotata da |Attivita fissa proposta da |Apre: )/.test(riga.trim()))
+    .join('\n')
+    .trim();
+}
+
+// Una prenotazione che diventa settimanale e' un'attivita' fissa come le
+// altre, e le fisse le decide lo staff: stessa richiesta, stessi due pulsanti,
+// stesso percorso. L'evento di partenza resta dov'e' finche' non si approva,
+// se no chi chiede rischia di perdere anche la settimana che aveva gia'.
+app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (utente) => {
+  const { sede, eventId } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (prenotazioni.eBloccato(utente.id)) {
+    return res.status(403).json({ errore: 'le tue prenotazioni sono state sospese dallo staff' });
+  }
+
+  const evento = await prenotazioni.leggiPrenotazione(
+    await getAuthScrittura(), calendarId, eventId);
+  const priv = evento.extendedProperties?.private || {};
+  if (priv.telegram_id !== utente.id) {
+    return res.status(403).json({ errore: 'non e una tua prenotazione' });
+  }
+  if (priv.fissa === 'si' || evento.recurringEventId) {
+    return res.status(409).json({ errore: 'questa si ripete gia ogni settimana' });
+  }
+
+  const inizio = DateTime.fromISO(evento.start?.dateTime, { zone: 'Europe/Rome' });
+  const fine = DateTime.fromISO(evento.end?.dateTime, { zone: 'Europe/Rome' });
+  if (!inizio.isValid || !fine.isValid) {
+    return res.status(400).json({ errore: 'questa prenotazione non ha un orario' });
+  }
+
+  const chatStaff = STAFF.get(sede);
+  if (!chatStaff) {
+    return res.status(500).json({ errore: 'nessun gruppo staff per questa sede' });
+  }
+
+  const titolo = evento.summary || 'senza titolo';
+  const note = noteDallEvento(evento.description);
+  const idRichiesta = prenotazioni.salvaRichiesta({
+    sede,
+    data: inizio.toISODate(),
+    oraInizio: inizio.hour + inizio.minute / 60,
+    oraFine: fine.hour + fine.minute / 60,
+    categoria: detectCategoria(evento.description || ''),
+    titolo,
+    note,
+    serveApertura: priv.serve_apertura === 'si',
+    // Il gruppo grande l'ha gia' saputo quando la prenotazione e' nata: non
+    // glielo si ridice per un cambio di cadenza.
+    avvisa: false,
+    // Quando si approva, questo sparisce: la serie parte dallo stesso giorno,
+    // e senza toglierlo quella settimana avrebbe la stessa cosa due volte.
+    daEvento: eventId,
+    utente,
+  });
+
+  try {
+    await telegram('sendMessage', {
+      chat_id: chatStaff,
+      text:
+        `Una prenotazione vuole diventare settimanale, a ${SEDI_NOMI.get(sede) || sede}.\n` +
+        `${titolo}\n` +
+        `Ogni ${inizio.setLocale('it').toFormat('cccc')}, ` +
+        `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}, ` +
+        `dal ${inizio.setLocale('it').toFormat('d MMMM')}\n` +
+        (priv.serve_apertura === 'si' ? 'Chiede che qualcuno apra.\n' : '') +
+        (note ? note + '\n' : '') +
+        `Chiede ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`,
+      reply_markup: {
+        inline_keyboard: [[
+          { text: 'Approva', callback_data: `fissa:si:${idRichiesta}` },
+          { text: 'Rifiuta', callback_data: `fissa:no:${idRichiesta}` },
+        ]],
+      },
+    });
+  } catch (err) {
+    prenotazioni.chiudiRichiesta(idRichiesta);
+    return res.status(500).json({ errore: `non ho avvisato lo staff: ${err.message}` });
+  }
+
+  res.json({ ok: true, inAttesa: true });
+}));
+
 // ---------- rotte interne, per il bot ----------
 // Il bot non e' una pagina dentro Telegram, quindi non ha un initData da
 // firmare: si autentica con un segreto condiviso. Non riusiamo il token del
@@ -832,6 +924,19 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
         fissa: true,
       });
     prenotazioni.chiudiRichiesta(id);
+
+    // Se la richiesta nasce da una prenotazione gia' fatta, quella se ne va:
+    // la serie comincia dallo stesso giorno, e in due sullo stesso posto ci
+    // sarebbe la stessa attivita' scritta due volte. Se la cancellazione non
+    // riesce la serie resta buona lo stesso: si dice, non si annulla tutto.
+    if (richiesta.daEvento) {
+      try {
+        await prenotazioni.annullaPrenotazione(
+          await getAuthScrittura(), calendarId, richiesta.daEvento);
+      } catch (err) {
+        console.error('approva: la prenotazione singola e rimasta:', err.message);
+      }
+    }
 
     // Una volta sola, non ogni settimana: il gruppo grande non deve ricevere
     // lo stesso annuncio all'infinito.

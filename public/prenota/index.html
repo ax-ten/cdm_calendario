@@ -899,13 +899,18 @@ async function caricaMie() {
                   data-cosa="${p.fissa ? 'volta' : 'una'}">
             ${p.fissa ? 'Salta questa volta' : 'Annulla'}
           </button>
+          ${p.fissa ? '' : `
+            <button data-sede="${p.sede}" data-id="${p.id}"
+                    data-cosa="settimanale">Ogni settimana</button>`}
           ${p.fissa && p.serieId ? `
             <button class="grave" data-sede="${p.sede}" data-id="${p.serieId}"
                     data-cosa="serie">Elimina la serie</button>` : ''}
         </div>
       </div>`).join('');
     dove.querySelectorAll('button').forEach(b => {
-      b.onclick = () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
+      b.onclick = b.dataset.cosa === 'settimanale'
+        ? () => rendiSettimanale(b.dataset.sede, b.dataset.id, b)
+        : () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
     });
   } catch (err) {
     dove.textContent = err.message;
@@ -956,6 +961,36 @@ function annulla(sede, id, bottone, cosa = 'una') {
   if (tg?.showConfirm) tg.showConfirm(domanda, (si) => si && fai());
   else fai();
 }
+
+// Ripeterla ogni settimana non e' una modifica alla propria prenotazione: e'
+// un'attivita' fissa, e quelle occupano la stanza per sempre, percio' le
+// decide lo staff. Finche' non risponde, la serata di questa settimana resta
+// dov'e': chi chiede non rischia di perdere anche quella.
+function rendiSettimanale(sede, id, bottone) {
+  const fai = async () => {
+    const riga = bottone.closest('.riga');
+    riga.querySelectorAll('button').forEach(b => b.disabled = true);
+    bottone.textContent = 'Chiedo…';
+    try {
+      await chiama('settimanale', { sede, eventId: id });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      bottone.textContent = 'Chiesto allo staff';
+      // Annullare la serata di questa settimana resta possibile: e' l altro
+      // bottone, e non ha niente a che vedere con la richiesta.
+      riga.querySelectorAll('button').forEach(b => { if (b !== bottone) b.disabled = false; });
+      toast('Richiesta mandata allo staff. Ti scrivo appena decidono.');
+    } catch (err) {
+      riga.querySelectorAll('button').forEach(b => b.disabled = false);
+      bottone.textContent = 'Ogni settimana';
+      lamenta(err.message);
+    }
+  };
+  const domanda = 'Chiedo allo staff di ripeterla ogni settimana, '
+    + 'stesso giorno e stessa ora?';
+  if (tg?.showConfirm) tg.showConfirm(domanda, (si) => si && fai());
+  else fai();
+}
+
 
 // ------------------------------------------------------------------ avvio
 function mostra(quale) {

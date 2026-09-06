@@ -119,7 +119,7 @@ export function elencoBloccati() {
 
 
 // ---------- richieste di attivita' fisse, in attesa dello staff ----------
-// Un'attivita' che si ripete ogni settimana occupa la sala per sempre: la
+// Un'attivita' che si ripete ogni settimana occupa la stanza per sempre: la
 // decide lo staff, non chi la chiede. Finche' non e' approvata non esiste
 // sul calendario, quindi vive qui.
 function leggiRichieste() {
