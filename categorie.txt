@@ -11,7 +11,7 @@
 
 gdr        | Giochi di Ruolo
 gdt        | Giochi da Tavolo
-mana       | Mana Vault
-libro      | Mondi tra le Righe
+mana       | Giochi di Carte Collezionabili
+libro      | Club di Lettura
 gaming     | Videogiochi
 default    | Altro
