@@ -398,6 +398,74 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 #toast.guasto { border-left-color: var(--pieno); }
 #toast[hidden] { display: none; }
 
+/* -------------------------------------------------------------- anteprima
+   Un messaggio nel gruppo grande lo leggono tutti e non si riprende. Prima
+   di mandarlo si vede com'e' fatto, nella forma in cui arrivera': descriverlo
+   non serve, il messaggio e' corto e mostrarlo costa meno che spiegarlo. */
+#anteprima {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, .55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 14px;
+}
+#anteprima[hidden] { display: none; }
+
+#anteprima .scheda {
+  width: 100%;
+  max-width: 460px;
+  background: var(--scheda);
+  border-radius: 16px;
+  padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, .45);
+}
+#anteprima h2 { margin: 0 0 2px; font-size: 1.05rem; }
+#anteprima .dove-va { margin: 0 0 14px; color: var(--tenue); font-size: .85rem; }
+
+/* La bolla sta su una striscia di chat, con la coda a sinistra e l'ora in
+   basso a destra: cosi' si legge come un messaggio ricevuto e non come un
+   altro riquadro dell'app. */
+#anteprima .chat { background: var(--sfondo); border-radius: 12px; padding: 12px; }
+#anteprima .bolla {
+  position: relative;
+  background: var(--scheda);
+  border-radius: 12px 12px 12px 4px;
+  padding: 9px 12px 22px;
+  font-size: .95rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#anteprima .bolla time {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: .7rem;
+  color: var(--tenue);
+}
+
+#anteprima .avvertenza { margin: 14px 0 0; color: var(--tenue); font-size: .82rem; }
+#anteprima .scelte { display: flex; gap: 8px; margin-top: 12px; }
+#anteprima .scelte button {
+  flex: 1;
+  padding: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accento);
+  color: var(--su-accento);
+  font: inherit;
+  font-size: .95rem;
+  cursor: pointer;
+}
+#anteprima .scelte button.chiaro {
+  background: transparent;
+  color: var(--tenue);
+  border: 1px solid color-mix(in srgb, var(--tenue) 55%, transparent);
+}
+
 /* -------------------------------------------------------------------- mie */
 .riga {
   background: var(--scheda); border-radius: 12px; padding: 13px; margin-bottom: 10px;
@@ -488,9 +556,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     <div class="interruttore">
       <input type="checkbox" id="avvisa">
       <div>
-        <label for="avvisa">Dillo nel gruppo grande</label>
-        <small>Un messaggio con cosa, dove e quando. Per le attività fisse
-        parte una volta sola, non ogni settimana.</small>
+        <label for="avvisa">Manda un annuncio</label>
+        <small>Scrivi un messaggio nel gruppo Crocevia dei Mondi per avvisare
+        dell'evento o attività periodica che stai creando, avrai un'anteprima
+        del messaggio inviato.</small>
       </div>
     </div>
   </div>
@@ -512,6 +581,21 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 <!-- Sta fuori dai pannelli: e' una barra sua, non un campo del modulo. -->
 <div id="blocco-esito" hidden></div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
+
+<div id="anteprima" hidden>
+  <div class="scheda" role="dialog" aria-modal="true" aria-labelledby="anteprima-capo">
+    <h2 id="anteprima-capo">Anteprima dell'annuncio</h2>
+    <p class="dove-va">Nel gruppo <b>Crocevia dei Mondi</b></p>
+    <div class="chat">
+      <div class="bolla"><span id="anteprima-testo"></span><time id="anteprima-ora"></time></div>
+    </div>
+    <p class="avvertenza" id="anteprima-avvertenza"></p>
+    <div class="scelte">
+      <button id="anteprima-no" class="chiaro">Non mandarlo</button>
+      <button id="anteprima-manda">Manda e prenota</button>
+    </div>
+  </div>
+</div>
 
 <!-- ---------------------------------------------------------------- mie -->
 <section class="pannello" id="pannello-mie" role="tabpanel" aria-labelledby="tab-mie" hidden>
@@ -810,6 +894,68 @@ function lamenta(testo) {
   else toast(testo, false);
 }
 
+// -------------------------------------------------------------- anteprima
+// Il testo lo scrive il server, lo stesso pezzo di codice che poi lo manda:
+// se lo componesse l'app, prima o poi direbbero due cose diverse e questa
+// smetterebbe di essere un'anteprima.
+async function confermaAnnuncio(titolo) {
+  tg?.MainButton.showProgress();
+  let testo;
+  try {
+    ({ testo } = await chiama('anteprima', {
+      sede: stato.sede,
+      data: stato.giorno,
+      oraInizio: stato.daOra,
+      oraFine: stato.aOra,
+      titolo,
+      note: el('note').value.trim(),
+      fissa: el('fissa').checked,
+    }));
+  } catch (err) {
+    lamenta(err.message);
+    return false;
+  } finally {
+    tg?.MainButton.hideProgress();
+  }
+  return mostraAnteprima(testo);
+}
+
+function mostraAnteprima(testo) {
+  return new Promise((risolvi) => {
+    const finestra = el('anteprima');
+    el('anteprima-testo').textContent = testo;
+    // Un'attivita" fissa non parte subito: prima la guarda lo staff, e
+    // l'annuncio esce con la sua approvazione. Dirlo qui evita di far
+    // aspettare in chat un messaggio che non arrivera' oggi.
+    el('anteprima-avvertenza').textContent = el('fissa').checked
+      ? 'Parte quando lo staff approva l’attività. Se non lo mandi non chiedo '
+        + 'niente: torni al modulo com’era, senza perdere quello che hai scritto.'
+      : 'Se non lo mandi non prenoto niente: torni al modulo com’era, senza '
+        + 'perdere quello che hai scritto.';
+    el('anteprima-ora').textContent = new Date()
+      .toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    finestra.hidden = false;
+    // Il pulsante Prenota di Telegram sta sopra la pagina, non dentro: se
+    // resta li' si puo' premere attraverso la finestra.
+    tg?.MainButton.hide();
+
+    const chiudi = (risposta) => {
+      finestra.hidden = true;
+      el('anteprima-manda').onclick = null;
+      el('anteprima-no').onclick = null;
+      finestra.onclick = null;
+      abilita(stato.prenotabile);
+      risolvi(risposta);
+    };
+    el('anteprima-manda').onclick = () => chiudi(true);
+    el('anteprima-no').onclick = () => chiudi(false);
+    // Fuori dalla scheda si chiude senza mandare: e' il gesto che tutti si
+    // aspettano, e la scelta prudente e' non mandare.
+    finestra.onclick = (ev) => { if (ev.target === finestra) chiudi(false); };
+  });
+}
+
+
 // ---------------------------------------------------------------- prenota
 async function prenota() {
   if (!stato.prenotabile) return;
@@ -819,6 +965,10 @@ async function prenota() {
     el('titolo').focus();
     return;
   }
+  // L'annuncio si conferma prima che esista la prenotazione: chi ci ripensa
+  // torna al modulo pieno di quello che aveva scritto, e non resta in giro un
+  // evento da annullare.
+  if (el('avvisa').checked && !(await confermaAnnuncio(titolo))) return;
   tg?.MainButton.showProgress();
   try {
     const esito = await chiama('prenota', {

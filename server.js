@@ -112,23 +112,31 @@ const GRUPPI = loadGruppi();
 // L'annuncio nel gruppo grande: cosa, dove, quando. Non e' un invito
 // automatico - alcune attivita' sono a porte chiuse - quindi dice quello che
 // e' successo e basta, e chi vuole aggiungere altro lo scrive di suo.
-async function annunciaNelGruppo({ sede, titolo, note, inizio, fine, utente, ogni }) {
-  const chat = GRUPPI.get('pubblico');
-  if (!chat) return 'nessun gruppo pubblico configurato';
+// Il testo sta in una funzione sua perche' lo legge anche l'app, che lo fa
+// vedere prima di mandarlo. Se lo riscrivesse per conto suo, prima o poi le
+// due versioni direbbero cose diverse e l'anteprima smetterebbe di essere
+// un'anteprima.
+function testoAnnuncio({ sede, titolo, note, inizio, fine, utente, ogni }) {
   const quando = ogni
     ? `Ogni ${inizio.setLocale('it').toFormat('cccc')}, ` +
       `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`
     : `${inizio.setLocale('it').toFormat('cccc d MMMM')}, ` +
       `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`;
+  return [
+    `${quando} a ${SEDI_NOMI.get(sede) || sede}`,
+    titolo,
+    note || '',
+    `Organizza ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`,
+  ].filter(Boolean).join('\n');
+}
+
+async function annunciaNelGruppo({ sede, titolo, note, inizio, fine, utente, ogni }) {
+  const chat = GRUPPI.get('pubblico');
+  if (!chat) return 'nessun gruppo pubblico configurato';
   try {
     await telegram('sendMessage', {
       chat_id: chat,
-      text: [
-        `${quando} — ${SEDI_NOMI.get(sede) || sede}`,
-        titolo,
-        note || '',
-        `Organizza ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`,
-      ].filter(Boolean).join('\n'),
+      text: testoAnnuncio({ sede, titolo, note, inizio, fine, utente, ogni }),
     });
     return null;
   } catch (err) {
@@ -704,6 +712,28 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
     secondo: sovrapposti.length === 1,
     avvisoStaff,
     avvisoGruppo,
+  });
+}));
+
+// Che cosa leggerebbe il gruppo grande, prima che lo legga. Non manda niente
+// e non crea niente: serve solo all'anteprima nell'app.
+app.post('/prenota/api/anteprima', (req, res) => conUtente(req, res, async (utente) => {
+  const { sede, data, oraInizio, oraFine, titolo, note, fissa } = req.body || {};
+  if (!calendarioDi(sede)) return res.status(400).json({ errore: 'sede sconosciuta' });
+  const { inizio, fine } = prenotazioni.estremi(data, oraInizio, oraFine);
+  if (!inizio.isValid || !fine.isValid) {
+    return res.status(400).json({ errore: 'data o orario non validi' });
+  }
+  res.json({
+    testo: testoAnnuncio({
+      sede,
+      titolo: String(titolo || '').trim(),
+      note: String(note || '').trim(),
+      inizio,
+      fine,
+      utente,
+      ogni: Boolean(fissa),
+    }),
   });
 }));
 
