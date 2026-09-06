@@ -373,9 +373,30 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .esito { font-size: .88rem; }
 .esito b { display: block; font-size: .95rem; }
 .esito.libero b { color: var(--libero); }
-.esito.attenzione b { color: var(--occupato); }
 .esito.pieno b { color: var(--pieno); }
 .esito span { color: var(--tenue); }
+
+/* ------------------------------------------------------------------ toast
+   Il popup di Telegram vuole un tocco per sparire, e per dire "fatto" e'
+   troppo: si fa vedere da solo sopra la barra e se ne va. */
+#toast {
+  position: fixed;
+  left: 14px; right: 14px;
+  bottom: calc(78px + env(safe-area-inset-bottom));
+  z-index: 30;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--scheda);
+  border-left: 3px solid var(--libero);
+  box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  font-size: .9rem;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+#toast.visibile { opacity: 1; transform: none; }
+#toast.guasto { border-left-color: var(--pieno); }
+#toast[hidden] { display: none; }
 
 /* -------------------------------------------------------------------- mie */
 .riga {
@@ -446,8 +467,9 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   </div>
 
   <div class="campo">
-    <label for="titolo">Cosa ci fai</label>
-    <input type="text" id="titolo" maxlength="80" placeholder="Torneo Risiko, sfido Tore a Monopoli…">
+    <label for="titolo">Nome attività</label>
+    <input type="text" id="titolo" maxlength="80" required
+           placeholder="Torneo Risiko, sfido Tore a Monopoli…">
   </div>
 
   <div class="campo">
@@ -489,6 +511,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
 <!-- Sta fuori dai pannelli: e' una barra sua, non un campo del modulo. -->
 <div id="blocco-esito" hidden></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- ---------------------------------------------------------------- mie -->
 <section class="pannello" id="pannello-mie" role="tabpanel" aria-labelledby="tab-mie" hidden>
@@ -722,11 +745,14 @@ function aggiornaEsito() {
   const dove = el('blocco-esito');
   dove.hidden = el('pannello-prenota').hidden;
 
-  if (!stato.sede || !stato.giorno || !stato.categoria) {
+  const nome = el('titolo').value.trim();
+
+  if (!stato.sede || !stato.giorno || !stato.categoria || !nome) {
     const manca = [
       !stato.sede ? 'la sede' : null,
       !stato.categoria ? 'il tipo di attività' : null,
       !stato.giorno ? 'il giorno' : null,
+      !nome ? 'il nome dell\'attività' : null,
     ].filter(Boolean);
     dove.innerHTML = `<div class="esito"><span>Manca ${manca.join(', ')}</span></div>`;
     return abilita(false);
@@ -741,9 +767,12 @@ function aggiornaEsito() {
     return abilita(false);
   }
 
+  /* Esserci in due non e' un intoppo: la sede ci sta, e la riga rossa faceva
+     desistere gente che avrebbe potuto prenotare tranquillamente. Verde, e
+     l'altro gruppo si dice sotto. */
   if (sovrapposti.length === 1) {
-    dove.innerHTML = `<div class="esito attenzione"><b>Sarai il secondo</b>
-      <span>In quelle ore c'è già ${sovrapposti[0].nome}. Si può, ma avvisa l'altro gruppo.</span></div>`;
+    dove.innerHTML = `<div class="esito libero"><b>Libero</b>
+      <span>C'è comunque ${sovrapposti[0].nome}, avvisali che condividerete la sede.</span></div>`;
     return abilita(true);
   }
 
@@ -761,11 +790,33 @@ function abilita(si) {
   si ? tg.MainButton.enable() : tg.MainButton.disable();
 }
 
+// ------------------------------------------------------------------ toast
+let toastVia;
+function toast(testo, ok = true) {
+  const t = el('toast');
+  t.textContent = testo;
+  t.classList.toggle('guasto', !ok);
+  t.hidden = false;
+  requestAnimationFrame(() => t.classList.add('visibile'));
+  clearTimeout(toastVia);
+  toastVia = setTimeout(() => {
+    t.classList.remove('visibile');
+    setTimeout(() => { t.hidden = true; }, 250);
+  }, ok ? 4000 : 6000);
+}
+
+function lamenta(testo) {
+  if (tg?.showAlert) tg.showAlert(testo);
+  else toast(testo, false);
+}
+
 // ---------------------------------------------------------------- prenota
 async function prenota() {
+  if (!stato.prenotabile) return;
   const titolo = el('titolo').value.trim();
   if (!titolo) {
-    tg?.showAlert('Scrivi cosa ci fai: allo staff serve per sapere chi c’è.');
+    lamenta('Dai un nome all’attività: allo staff serve per sapere chi c’è.');
+    el('titolo').focus();
     return;
   }
   tg?.MainButton.showProgress();
@@ -792,23 +843,25 @@ async function prenota() {
                  'settimane.',
         buttons: [{ type: 'ok' }],
       });
+      if (!tg?.showPopup) toast('Richiesta mandata. Lo staff della sede deve approvarla.');
       el('titolo').value = '';
       el('note').value = '';
       el('apertura').checked = false;
       el('fissa').checked = false;
       el('avvisa').checked = false;
+      aggiornaEsito();
       return;
     }
 
     const righe = ['Prenotato.'];
-    if (esito.secondo) righe.push('Sei il secondo in quelle ore: avvisa l’altro gruppo.');
+    if (esito.secondo) righe.push('Condividerete la sede con un altro gruppo: avvisali.');
     if (esito.avvisoStaff) righe.push(esito.avvisoStaff);
     else if (el('apertura').checked) righe.push('Ho chiesto allo staff di aprire.');
     if (esito.avvisoGruppo) righe.push(esito.avvisoGruppo);
     else if (el('avvisa').checked) righe.push('L’ho detto nel gruppo grande.');
 
     tg?.HapticFeedback?.notificationOccurred('success');
-    tg?.showPopup?.({ title: 'Fatto', message: righe.join('\n'), buttons: [{ type: 'ok' }] });
+    toast(righe.join(' '));
 
     el('titolo').value = '';
     el('note').value = '';
@@ -819,7 +872,7 @@ async function prenota() {
     await caricaMese();
     await scegliGiorno(stato.giorno);
   } catch (err) {
-    tg?.showAlert(err.message);
+    lamenta(err.message);
   } finally {
     tg?.MainButton.hideProgress();
   }
@@ -969,6 +1022,8 @@ async function avvia() {
   disegnaFascia();
   trascina(el('maniglia-inizio'), 'inizio');
   trascina(el('maniglia-fine'), 'fine');
+
+  el('titolo').addEventListener('input', aggiornaEsito);
 
   el('tab-prenota').onclick = () => mostra('prenota');
   el('tab-mie').onclick = () => mostra('mie');
