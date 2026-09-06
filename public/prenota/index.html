@@ -552,6 +552,18 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   </div>
 
   <div class="campo">
+    <div class="interruttore">
+      <input type="checkbox" id="fissa">
+      <div>
+        <label for="fissa">È un'attività periodica</label>
+        <small>Si ripete ogni settimana, questo giorno a quest'ora. La deve
+        approvare lo staff; poi il giorno prima ti chiedo se si fa, così puoi
+        saltare una settimana quando serve.</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="campo">
     <span class="titolo">Categoria</span>
     <div class="categorie" id="categorie"></div>
   </div>
@@ -569,7 +581,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
   <div class="campo">
     <label for="titolo">Nome attività</label>
-    <input type="text" id="titolo" maxlength="80" required list="serie-note"
+    <input type="text" id="titolo" maxlength="80" required
            placeholder="Giochi da tavolo, il nome della tua campagna gdr…">
     <datalist id="serie-note"></datalist>
     <p class="serie" id="serie-nota" hidden></p>
@@ -603,17 +615,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     </div>
   </div>
 
-  <div class="campo">
-    <div class="interruttore">
-      <input type="checkbox" id="fissa">
-      <div>
-        <label for="fissa">È un'attività fissa</label>
-        <small>Si ripete ogni settimana alla stessa ora. La deve approvare lo
-        staff, e poi ti chiedo conferma il giorno prima invece di riavvisare
-        tutti ogni volta.</small>
-      </div>
-    </div>
-  </div>
 
 </section>
 
@@ -985,6 +986,15 @@ function quandoSerie(date) {
     .join(', ');
 }
 
+// L'elenco dei nomi ha senso solo per la vetrina: fuori di li' il titolo non
+// raggruppa niente, e suggerire "Boar/D games" a chi prenota una partita fra
+// amici gli fa credere che c'entri qualcosa.
+function sincronizzaVetrina() {
+  if (el('vetrina').checked) el('titolo').setAttribute('list', 'serie-note');
+  else el('titolo').removeAttribute('list');
+  aggiornaSerie();
+}
+
 function aggiornaSerie() {
   const nota = el('serie-nota');
   const nome = el('titolo').value.trim();
@@ -1114,7 +1124,7 @@ async function prenota() {
       el('avvisa').checked = false;
       el('vetrina').checked = false;
       aggiornaEsito();
-      aggiornaSerie();
+      sincronizzaVetrina();
       return;
     }
 
@@ -1136,7 +1146,7 @@ async function prenota() {
     el('vetrina').checked = false;
     // La tessera appena creata cambia i suggerimenti: si rileggono.
     delete stato.serie;
-    aggiornaSerie();
+    sincronizzaVetrina();
     delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
     await caricaMese();
     await scegliGiorno(stato.giorno);
@@ -1333,7 +1343,7 @@ async function avvia() {
     // L'elenco si chiede solo a chi accende la spunta: per tutti gli altri
     // sarebbe un giro su Google che non serve a niente.
     if (el('vetrina').checked) await caricaSerie();
-    aggiornaSerie();
+    sincronizzaVetrina();
   });
 
   el('tab-prenota').onclick = () => mostra('prenota');
