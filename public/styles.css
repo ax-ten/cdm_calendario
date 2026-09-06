@@ -353,6 +353,18 @@ h2 {
   flex-shrink: 0;
 }
 
+/* Il logo Lampo e' nero bordato di giallo: su una barra scura il nero sparisce
+   e resta un contorno che non si legge. Un tondo bianco sotto glielo stacca.
+   Il margine tiene il tondo dentro la pillola invece di farlo combaciare col
+   bordo, il padding tiene il disegno dentro il tondo. */
+.bar-icon.sede-trani {
+  height: calc(100% - 4px);
+  margin: 2px;
+  padding: 2px;
+  background: #fff;
+  border-radius: 50%;
+}
+
 .day-track .bar .title {
   line-height: 1;
   font-size: 0.95rem;
@@ -382,9 +394,12 @@ h2 {
 .sede-badge {
   display: inline-block;
   margin-left: .6em;
-  /* 2px in piu' sopra: il maiuscoletto senza discendenti sembrava incollato
-     al bordo alto della pillola. */
-  padding: calc(.15em + 2px) .6em .15em;
+  /* Il maiuscoletto non ha discendenti, quindi la riga di testo gli lascia
+     sotto uno spazio che sopra non c'e': misurato sullo scatto, 2,7px di
+     sbilancio. Il pareggio si fa togliendo di sopra e mettendo di sotto.
+     A destra l'ultima lettera si porta dietro la sua letter-spacing, che
+     nessuno vede ma sposta la parola a sinistra: quel margine si toglie. */
+  padding: .15em calc(.6em - .04em) calc(.15em + 1px) .6em;
   border-radius: 999px;
   font-size: .78em;
   font-weight: 700;
