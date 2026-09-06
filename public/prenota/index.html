@@ -404,16 +404,20 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   z-index: 30;
   padding: 12px 14px;
   border-radius: 12px;
-  background: var(--scheda);
-  border-left: 3px solid var(--libero);
+  /* Il colore e" tutto il messaggio: verde vuol dire fatto, rosso no, e si
+     capisce prima di aver letto. Il testo scuro perche" su questi due fondi
+     il bianco non regge il contrasto a 14px. */
+  background: var(--libero);
+  color: #12191d;
   box-shadow: 0 6px 24px rgba(0,0,0,.35);
   font-size: .9rem;
+  font-weight: 500;
   opacity: 0;
   transform: translateY(10px);
   transition: opacity .22s ease, transform .22s ease;
 }
 #toast.visibile { opacity: 1; transform: none; }
-#toast.guasto { border-left-color: var(--pieno); }
+#toast.guasto { background: var(--pieno); }
 #toast[hidden] { display: none; }
 
 /* Dice cosa succede a questo nome, non come funziona il raggruppamento: la
@@ -1131,7 +1135,7 @@ async function prenota() {
       return;
     }
 
-    const righe = ['Prenotato.'];
+    const righe = ['Prenotato!'];
     if (esito.secondo) righe.push('Condividerete la sede con un altro gruppo: avvisali.');
     if (esito.avvisoStaff) righe.push(esito.avvisoStaff);
     else if (el('apertura').checked) righe.push('Ho chiesto allo staff di aprire.');
@@ -1183,7 +1187,7 @@ async function caricaMie() {
           </button>
           ${p.fissa ? '' : `
             <button data-sede="${p.sede}" data-id="${p.id}"
-                    data-cosa="settimanale">Ogni settimana</button>`}
+                    data-cosa="settimanale">Rendi periodico</button>`}
           ${p.fissa && p.serieId ? `
             <button class="grave" data-sede="${p.sede}" data-id="${p.serieId}"
                     data-cosa="serie">Elimina la serie</button>` : ''}
@@ -1263,7 +1267,7 @@ function rendiSettimanale(sede, id, bottone) {
       toast('Richiesta mandata allo staff. Ti scrivo appena decidono.');
     } catch (err) {
       riga.querySelectorAll('button').forEach(b => b.disabled = false);
-      bottone.textContent = 'Ogni settimana';
+      bottone.textContent = 'Rendi periodico';
       lamenta(err.message);
     }
   };
