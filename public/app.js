@@ -128,6 +128,25 @@ function renderActivitiesByDay(attivita) {
   return html;
 }
 
+// La fascia disegnata finisce dove finisce la track: con lo scatto a 600px
+// sono le 23:30. Le barre sono in vw, quindi un evento che va oltre sporge dal
+// contenitore, e lo screenshot si allarga per non tagliarlo: viene fuori
+// un'immagine piu' larga del calendario, con l'ultima ora senza riga sotto.
+// Meglio fermare la barra al bordo. L'angolo destro resta dritto: e' il segno
+// che l'attivita' continua, mentre l'angolo tondo direbbe che finisce li'.
+function troncaAlBordo() {
+  for (const track of document.querySelectorAll('.day-track')) {
+    const bordo = track.getBoundingClientRect().right;
+    for (const bar of track.querySelectorAll('.bar')) {
+      const box = bar.getBoundingClientRect();
+      if (box.right <= bordo + 0.5) continue;
+      bar.style.width = Math.max(2, bordo - box.left) + 'px';
+      bar.classList.add('troncata');
+    }
+  }
+}
+
+
 function formatDate(dateStr) {
   const d = new Date(dateStr);
   return d.toLocaleDateString('it-IT', {
@@ -172,6 +191,7 @@ async function loadAndRender(offset=0) {
 
   eventiEl.innerHTML = data.aperti.map(eventCard).join('');
   attivitaEl.innerHTML = renderActivitiesByDay(data.chiusi);
+  troncaAlBordo();
 }
 
 // La vista di un giorno solo: niente schede in cima, tutto diventa una barra.
@@ -196,6 +216,7 @@ function renderSoloUnGiorno(data) {
   document.getElementById('attivita').innerHTML = delGiorno.length
     ? renderActivitiesByDay(delGiorno)
     : '<p class="niente">Nessuna attivita in programma.</p>';
+  troncaAlBordo();
 }
 
 

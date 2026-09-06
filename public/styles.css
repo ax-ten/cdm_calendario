@@ -278,6 +278,10 @@ h2 {
 /* Track del giorno */
 .day-track {
   position: relative;
+  /* Senza questo la colonna 1fr si allarga per contenere le barre che sforano,
+     e la fascia oraria smette di corrispondere alle ore scritte sopra: la
+     riga si stira, lo screenshot pure. La larghezza la decide la griglia. */
+  min-width: 0;
 }
 
 /* Le linee orarie: sopra al background della track */
@@ -331,6 +335,13 @@ h2 {
      deve restarle attaccato. Lo spazio lo mette il titolo, che e' l'unico che
      lo vuole. */
   gap: 0;
+}
+
+/* Tagliata al bordo della fascia: l'attivita' va oltre, la riga disegnata no.
+   L'angolo dritto e' l'unico modo di dirlo senza scrivercelo sopra. */
+.day-track .bar.troncata {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .bar-icon {
