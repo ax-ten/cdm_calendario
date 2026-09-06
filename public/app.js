@@ -78,7 +78,7 @@ function activityBar(ev) {
 
   return `
     <div class="bar ${cat}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
-      <img class="bar-icon" src="${icona}" alt="${ev.sedeNome || cat}" onerror="this.onerror=null;this.src='${iconaCategoria}'">
+      <img class="bar-icon${sedeSlug ? ` sede-${sedeSlug}` : ''}" src="${icona}" alt="${ev.sedeNome || cat}" onerror="this.onerror=null;this.src='${iconaCategoria}'">
       <span class="title">${ev.nome || 'Senza titolo'}</span>
     </div>
   `;
@@ -156,6 +156,18 @@ function formatDate(dateStr) {
 }
 
 
+// "1 settembre -> 6 settembre" fa scattare la lettura su due mesi diversi, e
+// solo dopo si vede che e" lo stesso. Scritto una volta sola resta un
+// intervallo: "1 -> 6 settembre". Il mese torna quando cambia davvero.
+function formatRange(inizio, fine) {
+  const a = new Date(inizio);
+  const b = new Date(fine);
+  const stessoMese = a.getMonth() === b.getMonth()
+    && a.getFullYear() === b.getFullYear();
+  return `${stessoMese ? a.getDate() : formatDate(inizio)} → ${formatDate(fine)}`;
+}
+
+
 
 
 
@@ -187,7 +199,7 @@ async function loadAndRender(offset=0) {
   }
 
   document.getElementById('range').textContent +=
-    `${formatDate(data.range.start)} → ${formatDate(data.range.end)}`;
+    formatRange(data.range.start, data.range.end);
 
   eventiEl.innerHTML = data.aperti.map(eventCard).join('');
   attivitaEl.innerHTML = renderActivitiesByDay(data.chiusi);
