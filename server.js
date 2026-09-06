@@ -237,6 +237,20 @@ function getWeekRange(offsetWeeks = 0) {
 // Non la prima: la prima parola decide categoria, colore e icona.
 const RIGA_VETRINA = 'event';
 
+// La descrizione di un evento ha un ordine che il calendario pubblico legge:
+// la prima parola dice la categoria, RIGA_VETRINA apre la vetrina, e tutto
+// quello che viene dopo "desc:" e' il testo che finisce sotto il titolo nella
+// tessera. Percio' "desc:" va per ultimo: da li' in giu' e' tutta descrizione,
+// e una riga di servizio finita dopo si leggerebbe in vetrina.
+function componiDescrizione({ parola, vetrina, note, firma }) {
+  return [
+    parola,
+    vetrina ? RIGA_VETRINA : '',
+    firma,
+    note ? `desc: ${note}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 // La parola va cercata intera: cosi' com'era, "eventualmente si gioca a X"
 // finiva in vetrina con tanto di foto, e nessuno avrebbe capito perche'.
 function inVetrina(descrizione) {
@@ -739,12 +753,13 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
     return res.json({ ok: true, inAttesa: true });
   }
 
-  const descrizione = [
-    tipo.parola,
-    vetrina ? RIGA_VETRINA : '',
-    String(note || '').trim(),
-    `Prenotata da ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''} via Telegram.`,
-  ].filter(Boolean).join('\n');
+  const descrizione = componiDescrizione({
+    parola: tipo.parola,
+    vetrina,
+    note: String(note || '').trim(),
+    firma: `Prenotata da ${utente.nome}` +
+           `${utente.username ? ' (@' + utente.username + ')' : ''} via Telegram.`,
+  });
 
   const evento = await prenotazioni.creaPrenotazione(await getAuthScrittura(), calendarId, {
     titolo: String(titolo).trim(),
@@ -906,7 +921,14 @@ app.post('/prenota/api/annulla', (req, res) => conUtente(req, res, async (utente
 // fondo la riga di chi ha prenotato (e volendo chi apre). Per rifare l'evento
 // come attivita' periodica servono solo le note: il resto lo riscrive chi approva.
 function noteDallEvento(descrizione) {
-  return String(descrizione || '')
+  const testo = String(descrizione || '');
+  // Dopo "desc:" c'e' gia' solo la descrizione: e' il taglio che fa anche il
+  // calendario pubblico.
+  const taglio = testo.indexOf('desc:');
+  if (taglio >= 0) return testo.slice(taglio + 'desc:'.length).trim();
+  // Gli eventi scritti prima, o a mano su Calendar, non hanno quel marcatore:
+  // li si toglie riga per riga quello che abbiamo scritto noi.
+  return testo
     .split('\n')
     .filter((riga, i) => !(i === 0 && EVENT_TYPE_MAP.has(riga.trim().toLowerCase())))
     .filter((riga) => riga.trim().toLowerCase() !== RIGA_VETRINA)
@@ -1075,14 +1097,14 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
   const { inizio, fine } = prenotazioni.estremi(
     richiesta.data, richiesta.oraInizio, richiesta.oraFine);
 
-  const descrizione = [
-    tipo ? tipo.parola : '',
-    richiesta.vetrina ? RIGA_VETRINA : '',
-    richiesta.note,
-    `Attivita periodica proposta da ${richiesta.utente.nome}` +
-    `${richiesta.utente.username ? ' (@' + richiesta.utente.username + ')' : ''}` +
-    ` e approvata da ${daChi || 'staff'}.`,
-  ].filter(Boolean).join('\n');
+  const descrizione = componiDescrizione({
+    parola: tipo ? tipo.parola : '',
+    vetrina: richiesta.vetrina,
+    note: richiesta.note,
+    firma: `Attivita periodica proposta da ${richiesta.utente.nome}` +
+           `${richiesta.utente.username ? ' (@' + richiesta.utente.username + ')' : ''}` +
+           ` e approvata da ${daChi || 'staff'}.`,
+  });
 
   try {
     const evento = await prenotazioni.creaPrenotazione(
