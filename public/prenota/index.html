@@ -398,6 +398,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 #toast.guasto { border-left-color: var(--pieno); }
 #toast[hidden] { display: none; }
 
+/* Dice cosa succede a questo nome, non come funziona il raggruppamento: la
+   regola non interessa a nessuno, la conseguenza si'. */
+.serie {
+  margin: 6px 0 0;
+  font-size: .84rem;
+  line-height: 1.35;
+  color: var(--tenue);
+}
+.serie[hidden] { display: none; }
+.serie b { color: var(--testo); font-weight: 600; }
+
 /* -------------------------------------------------------------- anteprima
    Un messaggio nel gruppo grande lo leggono tutti e non si riprende. Prima
    di mandarlo si vede com'e' fatto, nella forma in cui arrivera': descriverlo
@@ -536,8 +547,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
   <div class="campo">
     <label for="titolo">Nome attività</label>
-    <input type="text" id="titolo" maxlength="80" required
+    <input type="text" id="titolo" maxlength="80" required list="serie-note"
            placeholder="Giochi da tavolo, il nome della tua campagna gdr…">
+    <datalist id="serie-note"></datalist>
+    <p class="serie" id="serie-nota" hidden></p>
   </div>
 
   <div class="campo">
@@ -549,6 +562,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     <div class="interruttore">
       <input type="checkbox" id="apertura">
       <label for="apertura">Ho bisogno che qualcuno venga ad aprire la sede</label>
+    </div>
+  </div>
+
+  <div class="campo">
+    <div class="interruttore">
+      <input type="checkbox" id="vetrina">
+      <div>
+        <label for="vetrina">In Vetrina</label>
+        <small>Mettilo in cima agli altri eventi, utilizza solo se è un evento
+        aperto a tutti.</small>
+      </div>
     </div>
   </div>
 
@@ -620,6 +644,7 @@ const stato = {
   daOra: 18, aOra: 21,
   mese: null,            // {anno, mese}
   occupazione: {},       // per sede+mese, dal server
+  serie: null,           // le serie gia' in vetrina, lette alla prima spunta
   prenotabile: false,
 };
 
@@ -895,6 +920,59 @@ function lamenta(testo) {
   else toast(testo, false);
 }
 
+// ----------------------------------------------------------------- serie
+// Due eventi finiscono nella stessa tessera se hanno lo stesso titolo, a meno
+// di maiuscole e spazi. E" una regola invisibile: un refuso non da" errore, da"
+// una tessera in piu' sul calendario che va nel gruppo. Quindi il nome si puo"
+// scegliere da un elenco, e sotto al campo si legge cosa succedera".
+function chiaveSerie(nome) {
+  return String(nome || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+async function caricaSerie() {
+  if (stato.serie) return stato.serie;
+  try {
+    const { serie } = await chiama('serie');
+    stato.serie = serie;
+  } catch {
+    // Senza elenco l'app funziona lo stesso: si perde il suggerimento, non
+    // la prenotazione.
+    stato.serie = [];
+  }
+  // I titoli li scrivono i soci: costruiti a nodi e non a stringa, cosi' un
+  // apostrofo o una parentesi angolare restano quello che sono.
+  const elenco = el('serie-note');
+  elenco.textContent = '';
+  for (const s of stato.serie) {
+    const voce = document.createElement('option');
+    voce.value = s.nome;
+    elenco.appendChild(voce);
+  }
+  return stato.serie;
+}
+
+function aggiornaSerie() {
+  const nota = el('serie-nota');
+  const nome = el('titolo').value.trim();
+  if (!el('vetrina').checked || !nome) {
+    nota.hidden = true;
+    return;
+  }
+  const trovata = (stato.serie || []).find(s => s.chiave === chiaveSerie(nome));
+  nota.hidden = false;
+  if (!trovata) {
+    nota.textContent = 'Nessun altro evento con questo nome: nascerà una tessera sua.';
+    return;
+  }
+  const quando = trovata.date
+    .map(d => `${d.giorno} ${d.sedeNome} ${d.orainizio}`).join(', ');
+  const nome_forte = document.createElement('b');
+  nome_forte.textContent = trovata.nome;
+  nota.textContent = 'Si unirà a ';
+  nota.append(nome_forte, `: ${quando}.`);
+}
+
+
 // -------------------------------------------------------------- anteprima
 // Il testo lo scrive il server, lo stesso pezzo di codice che poi lo manda:
 // se lo componesse l'app, prima o poi direbbero due cose diverse e questa
@@ -983,6 +1061,7 @@ async function prenota() {
       serveApertura: el('apertura').checked,
       fissa: el('fissa').checked,
       avvisa: el('avvisa').checked,
+      vetrina: el('vetrina').checked,
     });
 
     if (esito.inAttesa) {
@@ -1000,7 +1079,9 @@ async function prenota() {
       el('apertura').checked = false;
       el('fissa').checked = false;
       el('avvisa').checked = false;
+      el('vetrina').checked = false;
       aggiornaEsito();
+      aggiornaSerie();
       return;
     }
 
@@ -1019,6 +1100,10 @@ async function prenota() {
     el('apertura').checked = false;
     el('fissa').checked = false;
     el('avvisa').checked = false;
+    el('vetrina').checked = false;
+    // La tessera appena creata cambia i suggerimenti: si rileggono.
+    delete stato.serie;
+    aggiornaSerie();
     delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
     await caricaMese();
     await scegliGiorno(stato.giorno);
@@ -1210,6 +1295,13 @@ async function avvia() {
   trascina(el('maniglia-fine'), 'fine');
 
   el('titolo').addEventListener('input', aggiornaEsito);
+  el('titolo').addEventListener('input', aggiornaSerie);
+  el('vetrina').addEventListener('change', async () => {
+    // L'elenco si chiede solo a chi accende la spunta: per tutti gli altri
+    // sarebbe un giro su Google che non serve a niente.
+    if (el('vetrina').checked) await caricaSerie();
+    aggiornaSerie();
+  });
 
   el('tab-prenota').onclick = () => mostra('prenota');
   el('tab-mie').onclick = () => mostra('mie');

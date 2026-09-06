@@ -233,11 +233,19 @@ function getWeekRange(offsetWeeks = 0) {
 }
 
 
+// Quello che mette un evento in vetrina e" una riga sola nella descrizione.
+// Non la prima: la prima parola decide categoria, colore e icona.
+const RIGA_VETRINA = 'event';
+
 // La parola va cercata intera: cosi' com'era, "eventualmente si gioca a X"
 // finiva in vetrina con tanto di foto, e nessuno avrebbe capito perche'.
+function inVetrina(descrizione) {
+  return /\bevent\b/.test(String(descrizione || '').toLowerCase());
+}
+
 function isOpen(googleEvent) {
     if (!googleEvent) {return}
-    return /\bevent\b/.test((googleEvent.description || '').toLowerCase());
+    return inVetrina(googleEvent?.description);
 }
 
 
@@ -660,7 +668,7 @@ app.post('/prenota/api/mese', (req, res) => conUtente(req, res, async () => {
 
 app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, data, oraInizio, oraFine, titolo, note, serveApertura, categoria,
-          fissa, avvisa } = req.body || {};
+          fissa, avvisa, vetrina } = req.body || {};
   const calendarId = calendarioDi(sede);
   if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
   if (!titolo || !String(titolo).trim()) {
@@ -697,6 +705,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
       note: String(note || '').trim(),
       serveApertura: Boolean(serveApertura),
       avvisa: Boolean(avvisa),
+      vetrina: Boolean(vetrina),
       utente,
     });
     const chatStaff = STAFF.get(sede);
@@ -732,6 +741,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
 
   const descrizione = [
     tipo.parola,
+    vetrina ? RIGA_VETRINA : '',
     String(note || '').trim(),
     `Prenotata da ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''} via Telegram.`,
   ].filter(Boolean).join('\n');
@@ -792,6 +802,57 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   });
 }));
 
+// Le serie gia' in vetrina, per l'app: serve a dire a chi scrive il nome che
+// quella data si unira' a quelle, e a fargli scegliere il titolo da un elenco
+// invece di ridigitarlo. Un refuso qui non e" un refuso, e" una tessera in
+// piu' sul calendario che va nel gruppo.
+app.post('/prenota/api/serie', (req, res) => conUtente(req, res, async () => {
+  const auth = await getAuth();
+  const calendar = google.calendar({ version: 'v3', auth });
+  const ora = DateTime.now().setZone('Europe/Rome');
+  const fino = ora.plus({ days: prenotazioni.GIORNI_AVANTI });
+
+  const perCalendario = await Promise.all(CALENDARI.map(async (c) => {
+    try {
+      const { data } = await calendar.events.list({
+        calendarId: c.id,
+        singleEvents: true,
+        orderBy: 'startTime',
+        timeMin: ora.toISO(),
+        timeMax: fino.toISO(),
+        maxResults: 2500,
+      });
+      return (data.items || []).map(ev => normalizeEvent(ev, 'Europe/Rome', c.sede));
+    } catch (err) {
+      console.error(`serie: calendario "${c.sede}" non leggibile: ${err.message}`);
+      return [];
+    }
+  }));
+
+  // Stessi filtri della settimana: un evento copiato su due calendari va
+  // contato una volta, e quelli segreti non esistono per nessuno.
+  const visti = new Set();
+  const aperti = [];
+  for (const ev of perCalendario.flat()) {
+    if (!ev.id || visti.has(ev.id)) continue;
+    visti.add(ev.id);
+    if (String(ev.raw?.description || '').toLowerCase().includes('segret')) continue;
+    if (!isOpen(ev.raw)) continue;
+    aperti.push(ev);
+  }
+  aperti.sort((a, b) => String(a.startISO).localeCompare(String(b.startISO)));
+
+  res.json({
+    serie: raggruppaInSerie(aperti).map(s => ({
+      chiave: s.chiave,
+      nome: s.nome,
+      date: s.date.map(d => ({
+        giorno: d.giorno, orainizio: d.orainizio, sedeNome: d.sedeNome,
+      })),
+    })),
+  });
+}));
+
 // Che cosa leggerebbe il gruppo grande, prima che lo legga. Non manda niente
 // e non crea niente: serve solo all'anteprima nell'app.
 app.post('/prenota/api/anteprima', (req, res) => conUtente(req, res, async (utente) => {
@@ -848,6 +909,7 @@ function noteDallEvento(descrizione) {
   return String(descrizione || '')
     .split('\n')
     .filter((riga, i) => !(i === 0 && EVENT_TYPE_MAP.has(riga.trim().toLowerCase())))
+    .filter((riga) => riga.trim().toLowerCase() !== RIGA_VETRINA)
     .filter((riga) => !/^(Prenotata da |Attivita fissa proposta da |Apre: )/.test(riga.trim()))
     .join('\n')
     .trim();
@@ -897,6 +959,8 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
     titolo,
     note,
     serveApertura: priv.serve_apertura === 'si',
+    // Se era in vetrina ci resta: la cadenza cambia, non cosa e".
+    vetrina: inVetrina(evento.description),
     // Il gruppo grande l'ha gia' saputo quando la prenotazione e' nata: non
     // glielo si ridice per un cambio di cadenza.
     avvisa: false,
@@ -1013,6 +1077,7 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
 
   const descrizione = [
     tipo ? tipo.parola : '',
+    richiesta.vetrina ? RIGA_VETRINA : '',
     richiesta.note,
     `Attivita fissa proposta da ${richiesta.utente.nome}` +
     `${richiesta.utente.username ? ' (@' + richiesta.utente.username + ')' : ''}` +
