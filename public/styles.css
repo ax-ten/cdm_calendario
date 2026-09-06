@@ -354,13 +354,13 @@ h2 {
 }
 
 /* Il logo Lampo e' nero bordato di giallo: su una barra scura il nero sparisce
-   e resta un contorno che non si legge. Un tondo bianco sotto glielo stacca.
-   Il margine tiene il tondo dentro la pillola invece di farlo combaciare col
-   bordo, il padding tiene il disegno dentro il tondo. */
+   e resta un contorno che non si legge. Un tondo bianco sotto glielo stacca,
+   e 1px di margine tiene il tondo dentro la pillola invece di farlo combaciare
+   col bordo. L'aria fra il marchio e il bordo del tondo sta nel png, che ha la
+   tela apposta piu' grande del disegno: qui un padding la sommerebbe. */
 .bar-icon.sede-trani {
   height: calc(100% - 2px);
   margin: 1px;
-  padding: 2px;
   background: #fff;
   border-radius: 50%;
 }
