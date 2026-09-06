@@ -363,6 +363,14 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   display: block; color: var(--tenue); font-size: .78rem; margin-top: 3px;
 }
 
+/* Due spunte che si leggono insieme stanno in un riquadro solo, divise da un
+   filo: due riquadri uguali uno sull'altro si leggono come due sezioni. */
+.interruttori { background: var(--scheda); border-radius: 12px; }
+.interruttori .interruttore { background: none; border-radius: 0; }
+.interruttori .interruttore + .interruttore {
+  border-top: 1px solid color-mix(in srgb, var(--tenue) 22%, transparent);
+}
+
 /* ------------------------------------------------------------------ esito
    Fisso in fondo, appoggiato sopra il pulsante Prenota di Telegram: e' la
    riga che dice cosa manca ancora, e serve mentre si compila, non dopo aver
@@ -555,10 +563,9 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     <div class="interruttore">
       <input type="checkbox" id="fissa">
       <div>
-        <label for="fissa">È un'attività periodica</label>
-        <small>Si ripete ogni settimana, questo giorno a quest'ora. La deve
-        approvare lo staff; poi il giorno prima ti chiedo se si fa, così puoi
-        saltare una settimana quando serve.</small>
+        <label for="fissa">Attività periodica</label>
+        <small>Ogni settimana, questo giorno a quest'ora. La approva lo
+        staff.</small>
       </div>
     </div>
   </div>
@@ -573,8 +580,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
       <input type="checkbox" id="vetrina">
       <div>
         <label for="vetrina">In Vetrina</label>
-        <small>Mettilo in cima agli altri eventi, utilizza solo se è un evento
-        aperto a tutti.</small>
+        <small>In cima agli altri eventi. Solo se è aperto a tutti.</small>
       </div>
     </div>
   </div>
@@ -593,24 +599,22 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   </div>
 
   <div class="campo">
-    <div class="interruttore">
-      <input type="checkbox" id="apertura">
-      <div>
-        <label for="apertura">Non ho le chiavi</label>
-        <small>Arriverà un messaggio allo staff per venire ad aprire la porta
-        quando necessario.</small>
+    <div class="interruttori">
+      <div class="interruttore">
+        <input type="checkbox" id="apertura">
+        <div>
+          <label for="apertura">Non ho le chiavi</label>
+          <small>Arriverà un messaggio allo staff per aprire la porta quando
+          necessario.</small>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <div class="campo">
-    <div class="interruttore">
-      <input type="checkbox" id="avvisa">
-      <div>
-        <label for="avvisa">Manda un annuncio</label>
-        <small>Scrivi un messaggio nel gruppo Crocevia dei Mondi per avvisare
-        dell'evento o attività periodica che stai creando, avrai un'anteprima
-        del messaggio inviato.</small>
+      <div class="interruttore">
+        <input type="checkbox" id="avvisa">
+        <div>
+          <label for="avvisa">Manda un annuncio</label>
+          <small>Un messaggio nel gruppo Crocevia dei Mondi. Prima ne vedi
+          l'anteprima.</small>
+        </div>
       </div>
     </div>
   </div>
