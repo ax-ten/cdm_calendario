@@ -717,7 +717,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
       await telegram('sendMessage', {
         chat_id: chatStaff,
         text:
-          `Richiesta di attivita fissa a ${SEDI_NOMI.get(sede) || sede}.\n` +
+          `Richiesta di attivita periodica a ${SEDI_NOMI.get(sede) || sede}.\n` +
           `${String(titolo).trim()}\n` +
           `Ogni ${inizio.setLocale('it').toFormat('cccc')}, ` +
           `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}, ` +
@@ -910,7 +910,7 @@ function noteDallEvento(descrizione) {
     .split('\n')
     .filter((riga, i) => !(i === 0 && EVENT_TYPE_MAP.has(riga.trim().toLowerCase())))
     .filter((riga) => riga.trim().toLowerCase() !== RIGA_VETRINA)
-    .filter((riga) => !/^(Prenotata da |Attivita fissa proposta da |Apre: )/.test(riga.trim()))
+    .filter((riga) => !/^(Prenotata da |Attivita (fissa|periodica) proposta da |Apre: )/.test(riga.trim()))
     .join('\n')
     .trim();
 }
@@ -1079,7 +1079,7 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
     tipo ? tipo.parola : '',
     richiesta.vetrina ? RIGA_VETRINA : '',
     richiesta.note,
-    `Attivita fissa proposta da ${richiesta.utente.nome}` +
+    `Attivita periodica proposta da ${richiesta.utente.nome}` +
     `${richiesta.utente.username ? ' (@' + richiesta.utente.username + ')' : ''}` +
     ` e approvata da ${daChi || 'staff'}.`,
   ].filter(Boolean).join('\n');
