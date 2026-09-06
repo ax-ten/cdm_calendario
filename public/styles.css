@@ -358,8 +358,8 @@ h2 {
    Il margine tiene il tondo dentro la pillola invece di farlo combaciare col
    bordo, il padding tiene il disegno dentro il tondo. */
 .bar-icon.sede-trani {
-  height: calc(100% - 4px);
-  margin: 2px;
+  height: calc(100% - 2px);
+  margin: 1px;
   padding: 2px;
   background: #fff;
   border-radius: 50%;
