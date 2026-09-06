@@ -15,8 +15,8 @@
 # Togliere o riordinare una riga cambia l app, senza toccare il codice.
 
 gdr        | Giochi di Ruolo                | D&D - Nome campagna
-gdt        | Giochi da Tavolo               | Il nome del gioco, o semplicemente «Boardgames»
-mana       | Giochi di Carte Collezionabili | Mana Vault, o Serata Pokémon
-libro      | Club di Lettura                | Nome del libro di cui discuteremo
-gaming     | Videogiochi                    | Cosa giocheremo o streameremo
-default    | Altro                          | Serata powerpoint
+gdt        | Giochi da Tavolo               | Nome del gioco, Boardgames
+mana       | Giochi di Carte Collezionabili | Mana Vault, Serata Pokemon
+libro      | Club di Lettura                | Libro - Autore
+gaming     | Videogiochi                    | Titolo da streammare
+default    | Altro                          | Serata Powerpoint
