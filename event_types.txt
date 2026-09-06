@@ -1,3 +1,14 @@
+# Categoria: parola chiave, parola chiave, ...
+#
+# La prima parola della descrizione di un evento decide la sua categoria, e
+# da li' vengono colore (colori_appuntamenti.css), icona (public/src) e
+# cartella Drive delle foto.
+#
+# L ordine delle righe conta: e' l ordine in cui escono le schede in vetrina
+# sul calendario pubblico. Le schede non sono in ordine cronologico, perche'
+# una serie con piu' date non ha un posto nella cronologia; spostare una riga
+# qui sposta quella categoria in vetrina, senza toccare il codice.
+
 halloween: allouin, halloween
 frullatori: 3d, blender, frullatori
 nintendo: nintendo

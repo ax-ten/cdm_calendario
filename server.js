@@ -233,11 +233,11 @@ function getWeekRange(offsetWeeks = 0) {
 }
 
 
+// La parola va cercata intera: cosi' com'era, "eventualmente si gioca a X"
+// finiva in vetrina con tanto di foto, e nessuno avrebbe capito perche'.
 function isOpen(googleEvent) {
     if (!googleEvent) {return}
-    const s = (googleEvent.description || '').toLowerCase();
-    const isEvent = s.includes('event');
-    return isEvent;
+    return /\bevent\b/.test((googleEvent.description || '').toLowerCase());
 }
 
 
@@ -259,6 +259,29 @@ function loadEventTypeMap() {
   return map;
 }
 const EVENT_TYPE_MAP = loadEventTypeMap();
+
+// In che ordine escono le schede in vetrina: quello delle righe di
+// event_types.txt. Non e' cronologico apposta (vedi raggruppaInSerie), e
+// tenerlo in un file vuol dire che si cambia spostando una riga.
+function loadOrdineCategorie() {
+  const file = new URL('./event_types.txt', import.meta.url).pathname;
+  const ordine = new Map();
+  for (const rawLine of fs.readFileSync(file, 'utf8').split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const cls = line.split(':')[0]?.trim();
+    if (cls && !ordine.has(cls)) ordine.set(cls, ordine.size);
+  }
+  return ordine;
+}
+const ORDINE_CATEGORIE = loadOrdineCategorie();
+
+// Quello che non ha una categoria riconosciuta va in fondo: e' l'unico posto
+// che non toglie il posto a nessuno.
+function pesoCategoria(slug) {
+  const posto = ORDINE_CATEGORIE.get(slug);
+  return posto === undefined ? Number.MAX_SAFE_INTEGER : posto;
+}
 
 // Dopo EVENT_TYPE_MAP e non prima: loadCategorie ci legge dentro, e un const
 // letto prima della sua riga non e' undefined, e' un errore che ferma tutto.
@@ -437,6 +460,60 @@ async function enrichWithImages(items) {
 }
 
 
+
+
+// ---------- Vetrina ----------
+// Lo stesso evento ripetuto in piu' giorni o in due sedi e' una cosa sola con
+// piu' date, non tre cose che si chiamano uguale. La chiave e' il titolo
+// normalizzato: non chiede di scrivere niente di nuovo, perche' le date di
+// una serie nascono copiando la prima. Basta cambiare il titolo per separarle.
+function chiaveSerie(nome) {
+  return String(nome || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// L'ordine e' per categoria e non per orario. Una tessera con tre date in tre
+// giorni non ha un posto nella cronologia: metterla al suo primo giorno
+// direbbe che le altre due contano meno. Le barre qui sotto la cronologia
+// ce l'hanno per intero, la vetrina fa un altro mestiere.
+function raggruppaInSerie(aperti) {
+  const serie = new Map();
+  for (const ev of aperti) {
+    // Senza titolo non c'e' chiave: due eventi anonimi non sono la stessa
+    // serie, sono due buchi diversi. L'id li tiene separati.
+    const chiave = chiaveSerie(ev.nome) || `senza-titolo:${ev.id}`;
+    if (!serie.has(chiave)) {
+      serie.set(chiave, {
+        chiave,
+        nome: ev.nome,
+        categoria: ev.categoria,
+        // Della serie si mostra una descrizione sola, quella della prima
+        // data. Se le altre dicono qualcosa di diverso, non erano la stessa
+        // cosa e vanno chiamate con nomi diversi.
+        descrizione: ev.descrizione,
+        verbose: ev.verbose,
+        tags: ev.tags,
+        date: [],
+      });
+    }
+    serie.get(chiave).date.push({
+      startISO: ev.startISO,
+      dayKey: ev.dayKey,
+      giorno: ev.giorno,
+      orainizio: ev.orainizio,
+      orafine: ev.orafine,
+      sede: ev.sede,
+      sedeNome: ev.sedeNome,
+      sedeEsterna: ev.sedeEsterna,
+      sedeIndirizzo: ev.sedeIndirizzo,
+    });
+  }
+  const fuori = [...serie.values()];
+  for (const s of fuori) s.date.sort((a, b) => String(a.startISO).localeCompare(String(b.startISO)));
+  fuori.sort((a, b) =>
+    pesoCategoria(a.categoria) - pesoCategoria(b.categoria) ||
+    String(a.date[0].startISO).localeCompare(String(b.date[0].startISO)));
+  return fuori;
+}
 
 
 // ---------- Normalizzazione campi ----------
@@ -1168,15 +1245,24 @@ app.get(['/api/weekly', '/calendario/api/weekly'], async (req, res) => {
       console.log(`Fuori fascia, non disegnato: "${ev.nome}" ${ev.giorno} ${ev.orainizio}`);
     }
 
-    await enrichWithImages(aperti);
+    const vetrina = raggruppaInSerie(aperti);
+
+    await enrichWithImages(vetrina);
 
     res.json({
       range: human,
       tz: 'Europe/Rome',
       offset,
-      count: { aperti: aperti.length, chiusi: chiusi.length, totale: items.length },
+      count: {
+        aperti: aperti.length, vetrina: vetrina.length,
+        chiusi: chiusi.length, totale: items.length,
+      },
       sedi: CALENDARI.map(c => c.sede),
       errori,
+      // `vetrina` sono le schede, una per serie. `aperti` resta piatto, una
+      // voce per data: serve alla vista di un giorno solo, dove ogni
+      // occorrenza e' una barra per conto suo.
+      vetrina,
       aperti,
       chiusi
     });

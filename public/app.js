@@ -41,17 +41,37 @@ function eventCard(ev) {
     ? `<div class="tags">${ev.tags.map(t => `<span class="${categoria}-tag">${t}</span>`).join('')}</div>`
     : '';
 
+  const date = ev.date || [];
+  // Con una data sola la scheda resta quella di sempre: giorno e ora in coda
+  // al titolo, targhetta della sede appoggiata sulla foto. E" il caso di
+  // quasi tutti gli eventi, e non c e" motivo di cambiarglielo.
+  const unaData = date.length <= 1;
+  // La targhetta sta sulla foto solo se vale per tutta la scheda. Quando le
+  // date sono in sedi diverse dice dove si va, quindi va sulla riga della
+  // data: e" li" che l'informazione e" vera.
+  const unaSede = date.every(d => d.sede === date[0].sede);
+
+  const righe = date.map(d => `
+    <div class="riga-data">
+      <strong>${d.giorno}</strong>
+      ${unaSede ? '<span></span>' : sedeBadge(d)}
+      <span class="ora">dalle ${d.orainizio}</span>
+    </div>`).join('');
+
   return `
     <article class="card ${categoria}">
       <div class="thumb-wrapper">
         <img class="thumb thumb-img" src="${BASE}/immagine/${categoria}">
       </div>
       <div class="card-body">
-        ${sedeBadge(ev)}
+        ${unaSede ? sedeBadge(date[0] || ev) : ''}
         <div class="header-line">
           <h1 class="title">${ev.nome}</h1>
-          <span class="time"><strong>${ev.giorno}</strong> dalle ${ev.orainizio}</span>
+          ${unaData && date[0]
+            ? `<span class="time"><strong>${date[0].giorno}</strong> dalle ${date[0].orainizio}</span>`
+            : ''}
         </div>
+        ${unaData ? '' : `<div class="date">${righe}</div>`}
         <div class="description-line">
           ${ev.verbose}
         </div>
@@ -201,7 +221,7 @@ async function loadAndRender(offset=0) {
   document.getElementById('range').textContent +=
     formatRange(data.range.start, data.range.end);
 
-  eventiEl.innerHTML = data.aperti.map(eventCard).join('');
+  eventiEl.innerHTML = data.vetrina.map(eventCard).join('');
   attivitaEl.innerHTML = renderActivitiesByDay(data.chiusi);
   troncaAlBordo();
 }
