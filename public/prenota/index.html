@@ -496,12 +496,12 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   <h1>Prenota una stanza</h1>
 
   <div class="campo">
-    <span class="titolo">In quale sede</span>
+    <span class="titolo">Scegli una sede per vedere le date disponibili</span>
     <div class="sedi" id="sedi"></div>
   </div>
 
   <div class="campo">
-    <span class="titolo">Che giorno</span>
+    <span class="titolo">Data</span>
     <div class="mese">
       <button id="mese-prima" aria-label="Mese precedente">‹</button>
       <strong id="mese-nome">…</strong>
@@ -530,7 +530,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   </div>
 
   <div class="campo">
-    <span class="titolo">Che tipo di attività</span>
+    <span class="titolo">Categoria</span>
     <div class="categorie" id="categorie"></div>
   </div>
 
@@ -833,12 +833,13 @@ function aggiornaEsito() {
 
   if (!stato.sede || !stato.giorno || !stato.categoria || !nome) {
     const manca = [
-      !stato.sede ? 'la sede' : null,
-      !stato.categoria ? 'il tipo di attività' : null,
-      !stato.giorno ? 'il giorno' : null,
-      !nome ? 'il nome dell\'attività' : null,
+      !stato.sede ? 'sede' : null,
+      !stato.categoria ? 'categoria' : null,
+      !stato.giorno ? 'data' : null,
+      !nome ? 'nome' : null,
     ].filter(Boolean);
-    dove.innerHTML = `<div class="esito"><span>Manca ${manca.join(', ')}</span></div>`;
+    dove.innerHTML = `<div class="esito"><span>${manca.length > 1 ? 'Mancano' : 'Manca'}: ` +
+      `${manca.join(', ')}</span></div>`;
     return abilita(false);
   }
 
