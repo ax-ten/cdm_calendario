@@ -360,22 +360,23 @@ h2 {
 }
 
 /* Il giallo di Lampo, virato all'ocra perche' dentro la barra convive con il
-   colore della categoria: due fili sotto il nome, 2px l'uno con 1px in mezzo.
-   Dentro la pillola e non fuori, cosi' la barra non cresce di un pixel, ne'
-   in larghezza ne' in altezza.
-   Partono dopo l'icona: l'::after e' posizionato e coprirebbe il logo, che
-   invece e' in flusso. */
+   colore della categoria: due fili appoggiati al bordo inferiore, 2px il
+   primo e 1px il secondo, con 1px di spazio in mezzo. Dentro la pillola e non
+   fuori, cosi' la barra non cresce di un pixel in nessuna direzione.
+   Vanno da un capo all'altro: quanto se ne vede lo decide l'arrotondamento,
+   che li taglia agli estremi, e l'icona, che gli passa sopra. */
 .bar.sede-trani { position: relative; }
+.bar.sede-trani .bar-icon { position: relative; z-index: 1; }
 .bar.sede-trani::after {
   content: "";
   position: absolute;
-  left: 34px;
-  right: 8px;
-  bottom: 3px;
-  height: 5px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
   background:
     linear-gradient(#dda520, #dda520) top / 100% 2px no-repeat,
-    linear-gradient(#dda520, #dda520) bottom / 100% 2px no-repeat;
+    linear-gradient(#dda520, #dda520) bottom / 100% 1px no-repeat;
 }
 
 /* Il logo Lampo e' nero bordato di giallo: su una barra scura il nero sparisce
