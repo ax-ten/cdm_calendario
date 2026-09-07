@@ -359,6 +359,12 @@ h2 {
   flex-shrink: 0;
 }
 
+/* Il giallo delle targhette di Trani, qui come filo dentro il bordo: dice a
+   colpo d'occhio quali attivita' non sono all'hub, senza togliere il colore
+   della categoria. Dentro e non fuori, cosi' la barra non si allarga e non si
+   sposta rispetto alla fascia oraria. */
+.bar.sede-trani { box-shadow: inset 0 0 0 2px #f2c200; }
+
 /* Il logo Lampo e' nero bordato di giallo: su una barra scura il nero sparisce
    e resta un contorno che non si legge. Un tondo bianco sotto glielo stacca,
    e 1px di margine tiene il tondo dentro la pillola invece di farlo combaciare

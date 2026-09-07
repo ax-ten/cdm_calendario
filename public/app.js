@@ -95,7 +95,7 @@ function activityBar(ev) {
   const icona = sedeSlug ? `${BASE}/src/sede-${sedeSlug}.png` : iconaCategoria;
 
   return `
-    <div class="bar ${cat}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
+    <div class="bar ${cat}${sedeSlug ? ` sede-${sedeSlug}` : ''}" style="width:${widthVW}vw; margin-left:${offsetVW}vw" title="${ev.nome}${ev.sedeNome ? ' - ' + ev.sedeNome : ''}">
       <img class="bar-icon${sedeSlug ? ` sede-${sedeSlug}` : ''}" src="${icona}" alt="${ev.sedeNome || cat}" onerror="this.onerror=null;this.src='${iconaCategoria}'">
       <span class="title">${ev.nome || 'Senza titolo'}</span>
     </div>
