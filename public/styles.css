@@ -359,24 +359,13 @@ h2 {
   flex-shrink: 0;
 }
 
-/* Il giallo di Lampo, virato all'ocra perche' dentro la barra convive con il
-   colore della categoria: due fili appoggiati al bordo inferiore, 2px il
-   primo e 1px il secondo, con 1px di spazio in mezzo. Dentro la pillola e non
-   fuori, cosi' la barra non cresce di un pixel in nessuna direzione.
-   Vanno da un capo all'altro: quanto se ne vede lo decide l'arrotondamento,
-   che li taglia agli estremi, e l'icona, che gli passa sopra. */
-.bar.sede-trani { position: relative; }
-.bar.sede-trani .bar-icon { position: relative; z-index: 1; }
-.bar.sede-trani::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 4px;
-  background:
-    linear-gradient(#dda520, #dda520) top / 100% 2px no-repeat,
-    linear-gradient(#dda520, #dda520) bottom / 100% 1px no-repeat;
+/* Le attivita' di Lampo prendono il giallo di Lampo, lo stesso della loro
+   targhetta, con la scritta nera: su quel fondo il bianco delle altre barre
+   non si leggerebbe. Il colore della categoria qui lo si perde, ed e' voluto:
+   dove si va conta piu' di che cosa si gioca. */
+.bar.sede-trani {
+  background: #f2c200;
+  color: #1b1b1b;
 }
 
 /* Il logo Lampo e' nero bordato di giallo: su una barra scura il nero sparisce
