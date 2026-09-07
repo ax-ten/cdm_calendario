@@ -359,36 +359,23 @@ h2 {
   flex-shrink: 0;
 }
 
-/* Il giallo delle targhette di Trani, qui come doppia riga sotto la barra:
-   dice a colpo d'occhio quali attivita' non sono all'hub, senza togliere il
-   colore della categoria ne' un pixel di larghezza, cosi' la barra resta al
-   suo posto sulla fascia oraria.
-   L'overflow lo apriamo solo qui: la riga sta fuori dalla pillola, e il logo
-   Lampo non ha bisogno del taglio perche' il suo png e' gia' tondo su fondo
-   trasparente. */
-.bar.sede-trani {
-  position: relative;
-  overflow: visible;
-  margin-bottom: 10px;
-}
-/* Aperto l'overflow, il nome uscirebbe dalla pillola invece di essere
-   tagliato: il taglio si sposta sul testo, che e' l'unica cosa che deve
-   restare dentro. */
-.bar.sede-trani .title {
-  min-width: 0;
-  overflow: hidden;
-}
-
+/* Il giallo di Lampo, virato all'ocra perche' dentro la barra convive con il
+   colore della categoria: due fili sotto il nome, 2px l'uno con 1px in mezzo.
+   Dentro la pillola e non fuori, cosi' la barra non cresce di un pixel, ne'
+   in larghezza ne' in altezza.
+   Partono dopo l'icona: l'::after e' posizionato e coprirebbe il logo, che
+   invece e' in flusso. */
+.bar.sede-trani { position: relative; }
 .bar.sede-trani::after {
   content: "";
   position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 2px);
+  left: 34px;
+  right: 8px;
+  bottom: 3px;
   height: 5px;
   background:
-    linear-gradient(#f2c200, #f2c200) top / 100% 2px no-repeat,
-    linear-gradient(#f2c200, #f2c200) bottom / 100% 2px no-repeat;
+    linear-gradient(#dda520, #dda520) top / 100% 2px no-repeat,
+    linear-gradient(#dda520, #dda520) bottom / 100% 2px no-repeat;
 }
 
 /* Il logo Lampo e' nero bordato di giallo: su una barra scura il nero sparisce
