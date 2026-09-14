@@ -2,7 +2,10 @@
 # Formato:  nome | chat_id
 #
 # Sta in un file suo e non in staff.txt apposta: da staff.txt il server
-# ricava anche CHI e' staff, e finirci dentro il gruppo grande vorrebbe dire
+# ricava anche CHI e' staff, e finirci dentro un altro gruppo vorrebbe dire
 # che chiunque ne fa parte puo' sospendere le prenotazioni degli altri.
+#
+# direttivo: chi ci sta dentro puo' mettere un'attivita' in vetrina. Il bot
+# deve essere nel gruppo, se no Telegram non gli dice chi c'e'.
 
-pubblico | -1001309586738
+direttivo | -1001356900795

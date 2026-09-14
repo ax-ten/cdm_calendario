@@ -93,8 +93,8 @@ function loadStaff() {
 }
 const STAFF = loadStaff();
 
-// Formato di gruppi.txt:  nome | chat_id. Per ora serve solo "pubblico",
-// cioe' il gruppo grande dove si annunciano le prenotazioni.
+// Formato di gruppi.txt:  nome | chat_id. Per ora serve solo "direttivo":
+// chi ne fa parte puo' mettere un'attivita' in vetrina.
 function loadGruppi() {
   const file = new URL('./gruppi.txt', import.meta.url).pathname;
   const out = new Map();
@@ -108,41 +108,6 @@ function loadGruppi() {
   return out;
 }
 const GRUPPI = loadGruppi();
-
-// L'annuncio nel gruppo grande: cosa, dove, quando. Non e' un invito
-// automatico - alcune attivita' sono a porte chiuse - quindi dice quello che
-// e' successo e basta, e chi vuole aggiungere altro lo scrive di suo.
-// Il testo sta in una funzione sua perche' lo legge anche l'app, che lo fa
-// vedere prima di mandarlo. Se lo riscrivesse per conto suo, prima o poi le
-// due versioni direbbero cose diverse e l'anteprima smetterebbe di essere
-// un'anteprima.
-function testoAnnuncio({ sede, titolo, note, inizio, fine, utente, ogni }) {
-  const quando = ogni
-    ? `Ogni ${inizio.setLocale('it').toFormat('cccc')}, ` +
-      `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`
-    : `${inizio.setLocale('it').toFormat('cccc d MMMM')}, ` +
-      `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`;
-  return [
-    `${quando} a ${SEDI_NOMI.get(sede) || sede}`,
-    titolo,
-    note || '',
-    `Organizza ${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`,
-  ].filter(Boolean).join('\n');
-}
-
-async function annunciaNelGruppo({ sede, titolo, note, inizio, fine, utente, ogni }) {
-  const chat = GRUPPI.get('pubblico');
-  if (!chat) return 'nessun gruppo pubblico configurato';
-  try {
-    await telegram('sendMessage', {
-      chat_id: chat,
-      text: testoAnnuncio({ sede, titolo, note, inizio, fine, utente, ogni }),
-    });
-    return null;
-  } catch (err) {
-    return `non ho annunciato nel gruppo: ${err.message}`;
-  }
-}
 
 // Formato di categorie.txt:  slug | Nome mostrato
 //
@@ -209,14 +174,26 @@ async function telegram(metodo, payload) {
 // e' gia' la decisione, e una lista finirebbe subito fuori sincrono.
 async function eStaff(userId) {
   for (const chatId of STAFF.values()) {
-    try {
-      const membro = await telegram('getChatMember', { chat_id: chatId, user_id: userId });
-      if (['creator', 'administrator', 'member'].includes(membro.status)) return true;
-    } catch (err) {
-      console.error(`getChatMember su ${chatId}:`, err.message);
-    }
+    if (await membroDi(chatId, userId)) return true;
   }
   return false;
+}
+
+// Il direttivo si riconosce allo stesso modo: sta nel suo gruppo.
+async function eDirettivo(userId) {
+  const chatId = GRUPPI.get('direttivo');
+  return chatId ? membroDi(chatId, userId) : false;
+}
+
+async function membroDi(chatId, userId) {
+  try {
+    const membro = await telegram('getChatMember', { chat_id: chatId, user_id: userId });
+    return ['creator', 'administrator', 'member'].includes(membro.status) ||
+      (membro.status === 'restricted' && membro.is_member);
+  } catch (err) {
+    console.error(`getChatMember su ${chatId}:`, err.message);
+    return false;
+  }
 }
 
 function calendarioDi(sede) {
@@ -628,10 +605,14 @@ async function conUtente(req, res, azione) {
 app.use(express.json({ limit: '64kb' }));
 
 app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) => {
+  const [staff, direttivo] = await Promise.all([eStaff(utente.id), eDirettivo(utente.id)]);
   res.json({
     utente,
     bloccato: prenotazioni.eBloccato(utente.id),
-    staff: await eStaff(utente.id),
+    staff,
+    // Decide se l'app mostra "In vetrina". Il controllo vero si rifa' alla
+    // prenotazione: chi esce dal gruppo con l'app aperta non ci mette niente.
+    direttivo,
     sedi: CALENDARI.map(c => ({
       slug: c.sede,
       nome: SEDI_NOMI.get(c.sede) || c.sede,
@@ -685,7 +666,7 @@ app.post('/prenota/api/mese', (req, res) => conUtente(req, res, async () => {
 
 app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, data, oraInizio, oraFine, titolo, note, serveApertura, categoria,
-          fissa, avvisa, vetrina } = req.body || {};
+          fissa, ricorrenza, vetrina } = req.body || {};
   const calendarId = calendarioDi(sede);
   if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
   if (!titolo || !String(titolo).trim()) {
@@ -693,8 +674,14 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   }
   const tipo = CATEGORIE.find(c => c.slug === categoria);
   if (!tipo) return res.status(400).json({ errore: 'serve la categoria' });
+  if (fissa && !prenotazioni.RICORRENZE[ricorrenza]) {
+    return res.status(400).json({ errore: 'scegli ogni quanto si ripete' });
+  }
   if (prenotazioni.eBloccato(utente.id)) {
     return res.status(403).json({ errore: 'le tue prenotazioni sono state sospese dallo staff' });
+  }
+  if (vetrina && !(await eDirettivo(utente.id))) {
+    return res.status(403).json({ errore: 'solo il direttivo mette le attivita in vetrina' });
   }
 
   const guai = prenotazioni.validaRichiesta({ data, oraInizio, oraFine });
@@ -721,7 +708,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
       titolo: String(titolo).trim(),
       note: String(note || '').trim(),
       serveApertura: Boolean(serveApertura),
-      avvisa: Boolean(avvisa),
+      ricorrenza,
       vetrina: Boolean(vetrina),
       utente,
     });
@@ -736,7 +723,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
         text:
           `Richiesta di attivita periodica a ${SEDI_NOMI.get(sede) || sede}.\n` +
           `${String(titolo).trim()}\n` +
-          `Ogni ${inizio.setLocale('it').toFormat('cccc')}, ` +
+          `${prenotazioni.testoRicorrenza(ricorrenza, inizio)}, ` +
           `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}, ` +
           `dal ${inizio.setLocale('it').toFormat('d MMMM')}\n` +
           (serveApertura ? 'Chiede che qualcuno apra.\n' : '') +
@@ -803,20 +790,11 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
     }
   }
 
-  let avvisoGruppo = null;
-  if (avvisa) {
-    avvisoGruppo = await annunciaNelGruppo({
-      sede, titolo: String(titolo).trim(), note: String(note || '').trim(),
-      inizio, fine, utente, ogni: false,
-    });
-  }
-
   res.json({
     ok: true,
     eventId: evento.id,
     secondo: sovrapposti.length === 1,
     avvisoStaff,
-    avvisoGruppo,
   });
 }));
 
@@ -868,28 +846,6 @@ app.post('/prenota/api/serie', (req, res) => conUtente(req, res, async () => {
         giorno: d.giorno, orainizio: d.orainizio, sedeNome: d.sedeNome,
       })),
     })),
-  });
-}));
-
-// Che cosa leggerebbe il gruppo grande, prima che lo legga. Non manda niente
-// e non crea niente: serve solo all'anteprima nell'app.
-app.post('/prenota/api/anteprima', (req, res) => conUtente(req, res, async (utente) => {
-  const { sede, data, oraInizio, oraFine, titolo, note, fissa } = req.body || {};
-  if (!calendarioDi(sede)) return res.status(400).json({ errore: 'sede sconosciuta' });
-  const { inizio, fine } = prenotazioni.estremi(data, oraInizio, oraFine);
-  if (!inizio.isValid || !fine.isValid) {
-    return res.status(400).json({ errore: 'data o orario non validi' });
-  }
-  res.json({
-    testo: testoAnnuncio({
-      sede,
-      titolo: String(titolo || '').trim(),
-      note: String(note || '').trim(),
-      inizio,
-      fine,
-      utente,
-      ogni: Boolean(fissa),
-    }),
   });
 }));
 
@@ -986,9 +942,7 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
     serveApertura: priv.serve_apertura === 'si',
     // Se era in vetrina ci resta: la cadenza cambia, non cosa e".
     vetrina: inVetrina(evento.description),
-    // Il gruppo grande l'ha gia' saputo quando la prenotazione e' nata: non
-    // glielo si ridice per un cambio di cadenza.
-    avvisa: false,
+    ricorrenza: 'settimanale',
     // Quando si approva, questo sparisce: la serie parte dallo stesso giorno,
     // e senza toglierlo quella settimana avrebbe la stessa cosa due volte.
     daEvento: eventId,
@@ -1088,7 +1042,7 @@ app.post('/prenota/api/interno/bloccati', (req, res) => {
 });
 
 // Lo staff ha detto si a un'attivita' periodica: adesso l'evento nasce, e si
-// ripete ogni settimana.
+// ripete con la cadenza chiesta.
 app.post('/prenota/api/interno/approva', async (req, res) => {
   if (!soloBot(req, res)) return;
   const { id, daChi } = req.body || {};
@@ -1099,6 +1053,8 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
   const tipo = CATEGORIE.find(c => c.slug === richiesta.categoria);
   const { inizio, fine } = prenotazioni.estremi(
     richiesta.data, richiesta.oraInizio, richiesta.oraFine);
+  // Le richieste rimaste in sospeso da prima delle cadenze non ce l'hanno.
+  const ricorrenza = richiesta.ricorrenza || 'settimanale';
 
   const descrizione = componiDescrizione({
     parola: tipo ? tipo.parola : '',
@@ -1119,6 +1075,7 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
         utente: richiesta.utente,
         serveApertura: richiesta.serveApertura,
         fissa: true,
+        ricorrenza,
       });
     prenotazioni.chiudiRichiesta(id);
 
@@ -1135,21 +1092,16 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
       }
     }
 
-    // Una volta sola, non ogni settimana: il gruppo grande non deve ricevere
-    // lo stesso annuncio all'infinito.
-    if (richiesta.avvisa) {
-      await annunciaNelGruppo({
-        sede: richiesta.sede, titolo: richiesta.titolo, note: richiesta.note,
-        inizio, fine, utente: richiesta.utente, ogni: true,
-      });
-    }
-
     res.json({
       ok: true,
       eventId: evento.id,
       richiesta,
       quando: `${inizio.setLocale('it').toFormat('cccc')} ` +
               `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
+      // La frase intera, cadenza compresa: "quando" da solo il bot lo
+      // leggeva come settimanale.
+      cadenza: `${prenotazioni.testoRicorrenza(ricorrenza, inizio)}, ` +
+               `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
     });
   } catch (err) {
     console.error('approva:', err.message);

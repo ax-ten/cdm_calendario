@@ -193,6 +193,63 @@ export function estremi(data, oraInizio, oraFine) {
 }
 
 
+// ---------- ricorrenze ----------
+// Le cadenze che si possono chiedere. La chiave e' quella che viaggia fra app,
+// richiesta ed evento; il testo e' quello che legge chi prenota.
+export const RICORRENZE = {
+  settimanale: 'ogni settimana',
+  quindicinale: 'ogni due settimane',
+  mensile: 'una volta al mese',
+  giornoFisso: 'ogni mese, sempre lo stesso giorno',
+};
+
+// "il 17", ma "l'1", "l'8", "l'11".
+export function articoloGiorno(n) {
+  return [1, 8, 11].includes(n) ? `l'${n}` : `il ${n}`;
+}
+
+const BYDAY = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+
+// Una volta al mese vuol dire "il terzo giovedi'", non "il 16": un'attivita'
+// si fissa su un giorno della settimana, e il 16 cade ogni mese in un giorno
+// diverso. La quinta volta nel mese non esiste in tutti i mesi, quindi diventa
+// l'ultima.
+function settimanaDelMese(inizio) {
+  const n = Math.ceil(inizio.day / 7);
+  return n === 5 ? -1 : n;
+}
+
+export function regolaRicorrenza(ricorrenza, inizio) {
+  if (ricorrenza === 'quindicinale') return 'RRULE:FREQ=WEEKLY;INTERVAL=2';
+  if (ricorrenza === 'giornoFisso') return `RRULE:FREQ=MONTHLY;BYMONTHDAY=${inizio.day}`;
+  if (ricorrenza === 'mensile') {
+    return `RRULE:FREQ=MONTHLY;BYDAY=${settimanaDelMese(inizio)}${BYDAY[inizio.weekday - 1]}`;
+  }
+  return 'RRULE:FREQ=WEEKLY';
+}
+
+// "Ogni giovedi'", "Ogni due settimane, di giovedi'", "Ogni mese, il terzo
+// giovedi'". Domenica e' l'unico giorno femminile, e l'ordinale va accordato.
+export function testoRicorrenza(ricorrenza, inizio) {
+  const giorno = inizio.setLocale('it').toFormat('cccc');
+  if (ricorrenza === 'quindicinale') return `Ogni due settimane, di ${giorno}`;
+  // Google salta i mesi in cui quel giorno non c'e': meglio dirlo prima.
+  if (ricorrenza === 'giornoFisso') {
+    return `Ogni mese, ${articoloGiorno(inizio.day)}` +
+      (inizio.day > 28 ? ', saltando i mesi che non ce l\'hanno' : '');
+  }
+  if (ricorrenza === 'mensile') {
+    const f = inizio.weekday === 7;
+    const n = settimanaDelMese(inizio);
+    const ordinale = n === -1
+      ? (f ? "l'ultima" : "l'ultimo")
+      : `${f ? 'la' : 'il'} ${(f ? ['prima', 'seconda', 'terza', 'quarta'] : ['primo', 'secondo', 'terzo', 'quarto'])[n - 1]}`;
+    return `Ogni mese, ${ordinale} ${giorno}`;
+  }
+  return `Ogni ${giorno}`;
+}
+
+
 // ---------- Google Calendar ----------
 function client(auth) {
   return google.calendar({ version: 'v3', auth });
@@ -305,6 +362,9 @@ export async function miePrenotazioni(auth, calendari, userId, da, a) {
           inizio: ev.start?.dateTime,
           fine: ev.end?.dateTime,
           fissa: ev.extendedProperties?.private?.fissa === 'si',
+          // Le serie nate prima delle cadenze non la dicono: erano tutte
+          // settimanali.
+          ricorrenza: ev.extendedProperties?.private?.ricorrenza || 'settimanale',
           // Con singleEvents gli id sono quelli delle singole occorrenze:
           // cancellarne uno salta quella settimana. Per chiudere la serie
           // serve l'id dell'evento madre, che e' un'altra cosa.
@@ -316,7 +376,7 @@ export async function miePrenotazioni(auth, calendari, userId, da, a) {
 }
 
 export async function creaPrenotazione(auth, calendarId, {
-  titolo, descrizione, inizio, fine, utente, serveApertura, fissa,
+  titolo, descrizione, inizio, fine, utente, serveApertura, fissa, ricorrenza,
 }) {
   const corpo = {
     summary: titolo,
@@ -330,13 +390,14 @@ export async function creaPrenotazione(auth, calendarId, {
         username: utente.username || '',
         serve_apertura: serveApertura ? 'si' : 'no',
         fissa: fissa ? 'si' : 'no',
+        ...(fissa ? { ricorrenza: ricorrenza || 'settimanale' } : {}),
       },
     },
   };
   // Un'attivita' periodica e' un evento solo che si ripete: cosi' la si sposta
   // la si chiude in un posto solo, invece di avere cinquantadue eventi
   // slegati che nessuno sa piu' governare.
-  if (fissa) corpo.recurrence = ['RRULE:FREQ=WEEKLY'];
+  if (fissa) corpo.recurrence = [regolaRicorrenza(ricorrenza, inizio)];
 
   const { data } = await client(auth).events.insert({
     calendarId,
