@@ -2178,7 +2178,7 @@ function schedaBene(b) {
       </div>
       ${riga1 ? `<div class="bene-info">${esc(riga1)}</div>` : ''}
       <div class="bene-info">${esc(riga2)}</div>
-      ${p ? `<div class="bene-info">Da ${esc(p.socio)}${p.scadenza ? `, entro il ${dataTesto(p.scadenza)}` : ''}</div>` : ''}
+      ${inv.staff && p ? `<div class="bene-info">Da ${esc(p.socio)}${p.scadenza ? `, entro il ${dataTesto(p.scadenza)}` : ''}</div>` : ''}
       ${inv.staff && p ? `
         <div class="azioni solo-scelto">
           <button type="button" class="bottone secondario" data-prolunga="${p.id}">+${inv.giorni} giorni</button>

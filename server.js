@@ -1288,21 +1288,48 @@ app.post('/prenota/api/inventario/catalogo', (req, res) => conUtente(req, res, a
     autore: String(f.autore || '').slice(0, 200),
   };
   const offset = Math.max(0, Number(req.body?.offset) || 0);
-  res.json(await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO,
-    await staffInventario(utente.id)));
+  const staff = await staffInventario(utente.id);
+  const esito = await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO, staff);
+  // Chi ha preso un bene e quando lo riporta lo sa solo lo staff: agli altri
+  // basta sapere che e' in prestito.
+  res.json(staff ? esito : { ...esito, beni: (esito.beni || []).map(senzaPrestito) });
 }));
+
+function senzaPrestito({ prestito, socio, scadenza, data_prestito, ...bene }) {
+  return bene;
+}
 
 // Mentre si scrive nella barra di ricerca: titoli, autori e generi.
 app.post('/prenota/api/inventario/suggerimenti', (req, res) => conUtente(req, res, async () => {
   const testo = String(req.body?.testo || '').trim().slice(0, 100);
-  res.json(await odoo.miniapp('suggerimenti', testo, 8));
+  const esito = await odoo.miniapp('suggerimenti', testo, 8);
+  res.json({ ...esito, beni: (esito.beni || []).map(senzaPrestito) });
 }));
 
 app.post('/prenota/api/inventario/presta', (req, res) => conUtente(req, res, async (utente) => {
   const beneId = Number(req.body?.beneId);
   if (!beneId) return res.status(400).json({ errore: 'quale bene?' });
   const note = String(req.body?.note || '').trim().slice(0, 500) || false;
-  res.json({ prestito: await odoo.miniapp('presta', utente.id, beneId, note) });
+  const prestito = await odoo.miniapp('presta', utente.id, beneId, note);
+  // Lo staff della sede lo deve sapere: il bene esce dallo scaffale. Il
+  // prestito in Odoo c'e' gia', quindi se il messaggio non parte lo si
+  // scrive nel log e il socio non ne paga le conseguenze.
+  const chatStaff = STAFF.get(String(prestito?.sede || '').toLowerCase());
+  if (!chatStaff) {
+    console.error(`prestito: nessun gruppo staff per ${prestito?.sede}`);
+  } else {
+    const scade = prestito.scadenza
+      ? DateTime.fromISO(prestito.scadenza).setLocale('it').toFormat('d MMMM') : '';
+    telegram('sendMessage', {
+      chat_id: chatStaff,
+      text: `${prestito.socio || nomeTelegram(utente)}` +
+        `${utente.username && prestito.socio ? ' (@' + utente.username + ')' : ''}` +
+        ` ha preso in prestito “${prestito.titolo}” a ${prestito.sede}.` +
+        (scade ? `\nDa riportare entro il ${scade}.` : '') +
+        (note ? `\nNote: ${note}` : ''),
+    }).catch(err => console.error('prestito: messaggio allo staff non mandato:', err.message));
+  }
+  res.json({ prestito });
 }));
 
 app.post('/prenota/api/inventario/miei', (req, res) => conUtente(req, res, async (utente) => {
