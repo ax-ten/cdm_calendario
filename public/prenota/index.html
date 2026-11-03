@@ -62,10 +62,10 @@ body {
   display: flex;
   gap: 2px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--scheda) 82%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  backdrop-filter: blur(20px) saturate(1.6);
-  border: 1px solid color-mix(in srgb, var(--testo) 8%, transparent);
+  /* Fondo pieno, senza sfocatura: sui WebView di Android la sfocatura
+     dietro a una forma arrotondata lascia bordi e pezzi disegnati male. */
+  background: var(--scheda);
+  border: 1px solid rgba(255, 255, 255, .08);
   box-shadow: 0 8px 28px rgba(0, 0, 0, .32);
   z-index: 25;
 }
@@ -92,7 +92,10 @@ body {
   transition: background-color .15s, color .15s;
 }
 .tab button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.tab button { flex: 0 0 92px; padding: 0; }
+/* Larghezza scritta sul pulsante, non solo come flex-basis: i Chrome meno
+   recenti (quello di Telegram su Android, per esempio) misurano la capsula
+   sul testo delle voci e non sul flex-basis, e la seconda voce ne usciva. */
+.tab button { flex: none; width: 92px; height: 100%; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 /* ----------------------------------------------------------------- passi */
 .testa-passi { display: flex; justify-content: space-between; align-items: center; min-height: 34px; }
@@ -488,6 +491,24 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   z-index: 24;
 }
 #azione[hidden] { display: none; }
+
+/* Al passaggio (col mouse) si schiariscono, alla pressione si abbassano un
+   attimo: si capisce che il tocco e' arrivato. */
+#azione, .tondo, .tab button, .bottone, .riga button, .tipi button, .bene[role="button"] {
+  transition: transform .12s ease, filter .12s ease, background-color .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  #azione:not(:disabled):hover, .tondo:hover, .bottone:not(:disabled):hover { filter: brightness(1.12); }
+  .tab button:not([aria-selected="true"]):hover { background: rgba(255, 255, 255, .06); }
+  .riga button:not(:disabled):hover, .tipi button:hover { filter: brightness(1.2); }
+}
+#azione:not(:disabled):active { transform: translateX(-50%) scale(.96); filter: brightness(.9); }
+#azione.freccia:not(:disabled):active { transform: scale(.9); }
+.tondo:active { transform: scale(.9); filter: brightness(.9); }
+.tab button:active { transform: scale(.94); }
+.bottone:not(:disabled):active, .riga button:not(:disabled):active, .tipi button:active { transform: scale(.95); }
+.bene[role="button"]:active { transform: scale(.985); }
 /* A meta' prenotazione il pulsante e' solo una freccia, a destra: va avanti,
    ma non occupa la riga. */
 #azione.freccia { left: auto; right: 12px; transform: none; width: var(--azione); align-items: center; justify-content: center; padding: 0; }
@@ -501,7 +522,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .tondo:not([hidden]) { display: flex; }
 .tondo.chiaro { background: var(--scheda); color: var(--testo);
   border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
-.tondo.secondo { right: calc(22px + var(--azione)); }
+.tondo.secondo { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
 #azione:disabled { cursor: default;
   background: color-mix(in srgb, var(--scheda) 88%, var(--testo));
   color: var(--tenue); }
@@ -877,8 +898,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
   <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
   <!-- lucide: plus -->
-  <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta a sinistra
-       del + quando c'e' anche quello. -->
+  <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta sopra il +
+       quando c'e' anche quello. -->
   <button type="button" class="tondo chiaro" id="apri-prestiti" aria-label="Prestiti in corso" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
   <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
   <div id="elenco-beni"></div>
