@@ -1237,10 +1237,19 @@ app.post('/prenota/api/inventario/catalogo', (req, res) => conUtente(req, res, a
     genere_id: Number(f.genere_id) || false,
     sistema_id: Number(f.sistema_id) || false,
     solo_disponibili: Boolean(f.solo_disponibili),
+    // Da un suggerimento scelto: quel bene, o tutti quelli di quell'autore.
+    bene_id: Number(f.bene_id) || false,
+    autore: String(f.autore || '').slice(0, 200),
   };
   const offset = Math.max(0, Number(req.body?.offset) || 0);
   res.json(await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO,
     await staffInventario(utente.id)));
+}));
+
+// Mentre si scrive nella barra di ricerca: titoli, autori e generi.
+app.post('/prenota/api/inventario/suggerimenti', (req, res) => conUtente(req, res, async () => {
+  const testo = String(req.body?.testo || '').trim().slice(0, 100);
+  res.json(await odoo.miniapp('suggerimenti', testo, 8));
 }));
 
 app.post('/prenota/api/inventario/presta', (req, res) => conUtente(req, res, async (utente) => {

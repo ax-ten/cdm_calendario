@@ -38,7 +38,11 @@ body {
 /* ------------------------------------------------------------------- tab */
 .tab {
   display: flex;
-  gap: 26px;
+  gap: 14px;
+  /* Tre schede su un telefono stretto: se non ci stanno si scorre, invece
+     di andare a capo o tagliare le parole. */
+  overflow-x: auto;
+  scrollbar-width: none;
   border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent);
   margin-bottom: 20px;
   position: sticky;
@@ -47,12 +51,14 @@ body {
   z-index: 5;
 }
 .tab button {
+  flex: 0 0 auto;
+  white-space: nowrap;
   appearance: none;
   border: 0;
   background: none;
   color: var(--tenue);
   font: inherit;
-  font-size: .95rem;
+  font-size: .9rem;
   padding: 14px 0 11px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
@@ -480,6 +486,22 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
                     linear-gradient(135deg, var(--tenue) 50%, transparent 50%);
   background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
   background-size: 5px 5px; background-repeat: no-repeat; }
+.ricerca { position: relative; }
+#suggerimenti {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 6;
+  background: var(--scheda); border-radius: 12px; padding: 4px 0;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+  max-height: 55vh; overflow-y: auto;
+}
+#suggerimenti[hidden] { display: none; }
+.sugg-gruppo { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--tenue); padding: 9px 12px 3px; }
+.sugg { display: block; width: 100%; text-align: left; padding: 8px 12px;
+  background: none; border: 0; color: var(--testo); font: inherit; font-size: .93rem; cursor: pointer; }
+.sugg[aria-selected="true"], .sugg:hover { background: color-mix(in srgb, var(--accento) 16%, transparent); }
+.sugg small { display: block; color: var(--tenue); font-size: .78rem; margin-top: 1px; }
+.sugg mark { background: none; color: var(--accento); font-weight: 600; }
+.sugg-vuoto { color: var(--tenue); font-size: .88rem; padding: 10px 12px; }
 .filtri { display: flex; gap: 8px; margin: 10px 0; }
 .filtri select { flex: 1; min-width: 0; font-size: .88rem; padding: 10px 26px 10px 10px; }
 .solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: 0 0 12px; }
@@ -546,7 +568,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <body>
 
 <nav class="tab" role="tablist">
-  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota">Prenota</button>
+  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota">Prenota stanza</button>
   <button role="tab" id="tab-mie" aria-selected="false" aria-controls="pannello-mie">Le mie prenotazioni</button>
   <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario">Inventario</button>
 </nav>
@@ -671,8 +693,10 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <div id="mio-prestito"></div>
   <button type="button" class="bottone secondario largo" id="apri-aggiungi" hidden>Aggiungi un bene</button>
 
-  <div class="campo" style="margin: 14px 0 0">
-    <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off">
+  <div class="campo ricerca" style="margin: 14px 0 0">
+    <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off"
+           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggerimenti">
+    <div id="suggerimenti" role="listbox" hidden></div>
   </div>
   <div class="filtri">
     <select id="filtro-sede" aria-label="Sede"><option value="">Sede</option></select>
@@ -1603,11 +1627,7 @@ async function apriInventario() {
     el('filtro-genere').insertAdjacentHTML('beforeend', opzioni(o.generi));
     el('apri-aggiungi').hidden = !inv.staff;
 
-    let attesa;
-    el('cerca-beni').addEventListener('input', () => {
-      clearTimeout(attesa);
-      attesa = setTimeout(() => cercaBeni(true), 300);
-    });
+    collegaRicerca();
     for (const id of ['filtro-sede', 'filtro-categoria', 'filtro-genere', 'filtro-disponibili']) {
       el(id).addEventListener('change', () => cercaBeni(true));
     }
@@ -1650,7 +1670,129 @@ function filtriBeni() {
     categoria: el('filtro-categoria').value,
     genere_id: el('filtro-genere').value,
     solo_disponibili: el('filtro-disponibili').checked,
+    bene_id: inv.beneId || '',
+    autore: inv.autore || '',
   };
+}
+
+// ------------------------------------------- ricerca con suggerimenti
+// Mentre si scrive compaiono titoli, autori e generi; l'elenco sotto si
+// aggiorna da solo quando ci si ferma. Scegliere un titolo mostra quel
+// bene, un autore tutti i suoi, un genere imposta il filtro.
+const sugg = { voci: [], indice: -1, ultima: 0, timer: null, timerElenco: null };
+
+function evidenzia(testo, cercato) {
+  const parole = cercato.split(/\s+/).filter(Boolean)
+    .map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (!parole.length) return esc(testo);
+  return String(testo).split(new RegExp(`(${parole.join('|')})`, 'gi'))
+    .map((pezzo, i) => i % 2 ? `<mark>${esc(pezzo)}</mark>` : esc(pezzo)).join('');
+}
+
+function collegaRicerca() {
+  const campo = el('cerca-beni');
+  campo.addEventListener('input', () => {
+    // Si e' ricominciato a scrivere: il suggerimento scelto prima non vale piu'.
+    inv.beneId = null;
+    inv.autore = null;
+    clearTimeout(sugg.timer);
+    clearTimeout(sugg.timerElenco);
+    sugg.timer = setTimeout(aggiornaSuggerimenti, 180);
+    sugg.timerElenco = setTimeout(() => cercaBeni(true), 500);
+  });
+  campo.addEventListener('focus', () => { if (campo.value.trim().length >= 2) aggiornaSuggerimenti(); });
+  campo.addEventListener('blur', () => setTimeout(chiudiSuggerimenti, 120));
+  campo.addEventListener('keydown', (e) => {
+    const aperto = !el('suggerimenti').hidden && sugg.voci.length;
+    if (e.key === 'ArrowDown' && aperto) { e.preventDefault(); evidenziaVoce(sugg.indice + 1); }
+    else if (e.key === 'ArrowUp' && aperto) { e.preventDefault(); evidenziaVoce(sugg.indice - 1); }
+    else if (e.key === 'Escape') chiudiSuggerimenti();
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (aperto && sugg.indice >= 0) return scegliSuggerimento(sugg.voci[sugg.indice]);
+      chiudiSuggerimenti();
+      clearTimeout(sugg.timerElenco);
+      campo.blur();
+      cercaBeni(true);
+    }
+  });
+}
+
+async function aggiornaSuggerimenti() {
+  const testo = el('cerca-beni').value.trim();
+  const mia = ++sugg.ultima;
+  if (testo.length < 2) return chiudiSuggerimenti();
+  let s;
+  try {
+    s = await chiama('inventario/suggerimenti', { testo });
+  } catch {
+    return;
+  }
+  // Arrivata tardi, o il campo intanto e' cambiato: non serve piu'.
+  if (mia !== sugg.ultima || el('cerca-beni').value.trim() !== testo) return;
+  if (document.activeElement !== el('cerca-beni')) return;
+
+  sugg.voci = [
+    ...s.beni.map(b => ({ tipo: 'bene', ...b })),
+    ...s.autori.map(nome => ({ tipo: 'autore', nome })),
+    ...s.generi.map(g => ({ tipo: 'genere', ...g })),
+  ];
+  sugg.indice = -1;
+  const box = el('suggerimenti');
+  if (!sugg.voci.length) {
+    box.innerHTML = '<div class="sugg-vuoto">Nessun risultato.</div>';
+  } else {
+    const gruppo = (tipo, titolo, riga) => {
+      const voci = sugg.voci.map((v, i) => [v, i]).filter(([v]) => v.tipo === tipo);
+      return voci.length ? `<div class="sugg-gruppo">${titolo}</div>` +
+        voci.map(([v, i]) => `<button type="button" class="sugg" role="option" data-i="${i}" aria-selected="false">${riga(v)}</button>`).join('') : '';
+    };
+    box.innerHTML =
+      gruppo('bene', 'Titoli', v => `${evidenzia(v.titolo, testo)}
+        <small>${esc([v.autore, v.sede, STATI_BENE[v.stato]].filter(Boolean).join(' · '))}</small>`) +
+      gruppo('autore', 'Autori', v => `${evidenzia(v.nome, testo)}<small>Tutti i suoi</small>`) +
+      gruppo('genere', 'Generi', v => `${evidenzia(v.nome, testo)}<small>Filtra per genere</small>`);
+    box.querySelectorAll('.sugg').forEach(b => {
+      // pointerdown, non click: il campo perde il fuoco prima del click, e
+      // la tendina si chiuderebbe sotto il dito.
+      b.addEventListener('pointerdown', e => e.preventDefault());
+      b.onclick = () => scegliSuggerimento(sugg.voci[Number(b.dataset.i)]);
+    });
+  }
+  box.hidden = false;
+  el('cerca-beni').setAttribute('aria-expanded', 'true');
+}
+
+function evidenziaVoce(i) {
+  const n = sugg.voci.length;
+  sugg.indice = (i + n) % n;
+  el('suggerimenti').querySelectorAll('.sugg').forEach(b => {
+    const scelto = Number(b.dataset.i) === sugg.indice;
+    b.setAttribute('aria-selected', String(scelto));
+    if (scelto) b.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+function chiudiSuggerimenti() {
+  el('suggerimenti').hidden = true;
+  el('cerca-beni').setAttribute('aria-expanded', 'false');
+  sugg.indice = -1;
+}
+
+function scegliSuggerimento(v) {
+  chiudiSuggerimenti();
+  clearTimeout(sugg.timerElenco);
+  const campo = el('cerca-beni');
+  if (v.tipo === 'bene') {
+    inv.beneId = v.id; inv.autore = null; campo.value = v.titolo;
+  } else if (v.tipo === 'autore') {
+    inv.autore = v.nome; inv.beneId = null; campo.value = v.nome;
+  } else {
+    inv.beneId = null; inv.autore = null; campo.value = '';
+    el('filtro-genere').value = String(v.id);
+  }
+  campo.blur();
+  cercaBeni(true);
 }
 
 let ricercaInCorso = 0;
