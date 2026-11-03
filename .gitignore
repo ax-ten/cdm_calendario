@@ -17,3 +17,6 @@ bot_token.txt
 
 # Segreto condiviso col bot per le rotte interne.
 segreto_interno.txt
+
+# Credenziali dell'utente tecnico Odoo per la sezione Inventario.
+odoo.json

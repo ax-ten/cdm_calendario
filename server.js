@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import * as prenotazioni from './prenotazioni.js';
+import * as odoo from './odoo.js';
+import * as soci from './soci.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -584,7 +586,12 @@ function normalizeEvent(ev, zone = 'Europe/Rome', sedeCalendario = null) {
 // ---------- app di prenotazione ----------
 // Ogni richiesta porta l'initData di Telegram e viene verificata: e' l'unica
 // cosa che impedisce a chi conosce l'URL di prenotare a nome di altri.
-async function conUtente(req, res, azione) {
+//
+// L'app e' dei soci: le stanze come l'inventario. Ogni rotta, tranne quelle
+// che servono a registrarsi, controlla che chi chiama sia un socio
+// confermato in Odoo. Nascondere le schede nella pagina non basterebbe:
+// l'API si chiama anche senza pagina.
+async function conUtente(req, res, azione, { soloSoci = true } = {}) {
   if (!BOT_TOKEN) {
     return res.status(503).json({ errore: 'app non configurata: manca bot_token.txt' });
   }
@@ -595,19 +602,71 @@ async function conUtente(req, res, azione) {
     return res.status(401).json({ errore: `identita non verificata: ${err.message}` });
   }
   try {
+    if (soloSoci) {
+      utente.socio = await socioDi(utente.id);
+      if (!utente.socio) {
+        return res.status(403).json({ errore: 'l app è riservata ai sociɜ: registrati prima', registrati: true });
+      }
+    }
     await azione(utente);
   } catch (err) {
+    if (err instanceof odoo.ErroreOdoo && err.perUtente) {
+      return res.status(409).json({ errore: err.message });
+    }
     console.error('prenotazioni:', err);
     res.status(500).json({ errore: err.message || String(err) });
+  }
+}
+
+// Chi e' socio lo dice Odoo, ma chiederlo a ogni tocco dell'app vorrebbe
+// dire un giro su Odoo per ogni giorno del calendario che si apre. Si tiene
+// la risposta per qualche minuto, e se Odoo non risponde si usa l'ultima:
+// un Odoo giu' non deve chiudere le stanze a chi le prenotava ieri.
+// Senza odoo.json il controllo non c'e', e l'app resta aperta come prima:
+// cosi' si puo' aggiornare il server prima di mettere in piedi Odoo.
+const SOCI_VALIDI_PER_MS = 10 * 60 * 1000;
+const sociVisti = new Map();
+
+async function socioDi(userId, { fresco = false } = {}) {
+  if (!odoo.attivo()) return { id: null, nome: null, numero_socio: null, senzaOdoo: true };
+  const visto = sociVisti.get(String(userId));
+  if (!fresco && visto && Date.now() - visto.quando < SOCI_VALIDI_PER_MS) return visto.socio;
+  try {
+    const socio = await odoo.miniapp('socio_da_telegram', String(userId));
+    sociVisti.set(String(userId), { socio, quando: Date.now() });
+    return socio;
+  } catch (err) {
+    if (visto) {
+      console.error('Odoo non risponde, uso l ultima risposta per', userId, err.message);
+      return visto.socio;
+    }
+    throw err;
   }
 }
 
 app.use(express.json({ limit: '64kb' }));
 
 app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) => {
+  // Qui si arriva anche da non soci: e' la rotta che dice all'app se
+  // mostrare la registrazione. Il resto dello stato si da' solo ai soci.
+  utente.socio = await socioDi(utente.id, { fresco: true });
+  if (!utente.socio) {
+    const fino = soci.rifiutatoFinoA(utente.id);
+    return res.json({
+      utente,
+      socio: false,
+      registrazione: {
+        inAttesa: Boolean(soci.richiestaDi(utente.id)),
+        rifiutatoFinoA: fino ? fino.setLocale('it').toFormat('d MMMM') : null,
+        informativa: await odoo.miniapp('informativa'),
+      },
+    });
+  }
+
   const [staff, direttivo] = await Promise.all([eStaff(utente.id), eDirettivo(utente.id)]);
   res.json({
     utente,
+    socio: utente.socio,
     bloccato: prenotazioni.eBloccato(utente.id),
     staff,
     // Decide se l'app mostra "In vetrina". Il controllo vero si rifa' alla
@@ -626,7 +685,96 @@ app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) 
       giorniAvanti: prenotazioni.GIORNI_AVANTI,
     },
   });
-}));
+}, { soloSoci: false }));
+
+// ---------- registrazione ----------
+// Nome e cognome li dice la persona, che e' socio lo conferma lo staff dal
+// suo gruppo. La richiesta va in tutti i gruppi staff: alla prima apertura
+// dell'app non si sa ancora di che sede sia.
+const PAROLA_MAX = 60;
+
+function nomeTelegram(utente) {
+  return `${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`;
+}
+
+app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (utente) => {
+  const nome = String(req.body?.nome || '').trim();
+  const cognome = String(req.body?.cognome || '').trim();
+  if (!nome || !cognome || nome.length > PAROLA_MAX || cognome.length > PAROLA_MAX) {
+    return res.status(400).json({ errore: 'servono nome e cognome' });
+  }
+  if (req.body?.socio !== true) {
+    return res.status(400).json({ errore: 'l app è riservata ai sociɜ' });
+  }
+  if (req.body?.privacy !== true) {
+    return res.status(400).json({ errore: 'serve accettare l informativa' });
+  }
+  if (await socioDi(utente.id, { fresco: true })) {
+    return res.status(409).json({ errore: 'sei già registratə' });
+  }
+  if (soci.richiestaDi(utente.id)) return res.json({ ok: true, inAttesa: true });
+  const fino = soci.rifiutatoFinoA(utente.id);
+  if (fino) {
+    return res.status(403).json({
+      errore: `lo staff non ti ha riconosciutə come sociə: puoi riprovare dal ` +
+              `${fino.setLocale('it').toFormat('d MMMM')}, o parlarne in sede`,
+    });
+  }
+  if (!STAFF.size) return res.status(500).json({ errore: 'nessun gruppo staff configurato' });
+
+  // L'esito arriva in chat privata, e i promemoria dei prestiti pure: se il
+  // bot non puo' scrivere a questa persona, lo si dice adesso e non quando
+  // lo staff ha gia' risposto.
+  try {
+    await telegram('sendChatAction', { chat_id: utente.id, action: 'typing' });
+  } catch {
+    return res.status(409).json({
+      errore: 'apri la chat privata con il bot, premi Avvia, poi riapri l app da li',
+    });
+  }
+
+  const candidati = await odoo.miniapp('candidati', nome, cognome);
+  const testo =
+    `Richiesta di registrazione all app.\n` +
+    `Dice di chiamarsi ${nome} ${cognome}.\n` +
+    `Su Telegram: ${nomeTelegram(utente)}, id ${utente.id}.\n\n` +
+    (candidati.length
+      ? 'Ci sono sociɜ con un nome simile: se è la stessa persona sceglila, così non nasce una scheda doppia.'
+      : 'Nessunə sociə in Odoo con un nome simile.');
+  const id = soci.salva({
+    utente, nome, cognome, testo,
+    privacy: DateTime.now().toUTC().toFormat('yyyy-LL-dd HH:mm:ss'),
+  });
+
+  const tastiera = [
+    ...candidati.map(c => [{
+      text: `Stessa persona di ${c.nome}${c.numero_socio ? ' (n. ' + c.numero_socio + ')' : ''}`,
+      callback_data: `socio:${id}:${c.id}`,
+    }]),
+    [
+      { text: 'Sociə nuovə', callback_data: `socio:${id}:nuovo` },
+      { text: 'Non è sociə', callback_data: `socio:${id}:no` },
+    ],
+  ];
+
+  const messaggi = [];
+  for (const chatId of STAFF.values()) {
+    try {
+      const m = await telegram('sendMessage', {
+        chat_id: chatId, text: testo, reply_markup: { inline_keyboard: tastiera },
+      });
+      messaggi.push({ chat: chatId, id: m.message_id });
+    } catch (err) {
+      console.error(`registrazione: gruppo staff ${chatId}:`, err.message);
+    }
+  }
+  if (!messaggi.length) {
+    soci.chiudi(id);
+    return res.status(500).json({ errore: 'non sono riuscito ad avvisare lo staff' });
+  }
+  soci.aggiorna(id, { messaggi });
+  res.json({ ok: true, inAttesa: true });
+}, { soloSoci: false }));
 
 app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, data, oraInizio, oraFine } = req.body || {};
@@ -1116,6 +1264,43 @@ app.post('/prenota/api/interno/rifiuta', (req, res) => {
   if (!richiesta) return res.status(404).json({ errore: 'richiesta non trovata' });
   prenotazioni.chiudiRichiesta(id);
   res.json({ ok: true, richiesta });
+});
+
+// Lo staff ha risposto a una registrazione. `scelta` e' l'id della scheda
+// socio ("e' lui"), "nuovo" o "no". Il bot poi aggiorna i messaggi negli
+// altri gruppi staff e scrive alla persona: per questo la risposta riporta
+// la richiesta intera.
+app.post('/prenota/api/interno/socio', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { id, scelta, daChi } = req.body || {};
+  const chi = daChi || 'staff';
+  const presa = soci.prendiInCarico(id, chi);
+  if (presa.esito === 'sparita') return res.status(404).json({ errore: 'qualcuno ha gia risposto' });
+  if (presa.esito === 'occupata') {
+    return res.status(409).json({ errore: `ci sta gia pensando ${presa.daChi}` });
+  }
+  const r = presa.richiesta;
+
+  if (scelta === 'no') {
+    soci.chiudi(id);
+    soci.segnaRifiutato(r.utente.id, chi);
+    return res.json({ ok: true, esito: 'no', richiesta: r });
+  }
+
+  try {
+    const socio = scelta === 'nuovo'
+      ? await odoo.miniapp('crea_socio', r.utente.id, r.nome, r.cognome, r.privacy, chi)
+      : await odoo.miniapp('collega_socio', r.utente.id, Number(scelta), r.privacy, chi);
+    soci.chiudi(id);
+    soci.dimenticaRifiuto(r.utente.id);
+    sociVisti.delete(String(r.utente.id));
+    res.json({ ok: true, esito: scelta === 'nuovo' ? 'nuovo' : 'collegato', socio, richiesta: r });
+  } catch (err) {
+    // La richiesta resta aperta: lo staff puo' scegliere un'altra strada.
+    soci.rilascia(id);
+    console.error('registrazione:', err.message);
+    res.status(err.perUtente ? 409 : 500).json({ errore: err.message });
+  }
 });
 
 // Salta una settimana di un'attivita' periodica: cancella quell'istanza sola.

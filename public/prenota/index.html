@@ -63,6 +63,8 @@ body {
   border-bottom-color: var(--accento);
 }
 .tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: 2px; }
+/* Chi deve ancora registrarsi non ha schede da scegliere. */
+.tab[hidden] { display: none; }
 
 h1 {
   font-size: 1.35rem;
@@ -461,6 +463,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .riga button.grave { color: var(--pieno); border-color: var(--pieno); }
 .riga button:disabled { opacity: .5; cursor: default; }
 .vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
+
+/* --------------------------------------------------------- registrazione */
+.informativa { margin-top: 12px; font-size: .88rem; }
+.informativa summary { color: var(--accento); cursor: pointer; }
+.informativa > div {
+  margin-top: 10px; padding: 12px; border-radius: 12px;
+  background: var(--scheda); color: var(--tenue);
+  max-height: 45vh; overflow-y: auto;
+}
+.informativa > div > :first-child { margin-top: 0; }
+.informativa > div > :last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -582,6 +595,50 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   <h1>Controlla le tue prenotazioni</h1>
   <p class="spiega">Quelle che devono ancora arrivare. Puoi annullarle da qui.</p>
   <div id="elenco-mie" class="vuoto">…</div>
+</section>
+
+<!-- ------------------------------------------------------ registrazione -->
+<!-- L'app e' dei soci: finche' lo staff non conferma, c'e' solo questa. -->
+<section class="pannello" id="pannello-registrazione" hidden>
+  <div id="modulo-registrazione">
+    <h1>Registrati</h1>
+    <p class="spiega">L’app è riservata ai sociɜ del Crocevia dei Mondi. Dicci chi sei:
+      lo staff conferma e ti scrivo qui in chat.</p>
+
+    <div class="campo">
+      <label for="reg-nome">Nome</label>
+      <input type="text" id="reg-nome" maxlength="60" autocomplete="given-name">
+    </div>
+    <div class="campo">
+      <label for="reg-cognome">Cognome</label>
+      <input type="text" id="reg-cognome" maxlength="60" autocomplete="family-name">
+    </div>
+
+    <div class="campo">
+      <div class="interruttore">
+        <input type="checkbox" id="reg-socio">
+        <div>
+          <label for="reg-socio">Sono sociə del Crocevia dei Mondi</label>
+          <small>Lo staff lo verifica sul libro dellɜ sociɜ.</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="campo">
+      <div class="interruttore">
+        <input type="checkbox" id="reg-privacy">
+        <div>
+          <label for="reg-privacy">Ho letto l’informativa privacy</label>
+          <small>Nome, cognome e il tuo account Telegram vanno sulla tua scheda sociə.</small>
+          <details class="informativa" id="campo-informativa">
+            <summary>Leggi l’informativa</summary>
+            <div id="informativa"></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="esito-registrazione" class="vuoto" hidden></div>
 </section>
 
 <script>
@@ -1216,6 +1273,82 @@ function rendiSettimanale(sede, id, bottone) {
 }
 
 
+// ---------------------------------------------------------- registrazione
+const reg = (id) => el(`reg-${id}`);
+
+function mostraRegistrazione(info) {
+  document.querySelector('nav.tab').hidden = true;
+  el('pannello-prenota').hidden = true;
+  el('pannello-mie').hidden = true;
+  el('blocco-esito').hidden = true;
+  el('pannello-registrazione').hidden = false;
+
+  if (info.inAttesa) return esitoRegistrazione(
+    'Richiesta inviata allo staff. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
+  if (info.rifiutatoFinoA) return esitoRegistrazione(
+    `Lo staff non ti ha riconosciutə come sociə. Se è un errore parlane in sede, ` +
+    `oppure riprova dal ${info.rifiutatoFinoA}.`);
+
+  if (info.informativa) {
+    // Il testo lo scrive chi amministra Odoo, ma passa da una pagina che
+    // gira dentro Telegram: niente script e niente gestori di eventi.
+    const t = document.createElement('template');
+    t.innerHTML = info.informativa;
+    t.content.querySelectorAll('script, iframe, object, embed, link, style').forEach(n => n.remove());
+    t.content.querySelectorAll('*').forEach(n => [...n.attributes]
+      .filter(a => a.name.startsWith('on') || /^\s*javascript:/i.test(a.value))
+      .forEach(a => n.removeAttribute(a.name)));
+    el('informativa').replaceChildren(t.content);
+  } else {
+    el('informativa').textContent = 'Il testo completo lo trovi in sede.';
+  }
+
+  for (const id of ['nome', 'cognome']) reg(id).addEventListener('input', aggiornaRegistrazione);
+  for (const id of ['socio', 'privacy']) reg(id).addEventListener('change', aggiornaRegistrazione);
+  if (tg?.MainButton) {
+    tg.MainButton.setText('Invia richiesta');
+    tg.MainButton.onClick(registrati);
+    tg.MainButton.show();
+  }
+  aggiornaRegistrazione();
+}
+
+function registrazioneCompleta() {
+  return Boolean(reg('nome').value.trim() && reg('cognome').value.trim() &&
+                 reg('socio').checked && reg('privacy').checked);
+}
+
+function aggiornaRegistrazione() {
+  if (!tg?.MainButton) return;
+  registrazioneCompleta() ? tg.MainButton.enable() : tg.MainButton.disable();
+}
+
+async function registrati() {
+  if (!registrazioneCompleta()) return;
+  tg?.MainButton.showProgress();
+  try {
+    await chiama('registrati', {
+      nome: reg('nome').value.trim(),
+      cognome: reg('cognome').value.trim(),
+      socio: reg('socio').checked,
+      privacy: reg('privacy').checked,
+    });
+    esitoRegistrazione(
+      'Richiesta inviata allo staff. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
+  } catch (err) {
+    lamenta(err.message);
+  } finally {
+    tg?.MainButton.hideProgress();
+  }
+}
+
+function esitoRegistrazione(testo) {
+  el('modulo-registrazione').hidden = true;
+  el('esito-registrazione').textContent = testo;
+  el('esito-registrazione').hidden = false;
+  tg?.MainButton.hide();
+}
+
 // ------------------------------------------------------------------ avvio
 function mostra(quale) {
   el('pannello-prenota').hidden = quale !== 'prenota';
@@ -1235,6 +1368,7 @@ async function avvia() {
     document.body.innerHTML = `<div class="vuoto">${err.message}</div>`;
     return;
   }
+  if (!info.socio) return mostraRegistrazione(info.registrazione);
 
   stato.limiti = info.limiti;
   stato.daOra = 18;
