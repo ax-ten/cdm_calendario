@@ -626,6 +626,16 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
     <div class="campo">
       <div class="interruttore">
+        <input type="checkbox" id="reg-tesseramento">
+        <div>
+          <label for="reg-tesseramento">So che registrarmi qui non sostituisce il tesseramento</label>
+          <small>La tessera si fa e si rinnova in sede, come sempre.</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="campo">
+      <div class="interruttore">
         <input type="checkbox" id="reg-privacy">
         <div>
           <label for="reg-privacy">Ho letto l’informativa privacy</label>
@@ -1304,7 +1314,7 @@ function mostraRegistrazione(info) {
   }
 
   for (const id of ['nome', 'cognome']) reg(id).addEventListener('input', aggiornaRegistrazione);
-  for (const id of ['socio', 'privacy']) reg(id).addEventListener('change', aggiornaRegistrazione);
+  for (const id of ['socio', 'tesseramento', 'privacy']) reg(id).addEventListener('change', aggiornaRegistrazione);
   if (tg?.MainButton) {
     tg.MainButton.setText('Invia richiesta');
     tg.MainButton.onClick(registrati);
@@ -1315,7 +1325,8 @@ function mostraRegistrazione(info) {
 
 function registrazioneCompleta() {
   return Boolean(reg('nome').value.trim() && reg('cognome').value.trim() &&
-                 reg('socio').checked && reg('privacy').checked);
+                 reg('socio').checked && reg('tesseramento').checked &&
+                 reg('privacy').checked);
 }
 
 function aggiornaRegistrazione() {
@@ -1331,6 +1342,7 @@ async function registrati() {
       nome: reg('nome').value.trim(),
       cognome: reg('cognome').value.trim(),
       socio: reg('socio').checked,
+      tesseramento: reg('tesseramento').checked,
       privacy: reg('privacy').checked,
     });
     esitoRegistrazione(

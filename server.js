@@ -706,6 +706,11 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   if (req.body?.socio !== true) {
     return res.status(400).json({ errore: 'l app è riservata ai sociɜ' });
   }
+  // Registrarsi all'app non e' tesserarsi: lo si fa dire in chiaro, se no
+  // qualcunə pensa di aver rinnovato la tessera premendo un bottone.
+  if (req.body?.tesseramento !== true) {
+    return res.status(400).json({ errore: 'serve confermare che la registrazione non sostituisce il tesseramento' });
+  }
   if (req.body?.privacy !== true) {
     return res.status(400).json({ errore: 'serve accettare l informativa' });
   }
