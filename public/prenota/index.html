@@ -47,9 +47,14 @@ body {
      le sue voci, che galleggia sopra la pagina staccata dai bordi, con lo
      sfondo velato. La voce attiva sta in una capsula piu' chiara. Le icone
      sono di Lucide (licenza ISC, vendor/lucide-LICENSE.txt), scritte qui. */
+  /* Centrato con left/right a zero e margini automatici, non con left: 50%:
+     cosi' il browser gli lascia tutta la larghezza, invece di meta'
+     schermo, e su un telefono stretto le voci non escono dalla capsula. */
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: max-content;
   bottom: calc(var(--menu-margine) + env(safe-area-inset-bottom));
   max-width: calc(100% - 24px);
   height: var(--menu);
@@ -119,12 +124,13 @@ body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
   background: color-mix(in srgb, var(--accento) 16%, transparent);
 }
 .tab button svg { width: 24px; height: 24px; flex: 0 0 auto; }
-/* La scheda scelta ha l'icona piena: le forme si riempiono, i dettagli dentro
-   (la costa del libro, la maniglia) restano incisi col colore del fondo. */
-.tab button svg .riempi { fill: transparent; transition: fill .15s; }
-.tab button[aria-selected="true"] svg .riempi { fill: currentColor; }
-.tab button[aria-selected="true"] svg .dentro { stroke: var(--scheda); }
+/* Icone sempre a linee: la scheda scelta si riconosce dal colore e dalla
+   capsula. Riempite, le forme di Lucide diventavano macchie. */
+.tab button svg { display: block; }
+/* Niente contorno dopo un tocco: sul telefono restava attorno alla voce. */
+.tab button:focus { outline: none; }
 .tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: -2px; }
+@media (pointer: coarse) { .tab button:focus-visible { outline: none; } }
 /* Chi deve ancora registrarsi non ha schede da scegliere. */
 .tab[hidden] { display: none; }
 body.senza-menu { --ingombro-menu: calc(env(safe-area-inset-bottom) + 6px); }
@@ -493,6 +499,9 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   background: var(--accento); color: var(--su-accento); box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
   align-items: center; justify-content: center; cursor: pointer; }
 .tondo:not([hidden]) { display: flex; }
+.tondo.chiaro { background: var(--scheda); color: var(--testo);
+  border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
+.tondo.secondo { right: calc(22px + var(--azione)); }
 #azione:disabled { cursor: default;
   background: color-mix(in srgb, var(--scheda) 88%, var(--testo));
   color: var(--tenue); }
@@ -567,6 +576,22 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
    colore smette di voler dire "attento". */
 .riga button.grave { color: var(--pieno); border-color: var(--pieno); }
 .riga button:disabled { opacity: .5; cursor: default; }
+.azioni.a-destra { justify-content: flex-end; align-items: center; }
+.azioni[hidden] { display: none; }
+.riga button.conferma { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+.contagiorni { display: flex; align-items: center; border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--tenue) 55%, transparent); overflow: hidden; }
+.contagiorni { flex: 0 0 auto; }
+.riga .contagiorni button { border: 0; border-radius: 0; width: 32px; padding: 7px 0; color: var(--testo); }
+.contagiorni input[type="number"] { width: 38px; flex: 0 0 38px; padding: 6px 0; border: 0; border-radius: 0; text-align: center;
+  background: transparent; color: var(--testo); font: inherit; font-size: .9rem;
+  -moz-appearance: textfield; appearance: textfield; }
+.riga .contagiorni button { flex: 0 0 32px; }
+.contagiorni input::-webkit-inner-spin-button, .contagiorni input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.contagiorni .unita { color: var(--tenue); font-size: .8rem; margin-right: 2px; }
+.azioni.prolunga { gap: 6px; }
+.azioni.prolunga .contagiorni { margin-right: auto; }
+.riga .azioni.prolunga > button { padding: 7px 10px; }
 .vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
 
 /* ------------------------------------------------------------ inventario */
@@ -633,8 +658,12 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .bottone.largo { width: 100%; padding: 11px 14px; }
 .bottone[hidden] { display: none; }
 
-.testa-biblio { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .riga .ritardo { color: var(--pieno); }
+.nessuna-mia p { color: var(--tenue); text-align: center; margin: 34px 0 0; }
+/* La freccia sta ferma in basso a destra e finisce appena sopra il +. */
+.freccia-curva { position: fixed; right: 14px;
+  bottom: calc(var(--ingombro-menu) + var(--azione) + 6px);
+  width: 110px; height: 138px; color: var(--tenue); pointer-events: none; }
 .mio-prestito { padding: 2px 0 16px; margin-bottom: 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
 .mio-prestito .scadenza { font-size: .88rem; margin-top: 6px; }
@@ -683,8 +712,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <body>
 
 <nav class="tab" role="tablist">
-  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: library-big --><rect class="riempi" width="8" height="18" x="3" y="3" rx="1"/><path class="dentro" d="M7 3v18"/><path class="riempi" d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg><span>Biblioteca</span></button>
-  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path class="riempi" d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/><path class="dentro" d="M10 12v.01"/></svg><span>Attività</span></button>
+  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: library-big --><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg><span>Biblioteca</span></button>
+  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/><path d="M10 12v.01"/></svg><span>Attività</span></button>
 </nav>
 
 <!-- ------------------------------------------------------------ prenota -->
@@ -824,10 +853,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <!-- --------------------------------------------------------- inventario -->
 <section class="pannello" id="pannello-inventario" role="tabpanel" aria-labelledby="tab-inventario" hidden>
   <div id="mio-prestito"></div>
-  <div class="testa-biblio">
-    <h2>Prendi in prestito</h2>
-    <button type="button" class="link-mie" id="apri-prestiti" hidden>Prestiti in corso ›</button>
-  </div>
+  <h2>Prendi in prestito</h2>
 
   <div class="campo ricerca" style="margin: 0">
     <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off">
@@ -851,6 +877,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
   <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
   <!-- lucide: plus -->
+  <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta a sinistra
+       del + quando c'e' anche quello. -->
+  <button type="button" class="tondo chiaro" id="apri-prestiti" aria-label="Prestiti in corso" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
   <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
   <div id="elenco-beni"></div>
   <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
@@ -1670,7 +1699,17 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
-const NESSUNA_MIA = 'Non hai attività in arrivo: creane una col + in basso.';
+// Nessuna attivita': la frase, e una freccia curva che scende verso il +.
+// La freccia e' disegnata qui (un arco e la punta), come le icone a linee.
+const NESSUNA_MIA = `
+  <div class="nessuna-mia">
+    <p>Non hai attività in arrivo.</p>
+    <svg class="freccia-curva" viewBox="0 0 120 150" fill="none" stroke="currentColor"
+         stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M10 6 C 20 80, 95 60, 95 138"/>
+      <path d="M83 124 L 95 140 L 107 124"/>
+    </svg>
+  </div>`;
 
 async function caricaMie() {
   const dove = el('elenco-mie');
@@ -1679,7 +1718,8 @@ async function caricaMie() {
   try {
     const { prenotazioni } = await chiama('mie');
     if (!prenotazioni.length) {
-      dove.textContent = NESSUNA_MIA;
+      dove.className = '';
+      dove.innerHTML = NESSUNA_MIA;
       return;
     }
     dove.className = '';
@@ -1741,7 +1781,8 @@ function annulla(sede, id, bottone, cosa = 'una') {
       riga.remove();
       if (!el('elenco-mie').querySelector('.riga')) {
         el('elenco-mie').className = 'vuoto';
-        el('elenco-mie').textContent = NESSUNA_MIA;
+        el('elenco-mie').className = '';
+        el('elenco-mie').innerHTML = NESSUNA_MIA;
       }
       // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
       Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
@@ -1928,6 +1969,7 @@ async function apriInventario() {
     el('apri-aggiungi').onclick = apriAggiungi;
     inv.admin = Boolean(o.admin);
     el('apri-prestiti').hidden = !inv.admin;
+    el('apri-prestiti').classList.toggle('secondo', !el('apri-aggiungi').hidden);
     el('apri-prestiti').onclick = () => { mostra('prestiti'); caricaPrestitiAdmin(); };
     el('chiudi-prestiti').onclick = () => mostra('inventario');
   }
@@ -2135,6 +2177,8 @@ function aggiornaPrestito() {
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
   // Il + sta dove sta il pulsante del prestito: si vede solo senza un bene scelto.
   el('apri-aggiungi').hidden = !inv.staff || Boolean(b);
+  el('apri-prestiti').hidden = !inv.admin || Boolean(b);
+  el('apri-prestiti').classList.toggle('secondo', !el('apri-aggiungi').hidden);
 }
 
 async function prendiScelto() {
@@ -2242,16 +2286,36 @@ async function caricaPrestitiAdmin() {
         <div class="quando${p.giorni_ritardo ? ' ritardo' : ''}">${p.giorni_ritardo
           ? `In ritardo di ${p.giorni_ritardo} ${p.giorni_ritardo === 1 ? 'giorno' : 'giorni'}`
           : p.scadenza ? `Da riportare entro il ${dataTesto(p.scadenza)}` : 'Senza scadenza'}</div>
-        <div class="azioni">
+        <div class="azioni a-destra" data-azioni>
           <button type="button" data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
-          <button type="button" data-prolunga="${p.id}">+${inv.giorni} giorni</button>
+          <button type="button" data-apri-prolunga>Prolunga</button>
+        </div>
+        <div class="azioni a-destra prolunga" data-prolunga-di="${p.id}" hidden>
+          <div class="contagiorni">
+            <button type="button" data-meno aria-label="Un giorno in meno">−</button>
+            <input type="number" inputmode="numeric" min="1" max="365" value="${inv.giorni}" aria-label="Giorni in piu'">
+            <span class="unita">gg</span>
+            <button type="button" data-piu aria-label="Un giorno in piu'">+</button>
+          </div>
+          <button type="button" data-annulla-prolunga>Annulla</button>
+          <button type="button" class="conferma" data-conferma-prolunga>Prolunga</button>
         </div>
       </div>`).join('');
     dove.querySelectorAll('[data-chiudi]').forEach(b => {
       b.onclick = () => chiudiPrestito(Number(b.dataset.chiudi), b.dataset.titolo, b.dataset.socio, b);
     });
-    dove.querySelectorAll('[data-prolunga]').forEach(b => {
-      b.onclick = () => prolunga(Number(b.dataset.prolunga), b);
+    // "Prolunga" apre, sotto, la scelta dei giorni: meno e piu', o scritti.
+    dove.querySelectorAll('.riga').forEach(riga => {
+      const scelta = riga.querySelector('[data-prolunga-di]');
+      const giorni = scelta.querySelector('input');
+      const vale = () => Math.min(365, Math.max(1, Number(giorni.value) || inv.giorni));
+      const azioni = riga.querySelector('[data-azioni]');
+      riga.querySelector('[data-apri-prolunga]').onclick = () => { scelta.hidden = false; azioni.hidden = true; };
+      scelta.querySelector('[data-annulla-prolunga]').onclick = () => { scelta.hidden = true; azioni.hidden = false; };
+      scelta.querySelector('[data-meno]').onclick = () => { giorni.value = Math.max(1, vale() - 1); };
+      scelta.querySelector('[data-piu]').onclick = () => { giorni.value = Math.min(365, vale() + 1); };
+      scelta.querySelector('[data-conferma-prolunga]').onclick = (e) =>
+        prolunga(Number(scelta.dataset.prolungaDi), vale(), e.currentTarget);
     });
   } catch (err) {
     dove.textContent = err.message;
@@ -2271,10 +2335,10 @@ async function chiudiPrestito(prestitoId, titolo, socio, bottone) {
   }
 }
 
-async function prolunga(prestitoId, bottone) {
+async function prolunga(prestitoId, giorni, bottone) {
   bottone.disabled = true;
   try {
-    const { prestito } = await chiama('inventario/prolunga', { prestitoId });
+    const { prestito } = await chiama('inventario/prolunga', { prestitoId, giorni });
     toast(`Prolungato: ora scade il ${dataTesto(prestito.scadenza)}.`);
     caricaPrestitiAdmin();
   } catch (err) {

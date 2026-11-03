@@ -1414,7 +1414,9 @@ app.post('/prenota/api/inventario/prolunga', (req, res) => conUtente(req, res, a
   if (!await soloAdmin(utente, res)) return;
   const prestitoId = Number(req.body?.prestitoId);
   if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
-  res.json({ prestito: await odoo.miniapp('prolunga', prestitoId, 0, nomeTelegram(utente)) });
+  // Quanti giorni in piu' lo sceglie chi prolunga; senza, quelli di un prestito.
+  const giorni = Math.min(365, Math.max(0, Math.round(Number(req.body?.giorni) || 0)));
+  res.json({ prestito: await odoo.miniapp('prolunga', prestitoId, giorni, nomeTelegram(utente)) });
 }));
 
 // Il form dell'aggiunta parte dall'ISBN: dice se il libro c'e' gia' in
