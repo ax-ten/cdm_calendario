@@ -45,8 +45,7 @@ body {
 .tab {
   /* Il menu sta in basso, come quello di Telegram: una capsula larga quanto
      le sue voci, che galleggia sopra la pagina staccata dai bordi, con lo
-     sfondo velato. La voce attiva sta in una capsula piu' chiara. Le icone
-     sono di Lucide (licenza ISC, vendor/lucide-LICENSE.txt), scritte qui. */
+     sfondo velato. La voce attiva sta in una capsula piu' chiara. */
   /* Centrato con left/right a zero e margini automatici, non con left: 50%:
      cosi' il browser gli lascia tutta la larghezza, invece di meta'
      schermo, e su un telefono stretto le voci non escono dalla capsula. */
@@ -127,9 +126,13 @@ body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
   background: color-mix(in srgb, var(--accento) 16%, transparent);
 }
 .tab button svg { width: 24px; height: 24px; flex: 0 0 auto; }
-/* Icone sempre a linee: la scheda scelta si riconosce dal colore e dalla
-   capsula. Riempite, le forme di Lucide diventavano macchie. */
+/* Ogni voce ha due icone di Phosphor (licenza MIT, vendor/phosphor-LICENSE.txt),
+   la versione a linee e quella piena, disegnate apposta: la piena compare
+   quando la voce e' scelta. Riempire a mano quelle a linee faceva macchie. */
 .tab button svg { display: block; }
+.tab button svg.ico-piena,
+.tab button[aria-selected="true"] svg.ico-vuota { display: none; }
+.tab button[aria-selected="true"] svg.ico-piena { display: block; }
 /* Niente contorno dopo un tocco: sul telefono restava attorno alla voce. */
 .tab button:focus { outline: none; }
 .tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: -2px; }
@@ -682,9 +685,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .riga .ritardo { color: var(--pieno); }
 .nessuna-mia p { color: var(--tenue); text-align: center; margin: 34px 0 0; }
 /* La freccia sta ferma in basso a destra e finisce appena sopra il +. */
-.freccia-curva { position: fixed; right: 14px;
-  bottom: calc(var(--ingombro-menu) + var(--azione) + 6px);
-  width: 110px; height: 138px; color: var(--tenue); pointer-events: none; }
+.freccia-curva { position: fixed; right: -14px;
+  bottom: calc(var(--ingombro-menu) + var(--azione) + 12px);
+  width: 120px; height: 120px; color: var(--tenue); pointer-events: none; }
 .mio-prestito { padding: 2px 0 16px; margin-bottom: 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
 .mio-prestito .scadenza { font-size: .88rem; margin-top: 6px; }
@@ -733,8 +736,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <body>
 
 <nav class="tab" role="tablist">
-  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: library-big --><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg><span>Biblioteca</span></button>
-  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/><path d="M10 12v.01"/></svg><span>Attività</span></button>
+  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><!-- phosphor: books --><svg class="ico-vuota" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M231.65,194.55,198.46,36.75a16,16,0,0,0-19-12.39L132.65,34.42a16.08,16.08,0,0,0-12.3,19l33.19,157.8A16,16,0,0,0,169.16,224a16.25,16.25,0,0,0,3.38-.36l46.81-10.06A16.09,16.09,0,0,0,231.65,194.55ZM136,50.15c0-.06,0-.09,0-.09l46.8-10,3.33,15.87L139.33,66Zm6.62,31.47,46.82-10.05,3.34,15.9L146,97.53Zm6.64,31.57,46.82-10.06,13.3,63.24-46.82,10.06ZM216,197.94l-46.8,10-3.33-15.87L212.67,182,216,197.85C216,197.91,216,197.94,216,197.94ZM104,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V48A16,16,0,0,0,104,32ZM56,48h48V64H56Zm0,32h48v96H56Zm48,128H56V192h48v16Z"/></svg><svg class="ico-piena" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M231.65,194.55,198.46,36.75a16,16,0,0,0-19-12.39L132.65,34.42a16.08,16.08,0,0,0-12.3,19l33.19,157.8A16,16,0,0,0,169.16,224a16.25,16.25,0,0,0,3.38-.36l46.81-10.06A16.09,16.09,0,0,0,231.65,194.55ZM136,50.15c0-.06,0-.09,0-.09l46.8-10,3.33,15.87L139.33,66Zm10,47.38-3.35-15.9,46.82-10.06,3.34,15.9Zm70,100.41-46.8,10-3.33-15.87L212.67,182,216,197.85C216,197.91,216,197.94,216,197.94ZM104,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V48A16,16,0,0,0,104,32ZM56,48h48V64H56Zm48,160H56V192h48v16Z"/></svg><span>Biblioteca</span></button>
+  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><!-- phosphor: door-open --><svg class="ico-vuota" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M232,216H208V40a16,16,0,0,0-16-16H64A16,16,0,0,0,48,40V216H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16Zm-40,0H176V40h16ZM64,40h96V216H64Zm80,92a12,12,0,1,1-12-12A12,12,0,0,1,144,132Z"/></svg><svg class="ico-piena" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M232,216H208V40a16,16,0,0,0-16-16H64A16,16,0,0,0,48,40V216H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16Zm-64,0H64V40H168Zm-40-84a12,12,0,1,1,12,12A12,12,0,0,1,128,132Z"/></svg><span>Attività</span></button>
 </nav>
 
 <!-- ------------------------------------------------------------ prenota -->
@@ -1720,15 +1723,26 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
-// Nessuna attivita': la frase, e una freccia curva che scende verso il +.
-// La freccia e' disegnata qui (un arco e la punta), come le icone a linee.
+// Nessuna attivita': la frase, e una freccia che scende verso il +. E' una
+// freccia a pennarello: il corpo e' una forma piena che si assottiglia agli
+// estremi, la punta due tratti, e un filtro ne sporca appena i bordi. Si
+// disegna come una curva che sale verso destra e si gira finche' la punta
+// guarda il +.
 const NESSUNA_MIA = `
   <div class="nessuna-mia">
     <p>Non hai attività in arrivo.</p>
-    <svg class="freccia-curva" viewBox="0 0 120 150" fill="none" stroke="currentColor"
-         stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M10 6 C 20 80, 95 60, 95 138"/>
-      <path d="M83 124 L 95 140 L 107 124"/>
+    <svg class="freccia-curva" viewBox="0 0 360 360" aria-hidden="true">
+      <defs>
+        <filter id="pennarello" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4"/>
+          <feDisplacementMap in="SourceGraphic" scale="5"/>
+        </filter>
+      </defs>
+      <g transform="rotate(115 180 180)" filter="url(#pennarello)" fill="currentColor"
+         stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke-width="3" d="M28 208 C 92 312, 236 310, 312 124 C 220 280, 100 278, 28 208 Z"/>
+        <path fill="none" stroke-width="17" d="M258 132 L 326 90 L 316 166"/>
+      </g>
     </svg>
   </div>`;
 
