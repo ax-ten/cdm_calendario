@@ -87,7 +87,7 @@ body {
   transition: background-color .15s, color .15s;
 }
 .tab button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.tab button { padding: 0 26px; }
+.tab button { flex: 0 0 92px; padding: 0; }
 
 /* ----------------------------------------------------------------- passi */
 .testa-passi { display: flex; justify-content: space-between; align-items: center; min-height: 34px; }
@@ -584,25 +584,15 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
                     linear-gradient(135deg, var(--tenue) 50%, transparent 50%);
   background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
   background-size: 5px 5px; background-repeat: no-repeat; }
-.ricerca { position: relative; }
-#suggerimenti {
-  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 6;
-  background: var(--scheda); border-radius: 12px; padding: 4px 0;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
-  max-height: 55vh; overflow-y: auto;
-}
-#suggerimenti[hidden] { display: none; }
-.sugg-gruppo { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
-  color: var(--tenue); padding: 9px 12px 3px; }
-.sugg { display: block; width: 100%; text-align: left; padding: 8px 12px;
-  background: none; border: 0; color: var(--testo); font: inherit; font-size: .93rem; cursor: pointer; }
-.sugg[aria-selected="true"], .sugg:hover { background: color-mix(in srgb, var(--accento) 16%, transparent); }
-.sugg small { display: block; color: var(--tenue); font-size: .78rem; margin-top: 1px; }
-.sugg mark { background: none; color: var(--accento); font-weight: 600; }
-.sugg-vuoto { color: var(--tenue); font-size: .88rem; padding: 10px 12px; }
 .filtri { display: flex; gap: 8px; margin: 10px 0; }
 .filtri select { flex: 1; min-width: 0; font-size: .88rem; padding: 10px 26px 10px 10px; }
-.filtri select[hidden] { display: none; }
+.filtri select:disabled { opacity: .4; }
+.ordina { position: relative; flex: 0 0 44px; display: flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--scheda); color: var(--testo); }
+.ordina.attivo { color: var(--accento); }
+.ordina svg { width: 20px; height: 20px; }
+.ordina select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
+  padding: 0; cursor: pointer; }
 .solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: 0 0 12px; }
 .solo-disp input { width: 18px; height: 18px; margin: 0; accent-color: var(--accento); }
 .conteggio { color: var(--tenue); font-size: .84rem; margin: 0 0 8px; }
@@ -643,8 +633,10 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .bottone.largo { width: 100%; padding: 11px 14px; }
 .bottone[hidden] { display: none; }
 
-.mio-prestito { border: 1.5px solid var(--accento); margin-bottom: 16px; }
-.mio-prestito.scaduto { border-color: var(--pieno); }
+.testa-biblio { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.riga .ritardo { color: var(--pieno); }
+.mio-prestito { padding: 2px 0 16px; margin-bottom: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
 .mio-prestito .scadenza { font-size: .88rem; margin-top: 6px; }
 .mio-prestito.scaduto .scadenza { color: var(--pieno); }
 .nota-prestito { color: var(--tenue); font-size: .84rem; margin: -6px 0 14px; }
@@ -832,24 +824,43 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <!-- --------------------------------------------------------- inventario -->
 <section class="pannello" id="pannello-inventario" role="tabpanel" aria-labelledby="tab-inventario" hidden>
   <div id="mio-prestito"></div>
-  <h2>Prendi in prestito</h2>
+  <div class="testa-biblio">
+    <h2>Prendi in prestito</h2>
+    <button type="button" class="link-mie" id="apri-prestiti" hidden>Prestiti in corso ›</button>
+  </div>
 
   <div class="campo ricerca" style="margin: 0">
-    <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off"
-           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggerimenti">
-    <div id="suggerimenti" role="listbox" hidden></div>
+    <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off">
   </div>
   <div class="filtri">
-    <select id="filtro-sede" aria-label="Sede"><option value="">Sede</option></select>
+    <select id="filtro-sede" aria-label="Sede"><option value="">Qualsiasi sede</option></select>
     <select id="filtro-genere" aria-label="Genere"><option value="">Genere</option></select>
+    <!-- lucide: arrow-down-up. Il select e' invisibile sopra l'icona: si
+         tocca l'icona e si apre la scelta del telefono. -->
+    <label class="ordina" id="campo-ordine" title="Ordina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
+      <select id="ordine-beni" aria-label="Ordina">
+        <option value="popolari">Più presi in prestito</option>
+        <option value="recenti">Ultimi aggiunti</option>
+        <option value="titolo">Titolo, dalla A alla Z</option>
+        <option value="autore">Autore, dalla A alla Z</option>
+        <option value="disponibili">Prima i disponibili</option>
+      </select>
+    </label>
   </div>
   <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
   <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
   <!-- lucide: plus -->
   <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
-  <p class="conteggio" id="conteggio-beni"></p>
   <div id="elenco-beni"></div>
   <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
+</section>
+
+<!-- ------------------------------------------- prestiti in corso (admin) -->
+<section class="pannello" id="pannello-prestiti" hidden>
+  <button type="button" class="indietro" id="chiudi-prestiti">‹ Biblioteca</button>
+  <h1>Prestiti in corso</h1>
+  <div id="elenco-prestiti" class="vuoto">…</div>
 </section>
 
 <!-- ------------------------------------------------- aggiunta (staff) -->
@@ -1368,7 +1379,7 @@ function azionePrenota() {
 // bene alla biblioteca, da un passo a quello prima, e dal primo passo alle
 // tue prenotazioni.
 function indietro() {
-  if (!el('pannello-aggiungi').hidden) return mostra('inventario');
+  if (!el('pannello-aggiungi').hidden || !el('pannello-prestiti').hidden) return mostra('inventario');
   if (!el('pannello-prenota').hidden) {
     if (stato.passo > 1) vaiAPasso(stato.passo - 1); else mostra('mie');
   }
@@ -1909,10 +1920,23 @@ async function apriInventario() {
     for (const id of ['filtro-sede', 'filtro-genere', 'filtro-disponibili']) {
       el(id).addEventListener('change', () => cercaBeni(true));
     }
+    el('ordine-beni').addEventListener('change', () => {
+      el('campo-ordine').classList.toggle('attivo', el('ordine-beni').value !== 'popolari');
+      cercaBeni(true);
+    });
     el('altri-beni').onclick = () => cercaBeni(false);
     el('apri-aggiungi').onclick = apriAggiungi;
+    inv.admin = Boolean(o.admin);
+    el('apri-prestiti').hidden = !inv.admin;
+    el('apri-prestiti').onclick = () => { mostra('prestiti'); caricaPrestitiAdmin(); };
+    el('chiudi-prestiti').onclick = () => mostra('inventario');
   }
   disegnaMioPrestito();
+  if (inv.sedeIniziale) {
+    const voce = [...el('filtro-sede').options].find(o => o.textContent.toLowerCase() === inv.sedeIniziale);
+    if (voce) el('filtro-sede').value = voce.value;
+    inv.sedeIniziale = null;
+  }
   if (inv.tipoIniziale) { const t = inv.tipoIniziale; inv.tipoIniziale = null; return scegliTipo(t); }
   aggiornaFiltroGeneri();
   cercaBeni(true);
@@ -1937,7 +1961,8 @@ function aggiornaFiltroGeneri() {
   campo.innerHTML = '<option value="">Genere</option>' +
     generi.map(g => `<option value="${esc(g.id)}">${esc(g.nome)}</option>`).join('');
   campo.value = generi.some(g => String(g.id) === prima) ? prima : '';
-  campo.hidden = !generi.length;
+  // Senza generi per quel tipo il filtro resta al suo posto, spento.
+  campo.disabled = !generi.length;
 }
 
 function disegnaMioPrestito() {
@@ -1947,15 +1972,14 @@ function disegnaMioPrestito() {
   dove.innerHTML = inv.prestiti.map(p => {
     const scaduto = p.scadenza && p.scadenza < oggi;
     return `
-      <div class="bene mio-prestito${scaduto ? ' scaduto' : ''}">
-        <div class="bene-info">Il tuo prestito</div>
+      <div class="mio-prestito${scaduto ? ' scaduto' : ''}">
+        <div class="bene-info">Il ${dataTesto(p.data_prestito)} hai preso in prestito</div>
         <b>${esc(p.titolo)}</b>
-        <div class="bene-info">Preso il ${dataTesto(p.data_prestito)} a ${esc(p.sede)}</div>
         <div class="scadenza">${scaduto
-          ? `Scaduto il ${dataTesto(p.scadenza)}: riportalo in sede appena puoi.`
-          : `Da riportare entro il ${dataTesto(p.scadenza)}.`}</div>
+          ? `Scaduto il ${dataTesto(p.scadenza)}: riportalo a ${esc(p.sede)} appena puoi.`
+          : `Da riportare a ${esc(p.sede)} entro il ${dataTesto(p.scadenza)}.`}</div>
         <div class="azioni">
-          <button type="button" class="bottone" data-restituisci="${p.id}">L’ho riportato: scatta la foto</button>
+          <button type="button" class="bottone" data-restituisci="${p.id}">L’ho restituito</button>
         </div>
       </div>`;
   }).join('');
@@ -1976,129 +2000,23 @@ function filtriBeni() {
   };
 }
 
-// ------------------------------------------- ricerca con suggerimenti
-// Mentre si scrive compaiono titoli, autori e generi; l'elenco sotto si
-// aggiorna da solo quando ci si ferma. Scegliere un titolo mostra quel
-// bene, un autore tutti i suoi, un genere imposta il filtro.
-const sugg = { voci: [], indice: -1, ultima: 0, timer: null, timerElenco: null };
-
-function evidenzia(testo, cercato) {
-  const parole = cercato.split(/\s+/).filter(Boolean)
-    .map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  if (!parole.length) return esc(testo);
-  return String(testo).split(new RegExp(`(${parole.join('|')})`, 'gi'))
-    .map((pezzo, i) => i % 2 ? `<mark>${esc(pezzo)}</mark>` : esc(pezzo)).join('');
-}
-
+// ------------------------------------------------------------- ricerca
+// L'elenco si aggiorna mentre si scrive, appena ci si ferma: niente tendina,
+// che mostrava gli stessi beni una seconda volta.
 function collegaRicerca() {
   const campo = el('cerca-beni');
+  let attesa;
   campo.addEventListener('input', () => {
-    // Si e' ricominciato a scrivere: il suggerimento scelto prima non vale piu'.
-    inv.beneId = null;
-    inv.autore = null;
-    clearTimeout(sugg.timer);
-    clearTimeout(sugg.timerElenco);
-    sugg.timer = setTimeout(aggiornaSuggerimenti, 180);
-    sugg.timerElenco = setTimeout(() => cercaBeni(true), 500);
+    clearTimeout(attesa);
+    attesa = setTimeout(() => cercaBeni(true), 350);
   });
-  campo.addEventListener('focus', () => { if (campo.value.trim().length >= 2) aggiornaSuggerimenti(); });
-  campo.addEventListener('blur', () => setTimeout(chiudiSuggerimenti, 120));
   campo.addEventListener('keydown', (e) => {
-    const aperto = !el('suggerimenti').hidden && sugg.voci.length;
-    if (e.key === 'ArrowDown' && aperto) { e.preventDefault(); evidenziaVoce(sugg.indice + 1); }
-    else if (e.key === 'ArrowUp' && aperto) { e.preventDefault(); evidenziaVoce(sugg.indice - 1); }
-    else if (e.key === 'Escape') chiudiSuggerimenti();
-    else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (aperto && sugg.indice >= 0) return scegliSuggerimento(sugg.voci[sugg.indice]);
-      chiudiSuggerimenti();
-      clearTimeout(sugg.timerElenco);
-      campo.blur();
-      cercaBeni(true);
-    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    clearTimeout(attesa);
+    campo.blur();
+    cercaBeni(true);
   });
-}
-
-async function aggiornaSuggerimenti() {
-  const testo = el('cerca-beni').value.trim();
-  const mia = ++sugg.ultima;
-  if (testo.length < 2) return chiudiSuggerimenti();
-  let s;
-  try {
-    s = await chiama('inventario/suggerimenti', { testo });
-  } catch {
-    return;
-  }
-  // Arrivata tardi, o il campo intanto e' cambiato: non serve piu'.
-  if (mia !== sugg.ultima || el('cerca-beni').value.trim() !== testo) return;
-  if (document.activeElement !== el('cerca-beni')) return;
-
-  sugg.voci = [
-    ...s.beni.map(b => ({ tipo: 'bene', ...b })),
-    ...s.autori.map(nome => ({ tipo: 'autore', nome })),
-    ...s.generi.map(g => ({ tipo: 'genere', ...g })),
-  ];
-  sugg.indice = -1;
-  const box = el('suggerimenti');
-  if (!sugg.voci.length) {
-    box.innerHTML = '<div class="sugg-vuoto">Nessun risultato.</div>';
-  } else {
-    const gruppo = (tipo, titolo, riga) => {
-      const voci = sugg.voci.map((v, i) => [v, i]).filter(([v]) => v.tipo === tipo);
-      return voci.length ? `<div class="sugg-gruppo">${titolo}</div>` +
-        voci.map(([v, i]) => `<button type="button" class="sugg" role="option" data-i="${i}" aria-selected="false">${riga(v)}</button>`).join('') : '';
-    };
-    box.innerHTML =
-      gruppo('bene', 'Titoli', v => `${evidenzia(v.titolo, testo)}
-        <small>${esc([v.autore, v.sede, STATI_BENE[v.stato]].filter(Boolean).join(' · '))}</small>`) +
-      gruppo('autore', 'Autori', v => `${evidenzia(v.nome, testo)}<small>Tutti i suoi</small>`) +
-      gruppo('genere', 'Generi', v => `${evidenzia(v.nome, testo)}<small>Filtra per genere</small>`);
-    box.querySelectorAll('.sugg').forEach(b => {
-      // pointerdown, non click: il campo perde il fuoco prima del click, e
-      // la tendina si chiuderebbe sotto il dito.
-      b.addEventListener('pointerdown', e => e.preventDefault());
-      b.onclick = () => scegliSuggerimento(sugg.voci[Number(b.dataset.i)]);
-    });
-  }
-  box.hidden = false;
-  el('cerca-beni').setAttribute('aria-expanded', 'true');
-}
-
-function evidenziaVoce(i) {
-  const n = sugg.voci.length;
-  sugg.indice = (i + n) % n;
-  el('suggerimenti').querySelectorAll('.sugg').forEach(b => {
-    const scelto = Number(b.dataset.i) === sugg.indice;
-    b.setAttribute('aria-selected', String(scelto));
-    if (scelto) b.scrollIntoView({ block: 'nearest' });
-  });
-}
-
-function chiudiSuggerimenti() {
-  el('suggerimenti').hidden = true;
-  el('cerca-beni').setAttribute('aria-expanded', 'false');
-  sugg.indice = -1;
-}
-
-function scegliSuggerimento(v) {
-  chiudiSuggerimenti();
-  clearTimeout(sugg.timerElenco);
-  const campo = el('cerca-beni');
-  // I suggerimenti cercano in tutta la biblioteca: un titolo scelto porta
-  // nella sua scheda, un autore in Tutto (puo' avere libri e giochi).
-  if (v.tipo === 'bene') {
-    inv.beneId = v.id; inv.autore = null; campo.value = v.titolo;
-    scegliTipo(TIPI.find(t => t.categorie.includes(v.categoria))?.chiave || 'tutto', false);
-  } else if (v.tipo === 'autore') {
-    inv.autore = v.nome; inv.beneId = null; campo.value = v.nome;
-    scegliTipo('tutto', false);
-  } else {
-    inv.beneId = null; inv.autore = null; campo.value = '';
-    scegliTipo('tutto', false);
-    el('filtro-genere').value = String(v.id);
-  }
-  campo.blur();
-  cercaBeni(true);
 }
 
 let ricercaInCorso = 0;
@@ -2106,20 +2024,20 @@ async function cercaBeni(daCapo) {
   const mio = ++ricercaInCorso;
   if (daCapo) inv.offset = 0;
   const dove = el('elenco-beni');
-  // Finche' non si sceglie una categoria (o Tutto) o non si cerca qualcosa,
-  // l'elenco resta vuoto.
+  // Finche' non si sceglie una categoria (o Tutto), una sede, o non si
+  // cerca qualcosa, l'elenco resta vuoto.
   const f = filtriBeni();
-  if (!inv.tipo && !f.testo && !f.bene_id && !f.autore) {
+  if (!inv.tipo && !f.testo && !f.sede_id && !f.bene_id && !f.autore) {
     inv.totale = 0; inv.offset = 0; inv.beni = new Map(); sceglieBene(null);
     dove.className = ''; dove.innerHTML = '';
-    el('conteggio-beni').textContent = '';
     el('altri-beni').hidden = true;
     return;
   }
   if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; }
   el('altri-beni').disabled = true;
   try {
-    const { beni, totale } = await chiama('inventario/catalogo', { filtri: f, offset: inv.offset });
+    const { beni, totale } = await chiama('inventario/catalogo',
+      { filtri: f, offset: inv.offset, ordine: el('ordine-beni').value });
     // Chi scrive veloce manda piu' ricerche: conta solo l'ultima.
     if (mio !== ricercaInCorso) return;
     inv.totale = totale;
@@ -2129,8 +2047,6 @@ async function cercaBeni(daCapo) {
     if (!totale) { dove.className = 'vuoto'; dove.textContent = 'Niente con questi filtri.'; }
     dove.insertAdjacentHTML('beforeend', beni.map(schedaBene).join(''));
     collegaBottoni(dove);
-    el('conteggio-beni').textContent = totale
-      ? `${totale} ${totale === 1 ? 'bene' : 'beni'}, prima i più presi in prestito` : '';
     el('altri-beni').hidden = inv.offset >= totale;
   } catch (err) {
     if (mio === ricercaInCorso) { dove.className = 'vuoto'; dove.textContent = err.message; }
@@ -2173,7 +2089,6 @@ function schedaBene(b) {
   const riga1 = [b.autore, [b.editore, b.anno].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
   const riga2 = [inv.tipo === 'tutto' || inv.tipo === 'gdr' ? inv.categorie[b.categoria] : '',
                  b.sistema, b.sede, b.generi.join(', ')].filter(Boolean).join(' · ');
-  const p = b.prestito;
   return `
     <div class="bene" role="button" tabindex="0" aria-pressed="false" data-bene="${b.id}">
       <div class="bene-testa">
@@ -2182,11 +2097,6 @@ function schedaBene(b) {
       </div>
       ${riga1 ? `<div class="bene-info">${esc(riga1)}</div>` : ''}
       <div class="bene-info">${esc(riga2)}</div>
-      ${inv.staff && p ? `<div class="bene-info">Da ${esc(p.socio)}${p.scadenza ? `, entro il ${dataTesto(p.scadenza)}` : ''}</div>` : ''}
-      ${inv.staff && p ? `
-        <div class="azioni solo-scelto">
-          <button type="button" class="bottone secondario" data-prolunga="${p.id}">+${inv.giorni} giorni</button>
-        </div>` : ''}
     </div>`;
 }
 
@@ -2315,12 +2225,58 @@ async function preparaFoto(file) {
   };
 }
 
+// Chi amministra la biblioteca vede tutti i prestiti in corso, prima quelli
+// in ritardo, e li chiude o li prolunga.
+async function caricaPrestitiAdmin() {
+  const dove = el('elenco-prestiti');
+  dove.className = 'vuoto';
+  dove.textContent = 'Carico…';
+  try {
+    const { prestiti } = await chiama('inventario/admin/prestiti');
+    if (!prestiti.length) { dove.textContent = 'Nessun prestito in corso.'; return; }
+    dove.className = '';
+    dove.innerHTML = prestiti.map(p => `
+      <div class="riga">
+        <div><b>${esc(p.titolo)}</b></div>
+        <div class="quando">${esc(p.socio)} · ${esc(p.sede)} · dal ${dataTesto(p.data_prestito)}</div>
+        <div class="quando${p.giorni_ritardo ? ' ritardo' : ''}">${p.giorni_ritardo
+          ? `In ritardo di ${p.giorni_ritardo} ${p.giorni_ritardo === 1 ? 'giorno' : 'giorni'}`
+          : p.scadenza ? `Da riportare entro il ${dataTesto(p.scadenza)}` : 'Senza scadenza'}</div>
+        <div class="azioni">
+          <button type="button" data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
+          <button type="button" data-prolunga="${p.id}">+${inv.giorni} giorni</button>
+        </div>
+      </div>`).join('');
+    dove.querySelectorAll('[data-chiudi]').forEach(b => {
+      b.onclick = () => chiudiPrestito(Number(b.dataset.chiudi), b.dataset.titolo, b.dataset.socio, b);
+    });
+    dove.querySelectorAll('[data-prolunga]').forEach(b => {
+      b.onclick = () => prolunga(Number(b.dataset.prolunga), b);
+    });
+  } catch (err) {
+    dove.textContent = err.message;
+  }
+}
+
+async function chiudiPrestito(prestitoId, titolo, socio, bottone) {
+  if (!await conferma(`Chiudere il prestito di “${titolo}” a ${socio}? Il bene torna disponibile.`)) return;
+  bottone.disabled = true;
+  try {
+    await chiama('inventario/admin/chiudi', { prestitoId });
+    toast('Prestito chiuso.');
+    caricaPrestitiAdmin();
+  } catch (err) {
+    bottone.disabled = false;
+    lamenta(err.message);
+  }
+}
+
 async function prolunga(prestitoId, bottone) {
   bottone.disabled = true;
   try {
     const { prestito } = await chiama('inventario/prolunga', { prestitoId });
     toast(`Prolungato: ora scade il ${dataTesto(prestito.scadenza)}.`);
-    cercaBeni(true);
+    caricaPrestitiAdmin();
   } catch (err) {
     bottone.disabled = false;
     lamenta(err.message);
@@ -2576,16 +2532,17 @@ async function salvaBene() {
 }
 
 // ------------------------------------------------------------------ avvio
-const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi'];
+const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti'];
 
 function mostra(quale) {
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
-  const scheda = quale === 'aggiungi' ? 'inventario' : quale === 'mie' ? 'prenota' : quale;
+  const scheda = quale === 'aggiungi' || quale === 'prestiti' ? 'inventario'
+    : quale === 'mie' ? 'prenota' : quale;
   for (const t of ['prenota', 'inventario']) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
-  const siTorna = quale === 'aggiungi' || quale === 'prenota';
+  const siTorna = quale === 'aggiungi' || quale === 'prestiti' || quale === 'prenota';
   if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
   document.body.classList.toggle('in-passi', quale === 'prenota');
   azionePrincipale = quale === 'prenota' ? azionePrenota
@@ -2712,10 +2669,15 @@ async function avvia() {
 function paginaIniziale() {
   const chiesta = String(tg?.initDataUnsafe?.start_param ||
     new URLSearchParams(location.search).get('pagina') || '').toLowerCase();
-  const [pagina, tipo] = chiesta.split(/[_-]/);
+  const [pagina, ...resto] = chiesta.split(/[_-]/);
   if (pagina !== 'biblioteca') return 'mie';
+  // Dopo "biblioteca" un tipo (libri, gdt, gdr, altro, tutto) e/o una sede
+  // (barletta, trani): biblioteca_trani apre gia' filtrata su Trani.
   const tipi = { libri: 'libri', gdt: 'giochi', giochi: 'giochi', gdr: 'gdr', altro: 'altro', tutto: 'tutto' };
-  inv.tipoIniziale = tipi[tipo] || null;
+  for (const parola of resto) {
+    if (tipi[parola]) inv.tipoIniziale = tipi[parola];
+    else if (parola) inv.sedeIniziale = parola;
+  }
   return 'inventario';
 }
 

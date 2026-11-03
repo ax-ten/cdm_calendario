@@ -1216,6 +1216,20 @@ async function staffInventario(userId) {
   return staff || direttivo;
 }
 
+// Admin della biblioteca: chi sta nel gruppo del direttivo, o ha la spunta
+// "Amministra la biblioteca" sulla scheda in Odoo. Vede tutti i prestiti in
+// corso, li prolunga e li chiude a mano.
+async function adminBiblioteca(utente) {
+  if (utente.socio?.admin) return true;
+  return eDirettivo(utente.id);
+}
+
+async function soloAdmin(utente, res) {
+  if (await adminBiblioteca(utente)) return true;
+  res.status(403).json({ errore: 'lo puo fare solo chi amministra la biblioteca' });
+  return false;
+}
+
 async function soloStaff(utente, res) {
   if (await staffInventario(utente.id)) return true;
   res.status(403).json({ errore: 'lo puo fare solo lo staff' });
@@ -1256,9 +1270,10 @@ async function generiPerCategoria(opzioni) {
 }
 
 app.post('/prenota/api/inventario/opzioni', (req, res) => conUtente(req, res, async (utente) => {
-  const [opzioni, staff, prestiti] = await Promise.all([
+  const [opzioni, staff, admin, prestiti] = await Promise.all([
     odoo.miniapp('opzioni'),
     staffInventario(utente.id),
+    adminBiblioteca(utente),
     odoo.miniapp('miei_prestiti', utente.id),
   ]);
   // Senza la mappa l'app mostra tutti i generi: meglio troppi che nessuno.
@@ -1266,7 +1281,7 @@ app.post('/prenota/api/inventario/opzioni', (req, res) => conUtente(req, res, as
     console.error('generi per categoria:', err.message);
     return null;
   });
-  res.json({ ...opzioni, staff, prestiti, generi_categoria });
+  res.json({ ...opzioni, staff, admin, prestiti, generi_categoria });
 }));
 
 const PAGINA_CATALOGO = 30;
@@ -1288,11 +1303,12 @@ app.post('/prenota/api/inventario/catalogo', (req, res) => conUtente(req, res, a
     autore: String(f.autore || '').slice(0, 200),
   };
   const offset = Math.max(0, Number(req.body?.offset) || 0);
-  const staff = await staffInventario(utente.id);
-  const esito = await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO, staff);
-  // Chi ha preso un bene e quando lo riporta lo sa solo lo staff: agli altri
-  // basta sapere che e' in prestito.
-  res.json(staff ? esito : { ...esito, beni: (esito.beni || []).map(senzaPrestito) });
+  // L'ordine lo controlla Odoo contro un elenco suo; qui basta che sia corto.
+  const ordine = String(req.body?.ordine || 'popolari').slice(0, 20);
+  // Nel catalogo non si dice mai chi ha un bene ne' fino a quando, a
+  // nessuno: chi amministra lo vede nella vista dei prestiti.
+  const esito = await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO, false, ordine);
+  res.json({ ...esito, beni: (esito.beni || []).map(senzaPrestito) });
 }));
 
 function senzaPrestito({ prestito, socio, scadenza, data_prestito, ...bene }) {
@@ -1381,8 +1397,21 @@ app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res
 }));
 
 // Solo lo staff prolunga: il socio restituisce e, se vuole, lo riprende.
+// ---- vista degli admin: tutti i prestiti in corso
+app.post('/prenota/api/inventario/admin/prestiti', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdmin(utente, res)) return;
+  res.json({ prestiti: await odoo.miniapp('prestiti_aperti') });
+}));
+
+app.post('/prenota/api/inventario/admin/chiudi', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdmin(utente, res)) return;
+  const prestitoId = Number(req.body?.prestitoId);
+  if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
+  res.json({ prestito: await odoo.miniapp('chiudi_prestito', prestitoId, nomeTelegram(utente)) });
+}));
+
 app.post('/prenota/api/inventario/prolunga', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloStaff(utente, res)) return;
+  if (!await soloAdmin(utente, res)) return;
   const prestitoId = Number(req.body?.prestitoId);
   if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
   res.json({ prestito: await odoo.miniapp('prolunga', prestitoId, 0, nomeTelegram(utente)) });
