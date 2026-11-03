@@ -118,3 +118,10 @@ export function dimenticaRifiuto(userId) {
   delete dati.rifiutati[String(userId)];
   scrivi(dati);
 }
+
+// Le richieste ancora senza risposta, dalla piu' vecchia.
+export function inAttesa() {
+  return Object.entries(leggi().richieste)
+    .map(([id, r]) => ({ id, ...r }))
+    .sort((a, b) => String(a.quando).localeCompare(String(b.quando)));
+}

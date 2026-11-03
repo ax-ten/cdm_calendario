@@ -695,7 +695,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   border: 1.5px solid transparent; }
 /* Un bene si sceglie toccandolo; il pulsante per prenderlo e' quello grande
    in fondo, non uno per scheda. */
-.bene[role="button"] { cursor: pointer; -webkit-user-select: none; user-select: none; }
+.bene[role="button"] { cursor: pointer; -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none; }
 .bene.scelto { border-color: var(--accento);
   background: color-mix(in srgb, var(--accento) 10%, var(--scheda)); }
 .bene:not(.scelto) .solo-scelto { display: none; }
@@ -986,7 +987,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <!-- ------------------------------------------------- aggiunta (staff) -->
 <section class="pannello" id="pannello-aggiungi" hidden>
   <button type="button" class="indietro" id="chiudi-aggiungi">‹ Biblioteca</button>
-  <h1>Aggiungi un bene</h1>
+  <h1 id="titolo-aggiungi">Aggiungi un bene</h1>
 
   <div class="campo riga-campi">
     <div>
@@ -1060,6 +1061,12 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <div class="campo">
     <label for="agg-note">Note</label>
     <textarea id="agg-note" maxlength="2000"></textarea>
+  </div>
+  <div class="campo" id="campo-mancante" hidden>
+    <div class="interruttore">
+      <input type="checkbox" id="agg-mancante">
+      <div><label for="agg-mancante">Mancante</label></div>
+    </div>
   </div>
 
   <div class="azioni-form">
@@ -2319,12 +2326,42 @@ function collegaBottoni(dove) {
   dove.querySelectorAll('.bene[data-bene]:not([data-collegato])').forEach(scheda => {
     scheda.dataset.collegato = '1';
     const id = Number(scheda.dataset.bene);
-    scheda.onclick = () => sceglieBene(inv.scelto === id ? null : id);
+    scheda.onclick = () => {
+      if (scheda.dataset.lungo) { delete scheda.dataset.lungo; return; }
+      sceglieBene(inv.scelto === id ? null : id);
+    };
+    if (inv.admin) tieniPremuto(scheda, () => apriModifica(id));
     scheda.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scheda.click(); } };
   });
   dove.querySelectorAll('[data-prolunga]').forEach(b => {
     b.onclick = (e) => { e.stopPropagation(); prolunga(Number(b.dataset.prolunga), b); };
   });
+}
+
+// Tenere premuto un bene, per chi amministra la biblioteca, apre la modifica.
+// Per gli altri non succede niente: la pressione lunga non e' collegata.
+function tieniPremuto(scheda, azione) {
+  let timer = null;
+  let da = null;
+  const smetti = () => { clearTimeout(timer); timer = null; };
+  scheda.addEventListener('pointerdown', (e) => {
+    da = { x: e.clientX, y: e.clientY };
+    delete scheda.dataset.lungo;
+    smetti();
+    timer = setTimeout(() => {
+      timer = null;
+      // Il click che arriva al rilascio non deve anche selezionare il bene.
+      scheda.dataset.lungo = '1';
+      tg?.HapticFeedback?.impactOccurred('medium');
+      azione();
+    }, 550);
+  });
+  // Chi scorre l'elenco non sta tenendo premuto.
+  scheda.addEventListener('pointermove', (e) => {
+    if (timer && da && Math.hypot(e.clientX - da.x, e.clientY - da.y) > 10) smetti();
+  });
+  for (const t of ['pointerup', 'pointerleave', 'pointercancel']) scheda.addEventListener(t, smetti);
+  scheda.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 // Chi amministra segna che un bene l'ha preso qualcun altro: si scrive il
@@ -2600,7 +2637,7 @@ const SI_SCANSIONA = Boolean(navigator.mediaDevices?.getUserMedia);
 const LETTORE_NATIVO = 'BarcodeDetector' in window;
 let formAggiungiPronto = false;
 
-function apriAggiungi() {
+function preparaFormBene() {
   if (!formAggiungiPronto) {
     const o = inv.opzioni;
     const opzioni = (lista) => lista.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}</option>`).join('');
@@ -2619,6 +2656,57 @@ function apriAggiungi() {
     el('annulla-bene').onclick = () => mostra('inventario');
     formAggiungiPronto = true;
   }
+}
+
+const CAMPI_FORM_BENE = ['agg-isbn', 'agg-titolo', 'agg-autore', 'agg-editore', 'agg-anno',
+                         'agg-codice', 'agg-valore', 'agg-proprietario', 'agg-note', 'agg-nuovo-sistema'];
+
+function svuotaFormBene() {
+  for (const id of CAMPI_FORM_BENE) el(id).value = '';
+  el('agg-sistema').value = '';
+  el('agg-mancante').checked = false;
+  inv.generiScelti.clear();
+  inv.nuoviGeneri = [];
+  esitoIsbn('');
+}
+
+// La modifica usa lo stesso form dell'aggiunta, riempito con il bene.
+function modalitaForm(beneId) {
+  const prima = inv.modifica;
+  inv.modifica = beneId;
+  el('titolo-aggiungi').textContent = beneId ? 'Modifica bene' : 'Aggiungi un bene';
+  el('campo-mancante').hidden = !beneId;
+  // Passando da una modifica a un'aggiunta il form non deve tenere il bene di prima.
+  if (prima || beneId) svuotaFormBene();
+}
+
+async function apriModifica(beneId) {
+  let v;
+  try {
+    v = (await chiama('inventario/admin/bene', { beneId })).valori;
+  } catch (err) {
+    return lamenta(err.message);
+  }
+  preparaFormBene();
+  modalitaForm(beneId);
+  el('agg-categoria').value = v.categoria;
+  el('agg-sede').value = String(v.sede_id);
+  const metti = { 'agg-isbn': v.isbn, 'agg-titolo': v.name, 'agg-autore': v.autore,
+    'agg-editore': v.editore, 'agg-anno': v.anno_pubblicazione, 'agg-codice': v.codice_interno,
+    'agg-valore': v.valore_stimato ? String(v.valore_stimato).replace('.', ',') : '',
+    'agg-proprietario': v.proprietario_libero, 'agg-note': v.note };
+  for (const [id, valore] of Object.entries(metti)) el(id).value = valore ?? '';
+  el('agg-sistema').value = v.sistema_id ? String(v.sistema_id) : '';
+  el('agg-mancante').checked = Boolean(v.mancante);
+  for (const g of v.genere_ids) inv.generiScelti.add(String(g));
+  aggiornaCategoria();
+  mostra('aggiungi');
+  window.scrollTo(0, 0);
+}
+
+function apriAggiungi() {
+  preparaFormBene();
+  modalitaForm(null);
   // Si parte dalla categoria che si stava guardando.
   const t = TIPI.find(x => x.chiave === inv.tipo);
   if (t?.categorie.length && [...el('agg-categoria').options].some(o => o.value === t.categorie[0])) {
@@ -2807,20 +2895,28 @@ async function salvaBene() {
     proprietario: el('agg-proprietario').value,
     note: el('agg-note').value,
     generi: scelti.filter(k => !k.startsWith('nuovo:')),
+    mancante: el('agg-mancante').checked,
     nuoviGeneri: scelti.filter(k => k.startsWith('nuovo:')).map(k => k.slice(6)),
     sistemaId: el('campo-sistema').hidden ? '' : el('agg-sistema').value,
     nuovoSistema: el('campo-sistema').hidden ? '' : el('agg-nuovo-sistema').value,
   };
+  // Nella modifica un ISBN nascosto (un gioco da tavolo) resta com'e' in Odoo.
+  if (inv.modifica && el('campo-isbn').hidden) delete valori.isbn;
   el('salva-bene').disabled = true;
   try {
+    if (inv.modifica) {
+      await chiama('inventario/admin/modifica', { beneId: inv.modifica, valori });
+      toast(`Salvato: ${titolo}`);
+      modalitaForm(null);
+      mostra('inventario');
+      cercaBeni(true);
+      return;
+    }
     await chiama('inventario/aggiungi', { valori });
     toast(`Aggiunto: ${titolo}`);
     // Si svuota quello che cambia da un libro all'altro; categoria e sede
     // restano, perche' di solito se ne aggiungono tanti della stessa pila.
-    for (const id of ['agg-isbn', 'agg-titolo', 'agg-autore', 'agg-editore', 'agg-anno',
-                      'agg-codice', 'agg-valore', 'agg-proprietario', 'agg-note', 'agg-nuovo-sistema']) {
-      el(id).value = '';
-    }
+    for (const id of CAMPI_FORM_BENE) el(id).value = '';
     el('agg-sistema').value = '';
     // I generi usati adesso sono di questa categoria anche per i prossimi.
     const mappa = inv.opzioni.generi_categoria;

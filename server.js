@@ -1402,10 +1402,15 @@ app.post('/prenota/api/inventario/miei', (req, res) => conUtente(req, res, async
 // senza prova.
 const FOTO_MAX_BYTE = 4 * 1024 * 1024;
 
-async function fotoAlloStaff(chatId, foto, didascalia) {
+async function fotoAlloStaff(chatId, foto, didascalia, prestitoId) {
   const form = new FormData();
   form.append('chat_id', String(chatId));
   form.append('caption', didascalia);
+  // Se in sede il bene non c'e', lo staff lo dice da qui e il prestito si
+  // riapre: lo gestisce il bot, che riceve i bottoni.
+  form.append('reply_markup', JSON.stringify({ inline_keyboard: [[
+    { text: 'Non è rientrato', callback_data: `rientro:${prestitoId}` },
+  ]] }));
   form.append('photo', new Blob([foto], { type: 'image/jpeg' }), 'restituzione.jpg');
   const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
   const esito = await r.json();
@@ -1432,7 +1437,7 @@ app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res
   const chi = `${prestito.socio}${utente.username ? ' (@' + utente.username + ')' : ''}`;
   try {
     await fotoAlloStaff(chatStaff, foto,
-      `${chi} ha riportato “${prestito.titolo}” a ${prestito.sede}.`);
+      `${chi} ha riportato “${prestito.titolo}” a ${prestito.sede}.`, prestitoId);
   } catch (err) {
     console.error('restituzione: foto non mandata:', err.message);
     return res.status(502).json({ errore: 'Non sono riuscito a mandare la foto allo staff: riprova.' });
@@ -1505,9 +1510,9 @@ app.post('/prenota/api/inventario/isbn', (req, res) => conUtente(req, res, async
   res.json({ isbn: codice, esistenti, dati });
 }));
 
-app.post('/prenota/api/inventario/aggiungi', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloStaff(utente, res)) return;
-  const v = req.body?.valori || {};
+// I campi del form di un bene, come li vuole Odoo. Serve all'aggiunta e
+// alla modifica: nella modifica un campo vuoto svuota quello in Odoo.
+async function valoriBene(v) {
   const testo = (x, max) => String(x || '').trim().slice(0, max) || false;
   const valori = {
     name: testo(v.titolo, 200),
@@ -1532,9 +1537,39 @@ app.post('/prenota/api/inventario/aggiungi', (req, res) => conUtente(req, res, a
     valori.sistema_id = (await odoo.miniapp('crea_sistema', String(v.nuovoSistema).trim())).id;
   } else if (Number(v.sistemaId)) {
     valori.sistema_id = Number(v.sistemaId);
+  } else {
+    valori.sistema_id = false;
   }
-  const bene = await odoo.miniapp('crea_bene', valori, nomeTelegram(utente));
+  return valori;
+}
+
+app.post('/prenota/api/inventario/aggiungi', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const bene = await odoo.miniapp('crea_bene', await valoriBene(req.body?.valori || {}), nomeTelegram(utente));
   generiVisti = null;   // un genere nuovo, o nuovo per questa categoria
+  res.json({ bene });
+}));
+
+// Tenendo premuto un bene, chi amministra la biblioteca lo corregge.
+app.post('/prenota/api/inventario/admin/bene', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdmin(utente, res)) return;
+  const beneId = Number(req.body?.beneId);
+  if (!beneId) return res.status(400).json({ errore: 'Quale bene?' });
+  res.json({ valori: await odoo.miniapp('bene_da_modificare', beneId) });
+}));
+
+app.post('/prenota/api/inventario/admin/modifica', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdmin(utente, res)) return;
+  const beneId = Number(req.body?.beneId);
+  if (!beneId) return res.status(400).json({ errore: 'Quale bene?' });
+  const v = req.body?.valori || {};
+  const valori = await valoriBene(v);
+  // Fuori dal form nessuno scrive l'ISBN di un gioco da tavolo: se il campo
+  // era nascosto, quello che c'e' in Odoo resta.
+  if (v.isbn === undefined) delete valori.isbn;
+  valori.mancante = v.mancante === true;
+  const bene = await odoo.miniapp('modifica_bene', beneId, valori, nomeTelegram(utente));
+  generiVisti = null;
   res.json({ bene });
 }));
 
@@ -1731,6 +1766,171 @@ app.post('/prenota/api/interno/socio', async (req, res) => {
     console.error('registrazione:', err.message);
     res.status(err.perUtente ? 409 : 500).json({ errore: err.message });
   }
+});
+
+// Lo staff ha guardato la foto della restituzione e il bene non c'e': il
+// prestito torna aperto, e chi l'aveva lo sa da un messaggio.
+app.post('/prenota/api/interno/riapri', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const prestitoId = Number(req.body?.prestitoId);
+  const chi = String(req.body?.daChi || 'staff');
+  if (!prestitoId) return res.status(400).json({ errore: 'Quale prestito?' });
+  try {
+    const prestito = await odoo.miniapp('riapri_prestito', prestitoId, chi);
+    if (prestito.riaperto && prestito.telegram_id) {
+      telegram('sendMessage', {
+        chat_id: prestito.telegram_id,
+        text: `Lo staff di ${prestito.sede} non trova “${prestito.titolo}” in sede, ` +
+              'quindi il prestito è di nuovo aperto. Se l’hai riportato, parlane con lo staff.',
+      }).catch(err => console.error('riapri: messaggio non mandato:', err.message));
+    }
+    res.json({ ok: true, prestito });
+  } catch (err) {
+    console.error('riapri:', err.message);
+    res.status(err.perUtente ? 409 : 500).json({ errore: err.message });
+  }
+});
+
+// /imieidati: quello che l'app sa di chi scrive al bot.
+app.post('/prenota/api/interno/dati', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const userId = String(req.body?.userId || '');
+  if (!userId) return res.status(400).json({ errore: 'serve userId' });
+  try {
+    res.json({ dati: await odoo.miniapp('dati_personali', userId), richiesta: Boolean(soci.richiestaDi(userId)) });
+  } catch (err) {
+    console.error('dati:', err.message);
+    res.status(500).json({ errore: err.message });
+  }
+});
+
+// La persona chiede di togliere i suoi dati dall'app. Odoo stacca il
+// Telegram; qui si chiude la registrazione ancora da decidere, se c'e', e si
+// avvisa il direttivo, che per il resto (libro soci, prestiti passati) ha
+// obblighi di conservazione da valutare.
+app.post('/prenota/api/interno/cancella-dati', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const userId = String(req.body?.userId || '');
+  const nome = String(req.body?.nome || '').slice(0, 120);
+  if (!userId) return res.status(400).json({ errore: 'serve userId' });
+  let esito;
+  try {
+    esito = await odoo.miniapp('cancella_dati', userId);
+  } catch (err) {
+    console.error('cancella dati:', err.message);
+    return res.status(err.perUtente ? 409 : 500).json({ errore: err.message });
+  }
+  sociVisti.delete(userId);
+  const richiesta = soci.richiestaDi(userId);
+  if (richiesta) {
+    soci.chiudi(richiesta.id);
+    for (const m of richiesta.messaggi || []) {
+      telegram('editMessageText', {
+        chat_id: m.chat, message_id: m.id,
+        text: `${richiesta.testo}\n\nRitirata: ha chiesto di cancellare i suoi dati.`,
+      }).catch(err => console.error('cancella dati: messaggio non aggiornato:', err.message));
+    }
+  }
+  const chatDirettivo = GRUPPI.get('direttivo');
+  if (esito && chatDirettivo) {
+    telegram('sendMessage', {
+      chat_id: chatDirettivo,
+      text: `${esito.nome} (Telegram ${nome || userId}) ha chiesto dal bot di cancellare i suoi dati.\n` +
+            (esito.provvisorio
+              ? 'Non era ancora confermatə: la scheda provvisoria è archiviata e Telegram è scollegato.'
+              : 'Telegram è scollegato dalla scheda, quindi niente più app né promemoria. ' +
+                'Libro soci e storico dei prestiti restano: valutate voi cosa va conservato.'),
+    }).catch(err => console.error('cancella dati: direttivo non avvisato:', err.message));
+  }
+  res.json({ ok: true, esito });
+});
+
+// /registrazioni dal gruppo del direttivo: le richieste ancora senza
+// risposta tornano in fondo alla chat, con i loro bottoni. Le copie vecchie
+// restano e si aggiornano insieme alle nuove quando qualcuno decide.
+app.post('/prenota/api/interno/registrazioni', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const chatDirettivo = GRUPPI.get('direttivo');
+  if (!chatDirettivo) return res.status(500).json({ errore: 'Manca il gruppo del direttivo nella configurazione.' });
+  const richieste = soci.inAttesa();
+  let mandate = 0;
+  for (const r of richieste) {
+    try {
+      const candidati = await odoo.miniapp('candidati', r.nome, r.cognome);
+      const quando = DateTime.fromISO(r.quando).setZone('Europe/Rome').setLocale('it').toFormat('d MMMM');
+      const m = await telegram('sendMessage', {
+        chat_id: chatDirettivo,
+        text: `In attesa dal ${quando}.\n${r.testo}`,
+        reply_markup: { inline_keyboard: tastieraRegistrazione(r.id, candidati) },
+      });
+      soci.aggiorna(r.id, { messaggi: [...(r.messaggi || []), { chat: chatDirettivo, id: m.message_id }] });
+      mandate += 1;
+    } catch (err) {
+      console.error('registrazioni:', err.message);
+    }
+  }
+  res.json({ ok: true, inAttesa: richieste.length, mandate });
+});
+
+// Il bot chiede ogni pochi minuti se tutto risponde: se no avvisa il
+// direttivo. Se non risponde nemmeno questa rotta, e' giu' il server.
+app.post('/prenota/api/interno/salute', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  if (!odoo.attivo()) return res.json({ odoo: 'non configurato' });
+  try {
+    await Promise.race([
+      odoo.miniapp('socio_da_telegram', '0'),
+      new Promise((_, ko) => setTimeout(() => ko(new Error('nessuna risposta in 15 secondi')), 15000)),
+    ]);
+    res.json({ odoo: 'ok' });
+  } catch (err) {
+    res.json({ odoo: err.message });
+  }
+});
+
+// Il lunedi': a chi ha un prestito scaduto un messaggio in privato, e allo
+// staff di ogni sede l'elenco di cosa manca e chi ce l'ha. Senza scaduti,
+// nessun messaggio.
+app.post('/prenota/api/interno/promemoria-prestiti', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  let scaduti;
+  try {
+    scaduti = await odoo.miniapp('scaduti');
+  } catch (err) {
+    console.error('promemoria prestiti:', err.message);
+    return res.status(500).json({ errore: err.message });
+  }
+  const giorno = (d) => DateTime.fromISO(d).setLocale('it').toFormat('d MMMM');
+  let privati = 0;
+  for (const p of scaduti) {
+    if (!p.telegram_id) continue;
+    try {
+      await telegram('sendMessage', {
+        chat_id: p.telegram_id,
+        text: `“${p.titolo}” andava riportato a ${p.sede} entro il ${giorno(p.scadenza)}. ` +
+              'Riportalo appena puoi; se ti serve più tempo, chiedilo allo staff.',
+      });
+      privati += 1;
+    } catch (err) {
+      console.error('promemoria prestiti: privato non mandato:', err.message);
+    }
+  }
+  const perSede = new Map();
+  for (const p of scaduti) {
+    const chiave = String(p.sede || '').toLowerCase();
+    perSede.set(chiave, [...(perSede.get(chiave) || []), p]);
+  }
+  for (const [sede, lista] of perSede) {
+    const chat = STAFF.get(sede);
+    if (!chat) continue;
+    const righe = lista.map(p => `- “${p.titolo}”, ${p.socio || '?'}: ` +
+      (p.giorni_ritardo ? `scaduto il ${giorno(p.scadenza)}` : 'scade oggi'));
+    telegram('sendMessage', {
+      chat_id: chat,
+      text: `Da riportare a ${lista[0].sede}:\n${righe.join('\n')}`,
+    }).catch(err => console.error('promemoria prestiti: staff non avvisato:', err.message));
+  }
+  res.json({ ok: true, scaduti: scaduti.length, privati });
 });
 
 // Salta una settimana di un'attivita' periodica: cancella quell'istanza sola.
