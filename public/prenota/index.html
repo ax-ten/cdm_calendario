@@ -80,7 +80,8 @@ h1 {
 /* ----------------------------------------------------------------- campi */
 .campo { margin-bottom: 22px; }
 .campo > label,
-.campo > .titolo {
+.campo > .titolo,
+.riga-campi > div > label {
   display: block;
   font-size: .8rem;
   letter-spacing: .03em;
@@ -464,6 +465,71 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .riga button:disabled { opacity: .5; cursor: default; }
 .vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
 
+/* ------------------------------------------------------------ inventario */
+input[type="search"], input[type="number"], select {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--scheda);
+  color: var(--testo);
+  font: inherit;
+}
+select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tenue) 50%),
+                    linear-gradient(135deg, var(--tenue) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px; background-repeat: no-repeat; }
+.filtri { display: flex; gap: 8px; margin: 10px 0; }
+.filtri select { flex: 1; min-width: 0; font-size: .88rem; padding: 10px 26px 10px 10px; }
+.solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: 0 0 12px; }
+.solo-disp input { width: 18px; height: 18px; margin: 0; accent-color: var(--accento); }
+.conteggio { color: var(--tenue); font-size: .84rem; margin: 0 0 8px; }
+
+.bene { background: var(--scheda); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px; }
+.bene-testa { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.bene-testa b { font-weight: 600; }
+.bene-info { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
+.stato { font-size: .72rem; padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; margin-top: 2px; }
+.stato-disponibile { color: var(--libero); background: color-mix(in srgb, var(--libero) 18%, transparent); }
+.stato-in_prestito { color: var(--occupato); background: color-mix(in srgb, var(--occupato) 18%, transparent); }
+.stato-mancante { color: var(--pieno); background: color-mix(in srgb, var(--pieno) 18%, transparent); }
+
+.bottone {
+  appearance: none; border: 1px solid var(--accento); border-radius: 10px;
+  padding: 8px 14px; background: var(--accento); color: var(--su-accento);
+  font: inherit; font-size: .88rem; cursor: pointer;
+}
+.bottone.secondario { background: transparent; color: var(--accento); }
+.bottone:disabled { opacity: .5; cursor: default; }
+.bottone.largo { width: 100%; padding: 11px 14px; }
+.bottone[hidden] { display: none; }
+
+.mio-prestito { border: 1.5px solid var(--accento); margin-bottom: 16px; }
+.mio-prestito.scaduto { border-color: var(--pieno); }
+.mio-prestito .scadenza { font-size: .88rem; margin-top: 6px; }
+.mio-prestito.scaduto .scadenza { color: var(--pieno); }
+.nota-prestito { color: var(--tenue); font-size: .84rem; margin: -6px 0 14px; }
+
+.indietro { appearance: none; border: 0; background: none; color: var(--accento);
+  font: inherit; padding: 14px 0 6px; cursor: pointer; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 168px; overflow-y: auto; }
+.chips button {
+  padding: 6px 10px; border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
+  border-radius: 999px; background: none; color: var(--testo); font: inherit; font-size: .84rem; cursor: pointer;
+}
+.chips button[aria-pressed="true"] { border-color: var(--accento); color: var(--accento); }
+.riga-campi { display: flex; gap: 8px; }
+.riga-campi > * { flex: 1; min-width: 0; }
+.riga-campi .bottone { flex: 0 0 auto; }
+.esito-isbn { font-size: .84rem; color: var(--tenue); margin: 8px 0 0; }
+.esito-isbn.attento { color: var(--occupato); }
+#scanner { position: fixed; inset: 0; background: #000; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+#scanner[hidden] { display: none; }
+#scanner video { width: 100%; max-height: 70vh; object-fit: cover; }
+#scanner p { color: #fff; margin: 0 16px; text-align: center; font-size: .9rem; }
+
 /* --------------------------------------------------------- registrazione */
 .intro { font-size: 1rem; margin: 0 0 22px; }
 .informativa { margin-top: 8px; font-size: .88rem; }
@@ -482,6 +548,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 <nav class="tab" role="tablist">
   <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota">Prenota</button>
   <button role="tab" id="tab-mie" aria-selected="false" aria-controls="pannello-mie">Le mie prenotazioni</button>
+  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario">Inventario</button>
 </nav>
 
 <!-- ------------------------------------------------------------ prenota -->
@@ -597,6 +664,114 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   <p class="spiega">Quelle che devono ancora arrivare. Puoi annullarle da qui.</p>
   <div id="elenco-mie" class="vuoto">…</div>
 </section>
+
+<!-- --------------------------------------------------------- inventario -->
+<section class="pannello" id="pannello-inventario" role="tabpanel" aria-labelledby="tab-inventario" hidden>
+  <h1>Inventario</h1>
+  <div id="mio-prestito"></div>
+  <button type="button" class="bottone secondario largo" id="apri-aggiungi" hidden>Aggiungi un bene</button>
+
+  <div class="campo" style="margin: 14px 0 0">
+    <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off">
+  </div>
+  <div class="filtri">
+    <select id="filtro-sede" aria-label="Sede"><option value="">Sede</option></select>
+    <select id="filtro-categoria" aria-label="Categoria"><option value="">Tipo</option></select>
+    <select id="filtro-genere" aria-label="Genere"><option value="">Genere</option></select>
+  </div>
+  <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
+  <p class="conteggio" id="conteggio-beni"></p>
+  <div id="elenco-beni"></div>
+  <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
+</section>
+
+<!-- ------------------------------------------------- aggiunta (staff) -->
+<section class="pannello" id="pannello-aggiungi" hidden>
+  <button type="button" class="indietro" id="chiudi-aggiungi">‹ Inventario</button>
+  <h1>Aggiungi un bene</h1>
+
+  <div class="campo riga-campi">
+    <div>
+      <label for="agg-categoria">Categoria</label>
+      <select id="agg-categoria"></select>
+    </div>
+    <div>
+      <label for="agg-sede">Sede</label>
+      <select id="agg-sede"></select>
+    </div>
+  </div>
+
+  <div class="campo" id="campo-isbn">
+    <label for="agg-isbn">ISBN</label>
+    <div class="riga-campi">
+      <input type="text" id="agg-isbn" inputmode="numeric" autocomplete="off" placeholder="978…">
+      <button type="button" class="bottone secondario" id="scansiona-isbn" hidden>Fotocamera</button>
+      <button type="button" class="bottone" id="cerca-isbn">Cerca</button>
+    </div>
+    <p class="esito-isbn" id="esito-isbn" hidden></p>
+  </div>
+
+  <div class="campo">
+    <label for="agg-titolo">Titolo</label>
+    <input type="text" id="agg-titolo" maxlength="200">
+  </div>
+  <div class="campo">
+    <label for="agg-autore">Autore</label>
+    <input type="text" id="agg-autore" maxlength="200">
+  </div>
+  <div class="campo riga-campi">
+    <div>
+      <label for="agg-editore">Editore</label>
+      <input type="text" id="agg-editore" maxlength="200">
+    </div>
+    <div style="flex: 0 0 96px">
+      <label for="agg-anno">Anno</label>
+      <input type="number" id="agg-anno" inputmode="numeric" min="1500" max="2100">
+    </div>
+  </div>
+
+  <div class="campo">
+    <span class="titolo">Generi</span>
+    <div class="chips" id="agg-generi"></div>
+    <div class="riga-campi" style="margin-top: 8px">
+      <input type="text" id="agg-nuovo-genere" maxlength="60" placeholder="Un genere che non c’è">
+      <button type="button" class="bottone secondario" id="aggiungi-genere">Aggiungi</button>
+    </div>
+  </div>
+
+  <div class="campo" id="campo-sistema" hidden>
+    <label for="agg-sistema">Sistema di gioco</label>
+    <select id="agg-sistema"><option value="">Nessuno</option></select>
+    <input type="text" id="agg-nuovo-sistema" maxlength="80" placeholder="Oppure scrivine uno nuovo" style="margin-top: 8px">
+  </div>
+
+  <div class="campo riga-campi">
+    <div>
+      <label for="agg-codice">Codice interno</label>
+      <input type="text" id="agg-codice" maxlength="40" placeholder="BTL-001">
+    </div>
+    <div>
+      <label for="agg-valore">Valore stimato €</label>
+      <input type="text" id="agg-valore" inputmode="decimal" maxlength="10">
+    </div>
+  </div>
+  <div class="campo">
+    <label for="agg-proprietario">Proprietario</label>
+    <input type="text" id="agg-proprietario" maxlength="120" placeholder="Solo se non è dell’associazione">
+  </div>
+  <div class="campo">
+    <label for="agg-note">Note</label>
+    <textarea id="agg-note" maxlength="2000"></textarea>
+  </div>
+
+  <button type="button" class="bottone largo" id="salva-bene">Salva</button>
+</section>
+
+<div id="scanner" hidden>
+  <video id="video-isbn" playsinline muted></video>
+  <p>Inquadra il codice a barre sul retro del libro.</p>
+  <button type="button" class="bottone secondario" id="chiudi-scanner">Annulla</button>
+</div>
 
 <!-- ------------------------------------------------------ registrazione -->
 <!-- L'app e' dei soci: finche' il direttivo non conferma, c'e' solo questa. -->
@@ -1288,6 +1463,7 @@ function mostraRegistrazione(info) {
   document.querySelector('nav.tab').hidden = true;
   el('pannello-prenota').hidden = true;
   el('pannello-mie').hidden = true;
+  el('pannello-inventario').hidden = true;
   el('blocco-esito').hidden = true;
   el('pannello-registrazione').hidden = false;
 
@@ -1370,15 +1546,415 @@ function esitoRegistrazione(testo) {
   tg?.MainButton.hide();
 }
 
+// ------------------------------------------------------------- inventario
+// Catalogo e prestiti stanno in Odoo; qui si sfoglia, si prende e si
+// restituisce. Lo staff (gruppi staff o direttivo) vede anche chi ha cosa,
+// prolunga i prestiti e aggiunge beni.
+const inv = {
+  pronto: false,
+  staff: false,
+  maxPrestiti: 1,
+  giorni: 30,
+  categorie: {},
+  prestiti: [],
+  offset: 0,
+  totale: 0,
+  generiScelti: new Set(),
+  nuoviGeneri: [],
+};
+
+// Titoli e autori li scrive chi aggiunge i beni: finiscono nella pagina come
+// testo, mai come HTML.
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const STATI_BENE = { disponibile: 'Disponibile', in_prestito: 'In prestito', mancante: 'Mancante' };
+
+function dataTesto(iso) {
+  if (!iso) return '';
+  const [a, m, g] = iso.split('-').map(Number);
+  return `${g} ${MESI[m - 1]}${a !== new Date().getFullYear() ? ' ' + a : ''}`;
+}
+
+function conferma(testo) {
+  return new Promise(ok => tg?.showConfirm ? tg.showConfirm(testo, ok) : ok(window.confirm(testo)));
+}
+
+async function apriInventario() {
+  if (!inv.pronto) {
+    el('elenco-beni').className = 'vuoto';
+    el('elenco-beni').textContent = 'Carico…';
+    let o;
+    try {
+      o = await chiama('inventario/opzioni');
+    } catch (err) {
+      el('elenco-beni').textContent = err.message;
+      return;
+    }
+    inv.pronto = true;
+    inv.staff = o.staff;
+    inv.maxPrestiti = o.max_prestiti;
+    inv.giorni = o.giorni_prestito;
+    inv.prestiti = o.prestiti;
+    inv.categorie = Object.fromEntries(o.categorie.map(c => [c.id, c.nome]));
+    inv.opzioni = o;
+    const opzioni = (lista) => lista.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}</option>`).join('');
+    el('filtro-sede').insertAdjacentHTML('beforeend', opzioni(o.sedi));
+    el('filtro-categoria').insertAdjacentHTML('beforeend', opzioni(o.categorie));
+    el('filtro-genere').insertAdjacentHTML('beforeend', opzioni(o.generi));
+    el('apri-aggiungi').hidden = !inv.staff;
+
+    let attesa;
+    el('cerca-beni').addEventListener('input', () => {
+      clearTimeout(attesa);
+      attesa = setTimeout(() => cercaBeni(true), 300);
+    });
+    for (const id of ['filtro-sede', 'filtro-categoria', 'filtro-genere', 'filtro-disponibili']) {
+      el(id).addEventListener('change', () => cercaBeni(true));
+    }
+    el('altri-beni').onclick = () => cercaBeni(false);
+    el('apri-aggiungi').onclick = apriAggiungi;
+  }
+  disegnaMioPrestito();
+  cercaBeni(true);
+}
+
+function disegnaMioPrestito() {
+  const dove = el('mio-prestito');
+  if (!inv.prestiti.length) { dove.innerHTML = ''; return; }
+  const oggi = iso(new Date());
+  dove.innerHTML = inv.prestiti.map(p => {
+    const scaduto = p.scadenza && p.scadenza < oggi;
+    return `
+      <div class="bene mio-prestito${scaduto ? ' scaduto' : ''}">
+        <div class="bene-info">Il tuo prestito</div>
+        <b>${esc(p.titolo)}</b>
+        <div class="bene-info">Preso il ${dataTesto(p.data_prestito)} a ${esc(p.sede)}</div>
+        <div class="scadenza">${scaduto
+          ? `Scaduto il ${dataTesto(p.scadenza)}: riportalo in sede appena puoi.`
+          : `Da riportare entro il ${dataTesto(p.scadenza)}.`}</div>
+        <div class="azioni">
+          <button type="button" class="bottone" data-restituisci="${p.id}">L’ho restituito</button>
+        </div>
+      </div>`;
+  }).join('') + (inv.prestiti.length >= inv.maxPrestiti
+    ? '<p class="nota-prestito">Per prendere altro, prima restituisci questo.</p>' : '');
+  dove.querySelectorAll('[data-restituisci]').forEach(b => {
+    b.onclick = () => restituisci(Number(b.dataset.restituisci), b);
+  });
+}
+
+function filtriBeni() {
+  return {
+    testo: el('cerca-beni').value.trim(),
+    sede_id: el('filtro-sede').value,
+    categoria: el('filtro-categoria').value,
+    genere_id: el('filtro-genere').value,
+    solo_disponibili: el('filtro-disponibili').checked,
+  };
+}
+
+let ricercaInCorso = 0;
+async function cercaBeni(daCapo) {
+  const mio = ++ricercaInCorso;
+  if (daCapo) inv.offset = 0;
+  const dove = el('elenco-beni');
+  if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; }
+  el('altri-beni').disabled = true;
+  try {
+    const { beni, totale } = await chiama('inventario/catalogo', { filtri: filtriBeni(), offset: inv.offset });
+    // Chi scrive veloce manda piu' ricerche: conta solo l'ultima.
+    if (mio !== ricercaInCorso) return;
+    inv.totale = totale;
+    inv.offset += beni.length;
+    if (daCapo) { dove.className = ''; dove.innerHTML = ''; }
+    if (!totale) { dove.className = 'vuoto'; dove.textContent = 'Nessun bene con questi filtri.'; }
+    dove.insertAdjacentHTML('beforeend', beni.map(schedaBene).join(''));
+    collegaBottoni(dove);
+    el('conteggio-beni').textContent = totale ? `${totale} ${totale === 1 ? 'bene' : 'beni'}` : '';
+    el('altri-beni').hidden = inv.offset >= totale;
+  } catch (err) {
+    if (mio === ricercaInCorso) { dove.className = 'vuoto'; dove.textContent = err.message; }
+  } finally {
+    el('altri-beni').disabled = false;
+  }
+}
+
+function schedaBene(b) {
+  const riga1 = [b.autore, [b.editore, b.anno].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+  const riga2 = [inv.categorie[b.categoria], b.sistema, b.sede, b.generi.join(', ')].filter(Boolean).join(' · ');
+  const puoPrendere = b.stato === 'disponibile' && inv.prestiti.length < inv.maxPrestiti;
+  const p = b.prestito;
+  return `
+    <div class="bene" data-bene="${b.id}">
+      <div class="bene-testa">
+        <b>${esc(b.titolo)}</b>
+        <span class="stato stato-${esc(b.stato)}">${STATI_BENE[b.stato] || esc(b.stato)}</span>
+      </div>
+      ${riga1 ? `<div class="bene-info">${esc(riga1)}</div>` : ''}
+      <div class="bene-info">${esc(riga2)}</div>
+      ${p ? `<div class="bene-info">Da ${esc(p.socio)}${p.scadenza ? `, entro il ${dataTesto(p.scadenza)}` : ''}</div>` : ''}
+      ${puoPrendere || (inv.staff && p) ? `
+        <div class="azioni">
+          ${puoPrendere ? `<button type="button" class="bottone" data-prendi="${b.id}" data-titolo="${esc(b.titolo)}">Lo prendo io</button>` : ''}
+          ${inv.staff && p ? `<button type="button" class="bottone secondario" data-prolunga="${p.id}">+${inv.giorni} giorni</button>` : ''}
+        </div>` : ''}
+    </div>`;
+}
+
+function collegaBottoni(dove) {
+  dove.querySelectorAll('[data-prendi]').forEach(b => {
+    b.onclick = () => prendi(Number(b.dataset.prendi), b.dataset.titolo, b);
+  });
+  dove.querySelectorAll('[data-prolunga]').forEach(b => {
+    b.onclick = () => prolunga(Number(b.dataset.prolunga), b);
+  });
+}
+
+async function prendi(beneId, titolo, bottone) {
+  const entro = new Date(); entro.setDate(entro.getDate() + inv.giorni);
+  if (!await conferma(`Prendi in prestito “${titolo}”? Va riportato in sede entro il ${dataTesto(iso(entro))}.`)) return;
+  bottone.disabled = true;
+  try {
+    const { prestito } = await chiama('inventario/presta', { beneId });
+    inv.prestiti = [prestito];
+    tg?.HapticFeedback?.notificationOccurred('success');
+    toast(`È tuo fino al ${dataTesto(prestito.scadenza)}. Buona lettura, buon gioco!`);
+    disegnaMioPrestito();
+    cercaBeni(true);
+  } catch (err) {
+    bottone.disabled = false;
+    lamenta(err.message);
+  }
+}
+
+async function restituisci(prestitoId, bottone) {
+  if (!await conferma('Confermi di averlo riportato in sede?')) return;
+  bottone.disabled = true;
+  try {
+    await chiama('inventario/restituisci', { prestitoId });
+    inv.prestiti = inv.prestiti.filter(p => p.id !== prestitoId);
+    toast('Grazie! Ora è di nuovo disponibile.');
+    disegnaMioPrestito();
+    cercaBeni(true);
+  } catch (err) {
+    bottone.disabled = false;
+    lamenta(err.message);
+  }
+}
+
+async function prolunga(prestitoId, bottone) {
+  bottone.disabled = true;
+  try {
+    const { prestito } = await chiama('inventario/prolunga', { prestitoId });
+    toast(`Prolungato: ora scade il ${dataTesto(prestito.scadenza)}.`);
+    cercaBeni(true);
+  } catch (err) {
+    bottone.disabled = false;
+    lamenta(err.message);
+  }
+}
+
+// ------------------------------------------------- aggiunta beni (staff)
+// La fotocamera legge il codice a barre dove il browser sa farlo
+// (BarcodeDetector: Chrome e il WebView di Android). Altrove, iPhone
+// compreso, l'ISBN si scrive a mano.
+const SI_SCANSIONA = 'BarcodeDetector' in window && Boolean(navigator.mediaDevices?.getUserMedia);
+let formAggiungiPronto = false;
+
+function apriAggiungi() {
+  if (!formAggiungiPronto) {
+    const o = inv.opzioni;
+    const opzioni = (lista) => lista.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}</option>`).join('');
+    el('agg-categoria').innerHTML = opzioni(o.categorie);
+    el('agg-categoria').value = 'libro';
+    el('agg-sede').innerHTML = opzioni(o.sedi);
+    el('agg-sistema').insertAdjacentHTML('beforeend', opzioni(o.sistemi));
+    disegnaGeneri();
+    el('agg-categoria').onchange = aggiornaCategoria;
+    el('scansiona-isbn').hidden = !SI_SCANSIONA;
+    el('scansiona-isbn').onclick = scansiona;
+    el('cerca-isbn').onclick = cercaIsbn;
+    el('agg-isbn').addEventListener('keydown', e => { if (e.key === 'Enter') cercaIsbn(); });
+    el('aggiungi-genere').onclick = aggiungiGenere;
+    el('salva-bene').onclick = salvaBene;
+    el('chiudi-aggiungi').onclick = () => mostra('inventario');
+    formAggiungiPronto = true;
+  }
+  aggiornaCategoria();
+  mostra('aggiungi');
+  window.scrollTo(0, 0);
+}
+
+function aggiornaCategoria() {
+  const c = el('agg-categoria').value;
+  el('campo-sistema').hidden = c !== 'gioco_di_ruolo';
+  // L'ISBN e' dei libri e dei manuali; per un gioco da tavolo e' rumore.
+  el('campo-isbn').hidden = !['libro', 'manuale', 'gioco_di_ruolo'].includes(c);
+}
+
+function disegnaGeneri() {
+  const tutti = [
+    ...inv.opzioni.generi.map(g => ({ chiave: String(g.id), nome: g.nome })),
+    ...inv.nuoviGeneri.map(n => ({ chiave: 'nuovo:' + n, nome: n + ' (nuovo)' })),
+  ];
+  el('agg-generi').innerHTML = tutti.map(g =>
+    `<button type="button" data-genere="${esc(g.chiave)}" aria-pressed="${inv.generiScelti.has(g.chiave)}">${esc(g.nome)}</button>`
+  ).join('');
+  el('agg-generi').querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      const k = b.dataset.genere;
+      inv.generiScelti.has(k) ? inv.generiScelti.delete(k) : inv.generiScelti.add(k);
+      b.setAttribute('aria-pressed', String(inv.generiScelti.has(k)));
+    };
+  });
+}
+
+function aggiungiGenere() {
+  const nome = el('agg-nuovo-genere').value.trim();
+  if (!nome) return;
+  // Se c'e' gia', a meno delle maiuscole, si sceglie quello.
+  const esistente = inv.opzioni.generi.find(g => g.nome.toLowerCase() === nome.toLowerCase());
+  if (esistente) {
+    inv.generiScelti.add(String(esistente.id));
+  } else if (!inv.nuoviGeneri.some(n => n.toLowerCase() === nome.toLowerCase())) {
+    inv.nuoviGeneri.push(nome);
+    inv.generiScelti.add('nuovo:' + nome);
+  }
+  el('agg-nuovo-genere').value = '';
+  disegnaGeneri();
+}
+
+function esitoIsbn(testo, attento = false) {
+  el('esito-isbn').textContent = testo;
+  el('esito-isbn').classList.toggle('attento', attento);
+  el('esito-isbn').hidden = !testo;
+}
+
+async function cercaIsbn() {
+  const codice = el('agg-isbn').value.trim();
+  if (!codice) return;
+  el('cerca-isbn').disabled = true;
+  esitoIsbn('Cerco…');
+  try {
+    const r = await chiama('inventario/isbn', { isbn: codice, sedeId: el('agg-sede').value });
+    el('agg-isbn').value = r.isbn;
+    if (r.dati) {
+      // Si riempie solo quello che e' vuoto: chi ha gia' scritto il titolo
+      // a mano lo sa meglio di Open Library.
+      const metti = (id, valore) => { if (valore && !el(id).value.trim()) el(id).value = valore; };
+      metti('agg-titolo', r.dati.titolo);
+      metti('agg-autore', r.dati.autore);
+      metti('agg-editore', r.dati.editore);
+      metti('agg-anno', r.dati.anno);
+    }
+    const doppi = r.esistenti.length
+      ? `Attenzione: in questa sede c’è già “${r.esistenti[0].titolo}” con lo stesso ISBN. `
+      : '';
+    esitoIsbn(doppi + (r.dati ? `Dati da ${r.dati.fonte}: controllali.` : 'Non lo trovo da nessuna parte: scrivi tu i dati.'),
+      Boolean(r.esistenti.length));
+  } catch (err) {
+    esitoIsbn(err.message, true);
+  } finally {
+    el('cerca-isbn').disabled = false;
+  }
+}
+
+async function scansiona() {
+  let flusso;
+  try {
+    flusso = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  } catch {
+    lamenta('Non riesco ad aprire la fotocamera: scrivi l’ISBN a mano.');
+    return;
+  }
+  const video = el('video-isbn');
+  const lettore = new BarcodeDetector({ formats: ['ean_13'] });
+  let finito = false;
+  const chiudi = () => {
+    finito = true;
+    flusso.getTracks().forEach(t => t.stop());
+    el('scanner').hidden = true;
+  };
+  el('chiudi-scanner').onclick = chiudi;
+  el('scanner').hidden = false;
+  video.srcObject = flusso;
+  await video.play().catch(() => {});
+  while (!finito) {
+    try {
+      // Solo gli EAN dei libri (978, 979): il codice del prezzo accanto
+      // non deve passare per un ISBN.
+      const trovato = (await lettore.detect(video)).find(c => /^97[89]\d{10}$/.test(c.rawValue));
+      if (trovato) {
+        chiudi();
+        tg?.HapticFeedback?.notificationOccurred('success');
+        el('agg-isbn').value = trovato.rawValue;
+        cercaIsbn();
+        return;
+      }
+    } catch { /* il primo fotogramma a volte non e' pronto */ }
+    await new Promise(r => setTimeout(r, 250));
+  }
+}
+
+async function salvaBene() {
+  const titolo = el('agg-titolo').value.trim();
+  if (!titolo) return lamenta('Manca il titolo.');
+  const scelti = [...inv.generiScelti];
+  const valori = {
+    titolo,
+    categoria: el('agg-categoria').value,
+    sedeId: el('agg-sede').value,
+    isbn: el('campo-isbn').hidden ? '' : el('agg-isbn').value.trim(),
+    autore: el('agg-autore').value,
+    editore: el('agg-editore').value,
+    anno: el('agg-anno').value,
+    codiceInterno: el('agg-codice').value,
+    valore: el('agg-valore').value,
+    proprietario: el('agg-proprietario').value,
+    note: el('agg-note').value,
+    generi: scelti.filter(k => !k.startsWith('nuovo:')),
+    nuoviGeneri: scelti.filter(k => k.startsWith('nuovo:')).map(k => k.slice(6)),
+    sistemaId: el('campo-sistema').hidden ? '' : el('agg-sistema').value,
+    nuovoSistema: el('campo-sistema').hidden ? '' : el('agg-nuovo-sistema').value,
+  };
+  el('salva-bene').disabled = true;
+  try {
+    await chiama('inventario/aggiungi', { valori });
+    toast(`Aggiunto: ${titolo}`);
+    // Si svuota quello che cambia da un libro all'altro; categoria e sede
+    // restano, perche' di solito se ne aggiungono tanti della stessa pila.
+    for (const id of ['agg-isbn', 'agg-titolo', 'agg-autore', 'agg-editore', 'agg-anno',
+                      'agg-codice', 'agg-valore', 'agg-proprietario', 'agg-note', 'agg-nuovo-sistema']) {
+      el(id).value = '';
+    }
+    el('agg-sistema').value = '';
+    inv.generiScelti.clear();
+    // I generi nuovi adesso esistono: si ricaricano al prossimo avvio, e
+    // intanto restano scritti cosi'.
+    disegnaGeneri();
+    esitoIsbn('');
+    window.scrollTo(0, 0);
+  } catch (err) {
+    lamenta(err.message);
+  } finally {
+    el('salva-bene').disabled = false;
+  }
+}
+
 // ------------------------------------------------------------------ avvio
+const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi'];
+
 function mostra(quale) {
-  el('pannello-prenota').hidden = quale !== 'prenota';
-  el('pannello-mie').hidden = quale !== 'mie';
-  el('tab-prenota').setAttribute('aria-selected', String(quale === 'prenota'));
-  el('tab-mie').setAttribute('aria-selected', String(quale === 'mie'));
+  for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
+  const scheda = quale === 'aggiungi' ? 'inventario' : quale;
+  for (const t of ['prenota', 'mie', 'inventario']) {
+    el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
+  }
   el('blocco-esito').hidden = quale !== 'prenota';
-  if (quale === 'mie') { tg?.MainButton.hide(); caricaMie(); }
-  else abilita(stato.prenotabile);
+  if (quale === 'prenota') abilita(stato.prenotabile);
+  else tg?.MainButton.hide();
+  if (quale === 'mie') caricaMie();
+  if (quale === 'inventario') apriInventario();
 }
 
 async function avvia() {
@@ -1468,6 +2044,7 @@ async function avvia() {
 
   el('tab-prenota').onclick = () => mostra('prenota');
   el('tab-mie').onclick = () => mostra('mie');
+  el('tab-inventario').onclick = () => mostra('inventario');
   tg?.MainButton.onClick(prenota);
 
   if (info.bloccato) {

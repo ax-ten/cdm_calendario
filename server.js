@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import * as prenotazioni from './prenotazioni.js';
 import * as odoo from './odoo.js';
 import * as soci from './soci.js';
+import * as isbn from './isbn.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -41,7 +42,12 @@ app.use(cors());
 app.use('/calendario', express.static(path.join(__dirname, 'public')));
 // L'app di prenotazione sta su un percorso suo: e' un'altra cosa dal
 // calendario che si guarda, anche se legge gli stessi calendari.
-app.use('/prenota', express.static(path.join(__dirname, 'public', 'prenota')));
+// no-cache: il WebView di Telegram si tiene la pagina, e dopo un
+// aggiornamento si continuerebbe a vedere quella vecchia. Cosi' la
+// ricontrolla ogni volta (con l'ETag, quindi senza riscaricarla se e' uguale).
+app.use('/prenota', express.static(path.join(__dirname, 'public', 'prenota'), {
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
+}));
 
 
 // ---------- AUTH ----------
@@ -1184,6 +1190,126 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
   }
 
   res.json({ ok: true, inAttesa: true });
+}));
+
+// ---------- inventario ----------
+// Catalogo, prestiti e aggiunta beni. Le regole (un prestito per volta,
+// trenta giorni, chi puo' restituire cosa) stanno in Odoo: qui si dice solo
+// chi e' la persona e se e' staff.
+//
+// Staff, per l'inventario, e' chi sta in un gruppo staff o nel direttivo.
+// Chiederlo a Telegram costa una chiamata per gruppo, e il catalogo si
+// sfoglia a pagine: la risposta si tiene cinque minuti.
+const STAFF_VALIDO_PER_MS = 5 * 60 * 1000;
+const staffVisti = new Map();
+
+async function staffInventario(userId) {
+  const visto = staffVisti.get(String(userId));
+  if (visto && Date.now() - visto.quando < STAFF_VALIDO_PER_MS) return visto.staff;
+  const [staff, direttivo] = await Promise.all([eStaff(userId), eDirettivo(userId)]);
+  staffVisti.set(String(userId), { staff: staff || direttivo, quando: Date.now() });
+  return staff || direttivo;
+}
+
+async function soloStaff(utente, res) {
+  if (await staffInventario(utente.id)) return true;
+  res.status(403).json({ errore: 'lo puo fare solo lo staff' });
+  return false;
+}
+
+app.post('/prenota/api/inventario/opzioni', (req, res) => conUtente(req, res, async (utente) => {
+  const [opzioni, staff, prestiti] = await Promise.all([
+    odoo.miniapp('opzioni'),
+    staffInventario(utente.id),
+    odoo.miniapp('miei_prestiti', utente.id),
+  ]);
+  res.json({ ...opzioni, staff, prestiti });
+}));
+
+const PAGINA_CATALOGO = 30;
+
+app.post('/prenota/api/inventario/catalogo', (req, res) => conUtente(req, res, async (utente) => {
+  const f = req.body?.filtri || {};
+  const filtri = {
+    testo: String(f.testo || '').slice(0, 100),
+    sede_id: Number(f.sede_id) || false,
+    categoria: String(f.categoria || ''),
+    genere_id: Number(f.genere_id) || false,
+    sistema_id: Number(f.sistema_id) || false,
+    solo_disponibili: Boolean(f.solo_disponibili),
+  };
+  const offset = Math.max(0, Number(req.body?.offset) || 0);
+  res.json(await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO,
+    await staffInventario(utente.id)));
+}));
+
+app.post('/prenota/api/inventario/presta', (req, res) => conUtente(req, res, async (utente) => {
+  const beneId = Number(req.body?.beneId);
+  if (!beneId) return res.status(400).json({ errore: 'quale bene?' });
+  const note = String(req.body?.note || '').trim().slice(0, 500) || false;
+  res.json({ prestito: await odoo.miniapp('presta', utente.id, beneId, note) });
+}));
+
+app.post('/prenota/api/inventario/miei', (req, res) => conUtente(req, res, async (utente) => {
+  res.json({ prestiti: await odoo.miniapp('miei_prestiti', utente.id) });
+}));
+
+app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res, async (utente) => {
+  const prestitoId = Number(req.body?.prestitoId);
+  if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
+  res.json({ prestito: await odoo.miniapp('restituisci', utente.id, prestitoId) });
+}));
+
+// Solo lo staff prolunga: il socio restituisce e, se vuole, lo riprende.
+app.post('/prenota/api/inventario/prolunga', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const prestitoId = Number(req.body?.prestitoId);
+  if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
+  res.json({ prestito: await odoo.miniapp('prolunga', prestitoId, 0, nomeTelegram(utente)) });
+}));
+
+// Il form dell'aggiunta parte dall'ISBN: dice se il libro c'e' gia' in
+// quella sede, e porta titolo, autore, editore e anno se qualcuno li sa.
+app.post('/prenota/api/inventario/isbn', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const codice = isbn.normalizza(req.body?.isbn);
+  if (!isbn.valido(codice)) return res.status(400).json({ errore: 'questo ISBN non torna: controlla le cifre' });
+  const [esistenti, dati] = await Promise.all([
+    odoo.miniapp('stesso_isbn', codice, Number(req.body?.sedeId) || false),
+    isbn.cerca(codice),
+  ]);
+  res.json({ isbn: codice, esistenti, dati });
+}));
+
+app.post('/prenota/api/inventario/aggiungi', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const v = req.body?.valori || {};
+  const testo = (x, max) => String(x || '').trim().slice(0, max) || false;
+  const valori = {
+    name: testo(v.titolo, 200),
+    categoria: testo(v.categoria, 40) || 'altro',
+    sede_id: Number(v.sedeId) || false,
+    autore: testo(v.autore, 200),
+    editore: testo(v.editore, 200),
+    anno_pubblicazione: Number(v.anno) || false,
+    isbn: v.isbn ? isbn.normalizza(v.isbn) : false,
+    codice_interno: testo(v.codiceInterno, 40),
+    valore_stimato: Number(String(v.valore || '').replace(',', '.')) || false,
+    proprietario_libero: testo(v.proprietario, 120),
+    note: testo(v.note, 2000),
+    genere_ids: (v.generi || []).map(Number).filter(Boolean),
+  };
+  // Generi e sistemi scritti a mano: Odoo li cerca senza guardare le
+  // maiuscole prima di crearne uno nuovo.
+  for (const nome of (v.nuoviGeneri || []).slice(0, 5)) {
+    if (String(nome).trim()) valori.genere_ids.push((await odoo.miniapp('crea_genere', String(nome).trim())).id);
+  }
+  if (String(v.nuovoSistema || '').trim()) {
+    valori.sistema_id = (await odoo.miniapp('crea_sistema', String(v.nuovoSistema).trim())).id;
+  } else if (Number(v.sistemaId)) {
+    valori.sistema_id = Number(v.sistemaId);
+  }
+  res.json({ bene: await odoo.miniapp('crea_bene', valori, nomeTelegram(utente)) });
 }));
 
 // ---------- rotte interne, per il bot ----------
