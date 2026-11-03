@@ -816,7 +816,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
 <!-- ---------------------------------------------------------------- mie -->
 <section class="pannello" id="pannello-mie">
-  <h1>Le tue prenotazioni</h1>
+  <h1>Le tue attività</h1>
   <div id="elenco-mie" class="vuoto">…</div>
 </section>
 
@@ -1639,7 +1639,7 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
-const NESSUNA_MIA = 'Non hai prenotazioni in arrivo: creane una con Nuova prenotazione.';
+const NESSUNA_MIA = 'Non hai attività in arrivo: creane una con Nuova attività.';
 
 async function caricaMie() {
   const dove = el('elenco-mie');
@@ -2570,7 +2570,7 @@ function mostra(quale) {
     : quale === 'mie' ? nuovaPrenotazione
     : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
-  else if (quale === 'mie') pulsantePrincipale('Nuova prenotazione', !stato.bloccato);
+  else if (quale === 'mie') pulsantePrincipale('Nuova attività', !stato.bloccato);
   else nascondiAzione();
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();
