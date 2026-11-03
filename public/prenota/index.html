@@ -87,6 +87,28 @@ body {
   transition: background-color .15s, color .15s;
 }
 .tab button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tab button { padding: 0 26px; }
+
+/* ----------------------------------------------------------------- passi */
+.testa-passi { display: flex; justify-content: space-between; align-items: center; min-height: 34px; }
+.testa-passi .indietro { padding: 6px 0; }
+.link-mie { appearance: none; border: 0; background: none; color: var(--accento);
+  font: inherit; font-size: .88rem; padding: 6px 0; margin-left: auto; cursor: pointer; }
+.avanzamento { height: 6px; border-radius: 999px; overflow: hidden; margin: 6px 0 8px;
+  background: color-mix(in srgb, var(--tenue) 25%, transparent); }
+.avanzamento-pieno { height: 100%; width: 20%; border-radius: 999px; background: var(--accento);
+  transition: width .3s ease; }
+.passo-di { margin: 0 0 4px; font-size: .78rem; color: var(--tenue); letter-spacing: .03em; }
+.passo[hidden] { display: none; }
+.esito-orario { margin: 4px 0 22px; }
+.esito-orario:empty { display: none; }
+.riepilogo { background: var(--scheda); border-radius: 14px; padding: 4px 14px; margin-bottom: 22px; }
+.riepilogo div { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--tenue) 18%, transparent); font-size: .92rem; }
+.riepilogo div:last-child { border-bottom: 0; }
+.riepilogo span { color: var(--tenue); flex: 0 0 auto; }
+.riepilogo b { font-weight: 500; text-align: right; }
+.riepilogo p { margin: 10px 0; font-size: .86rem; color: var(--occupato); }
 .tab button[aria-selected="true"] {
   color: var(--accento);
   background: color-mix(in srgb, var(--accento) 16%, transparent);
@@ -423,9 +445,9 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
    Fisso in fondo, appoggiato sopra il pulsante Prenota di Telegram: e' la
    riga che dice cosa manca ancora, e serve mentre si compila, non dopo aver
    scorso fino in fondo. */
-/* Sopra il menu, dal basso: il pulsante d'azione (Prenota, Prendi in
-   prestito, Invia richiesta), e sopra ancora, nelle stanze, cosa manca.
-   Tutti e due galleggiano come il menu: capsule staccate, mai sotto di lui. */
+/* Sopra il menu, il pulsante d'azione (Avanti e Prenota, Prendi in
+   prestito, Invia richiesta): galleggia come il menu, una capsula staccata,
+   mai sotto di lui. */
 #azione {
   position: fixed;
   left: 50%;
@@ -456,21 +478,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 @keyframes gira { to { transform: rotate(360deg); } }
 
-#blocco-esito {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(var(--ingombro-menu) + var(--azione) + 18px);
-  width: min(440px, calc(100% - 24px));
-  padding: 9px 16px;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--scheda) 88%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  backdrop-filter: blur(20px) saturate(1.6);
-  border: 1px solid color-mix(in srgb, var(--testo) 8%, transparent);
-  z-index: 20;
-}
-#blocco-esito[hidden] { display: none; }
+
 
 /* Niente cornice ne' riquadro: la barra e' gia' un contenitore suo. Lo stato
    lo dice il colore della prima riga, che e' l'unica cosa che serve leggere
@@ -656,23 +664,35 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <body>
 
 <nav class="tab" role="tablist">
-  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg><span>Prenota stanza</span></button>
-  <button role="tab" id="tab-mie" aria-selected="false" aria-controls="pannello-mie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: calendar-check --><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg><span>Le mie prenotazioni</span></button>
   <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: library-big --><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg><span>Biblioteca</span></button>
+  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg><span>Prenotazioni</span></button>
 </nav>
 
 <!-- ------------------------------------------------------------ prenota -->
 <section class="pannello" id="pannello-prenota" role="tabpanel" aria-labelledby="tab-prenota">
-  <h1>Prenota una stanza</h1>
+  <!-- La prenotazione e' fatta a passi: un pezzo per volta, e la barra dice
+       quanto manca. Si va avanti col pulsante in basso, indietro con la
+       freccia di Telegram o con "Indietro". -->
+  <div class="testa-passi">
+    <button type="button" class="indietro" id="passo-indietro" hidden>‹ Indietro</button>
+    <button type="button" class="link-mie" id="apri-mie">Le tue prenotazioni ›</button>
+  </div>
+  <div class="avanzamento" role="progressbar" aria-valuemin="1" aria-valuemax="5" id="avanzamento">
+    <div class="avanzamento-pieno" id="avanzamento-pieno"></div>
+  </div>
+  <p class="passo-di" id="passo-di"></p>
+  <h1 id="titolo-passo"></h1>
 
+  <div class="passo" data-passo="1">
   <div class="campo">
-    <span class="titolo">Sede</span>
     <span class="aiuto">Scegli una sede per vedere le date disponibili.</span>
     <div class="sedi" id="sedi"></div>
   </div>
 
+  </div>
+
+  <div class="passo" data-passo="2" hidden>
   <div class="campo">
-    <span class="titolo">Data</span>
     <div class="mese">
       <button id="mese-prima" aria-label="Mese precedente">‹</button>
       <strong id="mese-nome">…</strong>
@@ -685,8 +705,10 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     </div>
   </div>
 
+  </div>
+
+  <div class="passo" data-passo="3" hidden>
   <div class="campo" id="campo-fascia">
-    <span class="titolo">Orario</span>
     <div class="fascia">
       <div class="ore" id="ore"></div>
       <div class="pista" id="pista">
@@ -700,6 +722,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     </div>
   </div>
 
+    <div id="esito-orario" class="esito-orario"></div>
   <div class="campo">
     <div class="interruttore">
       <input type="checkbox" id="fissa">
@@ -717,6 +740,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     </div>
   </div>
 
+  </div>
+
+  <div class="passo" data-passo="4" hidden>
   <div class="campo">
     <span class="titolo">Categoria</span>
     <div class="categorie" id="categorie"></div>
@@ -750,6 +776,10 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     <textarea id="note" maxlength="200"></textarea>
   </div>
 
+  </div>
+
+  <div class="passo" data-passo="5" hidden>
+    <div class="riepilogo" id="riepilogo"></div>
   <div class="campo">
     <div class="interruttore">
       <input type="checkbox" id="apertura">
@@ -761,16 +791,16 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     </div>
   </div>
 
-
+  </div>
 </section>
 
 <!-- Sta fuori dai pannelli: e' una barra sua, non un campo del modulo. -->
-<div id="blocco-esito" hidden></div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- ---------------------------------------------------------------- mie -->
-<section class="pannello" id="pannello-mie" role="tabpanel" aria-labelledby="tab-mie" hidden>
-  <h1>Controlla le tue prenotazioni</h1>
+<section class="pannello" id="pannello-mie" hidden>
+  <button type="button" class="indietro" id="chiudi-mie">‹ Prenota una stanza</button>
+  <h1>Le tue prenotazioni</h1>
   <p class="spiega">Quelle che devono ancora arrivare. Puoi annullarle da qui.</p>
   <div id="elenco-mie" class="vuoto">…</div>
 </section>
@@ -1079,7 +1109,10 @@ function disegnaCalendario() {
   }
   el('calendario').innerHTML = pezzi.join('');
   el('calendario').querySelectorAll('.giorno[data-data]').forEach(b => {
-    b.onclick = () => scegliGiorno(b.dataset.data);
+    b.onclick = async () => {
+      await scegliGiorno(b.dataset.data);
+      if (stato.passo === 2) vaiAPasso(3);
+    };
   });
 }
 
@@ -1235,51 +1268,113 @@ function trascina(maniglia, quale) {
 }
 
 // ------------------------------------------------------------------ esito
+// Se nella fascia scelta c'e' posto, detto sotto l'orario (passo 3). Il
+// resto lo chiede un passo per volta.
 function aggiornaEsito() {
-  const dove = el('blocco-esito');
-  dove.hidden = el('pannello-prenota').hidden;
-
-  const nome = el('titolo').value.trim();
-
-  if (!stato.sede || !stato.giorno || !stato.categoria || !nome) {
-    const manca = [
-      !stato.sede ? 'sede' : null,
-      !stato.categoria ? 'categoria' : null,
-      !stato.giorno ? 'data' : null,
-      !nome ? 'nome' : null,
-    ].filter(Boolean);
-    dove.innerHTML = `<div class="esito"><span>${manca.length > 1 ? 'Mancano' : 'Manca'}: ` +
-      `${manca.join(', ')}</span></div>`;
-    return abilita(false);
+  const dove = el('esito-orario');
+  let libero = false;
+  if (stato.sede && stato.giorno) {
+    const sovrapposti = eventiDelGiorno()
+      .filter(ev => ev.a > stato.daOra && ev.da < stato.aOra);
+    if (sovrapposti.length >= stato.limiti.maxContemporanei) {
+      dove.innerHTML = `<div class="esito pieno"><b>In quelle ore non c'è più posto</b>
+        <span>Ci sono già ${sovrapposti.length} attività, ed è il massimo per una sede. Sposta l'orario.</span></div>`;
+    } else if (sovrapposti.length === 1) {
+      /* Esserci in due non e' un intoppo: la sede ci sta. Verde, e l'altro
+         gruppo si dice sotto. */
+      libero = true;
+      dove.innerHTML = `<div class="esito libero"><b>Libero</b>
+        <span>C'è comunque ${esc(sovrapposti[0].nome)}, avvisali che condividerete la sede.</span></div>`;
+    } else {
+      libero = true;
+      dove.innerHTML = `<div class="esito libero"><b>Libero</b>
+        <span>${oraTesto(stato.daOra)}–${oraTesto(stato.aOra)}, non c'è nessun altro.</span></div>`;
+    }
+  } else {
+    dove.innerHTML = '';
   }
+  stato.fasciaLibera = libero;
+  abilita(Boolean(libero && stato.categoria && el('titolo').value.trim()));
+}
 
-  const sovrapposti = eventiDelGiorno()
-    .filter(ev => ev.a > stato.daOra && ev.da < stato.aOra);
+// ------------------------------------------------------------------ passi
+const PASSI = [
+  { titolo: 'Dove?', pronto: () => Boolean(stato.sede) },
+  { titolo: 'Che giorno?', pronto: () => Boolean(stato.giorno) },
+  { titolo: 'A che ora?', pronto: () => Boolean(stato.fasciaLibera) },
+  { titolo: 'Cosa fate?', pronto: () => Boolean(stato.categoria && el('titolo').value.trim()) },
+  { titolo: 'Tutto giusto?', pronto: () => stato.prenotabile },
+];
+stato.passo = 1;
 
-  if (sovrapposti.length >= stato.limiti.maxContemporanei) {
-    dove.innerHTML = `<div class="esito pieno"><b>In quelle ore non c'è più posto</b>
-      <span>Ci sono già ${sovrapposti.length} attività, ed è il massimo per una sede. Sposta l'orario.</span></div>`;
-    return abilita(false);
+function vaiAPasso(n) {
+  stato.passo = Math.min(Math.max(n, 1), PASSI.length);
+  document.querySelectorAll('#pannello-prenota .passo').forEach(p => {
+    p.hidden = Number(p.dataset.passo) !== stato.passo;
+  });
+  el('avanzamento-pieno').style.width = `${stato.passo / PASSI.length * 100}%`;
+  el('avanzamento').setAttribute('aria-valuenow', String(stato.passo));
+  el('passo-di').textContent = `Passo ${stato.passo} di ${PASSI.length}`;
+  el('titolo-passo').textContent = PASSI[stato.passo - 1].titolo;
+  el('passo-indietro').hidden = stato.passo === 1;
+  // Le tue prenotazioni si guardano all'inizio, non a meta' di una nuova.
+  el('apri-mie').hidden = stato.passo !== 1;
+  if (!el('pannello-prenota').hidden) {
+    if (stato.passo > 1) tg?.BackButton?.show(); else tg?.BackButton?.hide();
   }
+  if (stato.passo === PASSI.length) disegnaRiepilogo();
+  window.scrollTo(0, 0);
+  abilita(stato.prenotabile);
+}
 
-  /* Esserci in due non e' un intoppo: la sede ci sta, e la riga rossa faceva
-     desistere gente che avrebbe potuto prenotare tranquillamente. Verde, e
-     l'altro gruppo si dice sotto. */
-  if (sovrapposti.length === 1) {
-    dove.innerHTML = `<div class="esito libero"><b>Libero</b>
-      <span>C'è comunque ${sovrapposti[0].nome}, avvisali che condividerete la sede.</span></div>`;
-    return abilita(true);
+function avanti() {
+  if (!PASSI[stato.passo - 1].pronto()) return;
+  if (stato.passo === 4 && !el('titolo').value.trim()) {
+    return lamenta('Dai un nome all’attività: allo staff serve per sapere chi c’è.');
   }
+  vaiAPasso(stato.passo + 1);
+}
 
-  dove.innerHTML = `<div class="esito libero"><b>Libero</b>
-    <span>${oraTesto(stato.daOra)}–${oraTesto(stato.aOra)}, non c'è nessun altro.</span></div>`;
-  abilita(true);
+// Il pulsante in basso nelle stanze: Avanti, e all'ultimo passo Prenota.
+function azionePrenota() {
+  return stato.passo === PASSI.length ? prenota() : avanti();
+}
+
+// Indietro, con la freccia di Telegram o il link in alto: dall'aggiunta di un
+// bene alla biblioteca, dalle tue prenotazioni alla prenotazione, da un passo
+// a quello prima.
+function indietro() {
+  if (!el('pannello-aggiungi').hidden) return mostra('inventario');
+  if (!el('pannello-mie').hidden) return mostra('prenota');
+  if (!el('pannello-prenota').hidden && stato.passo > 1) vaiAPasso(stato.passo - 1);
+}
+
+function disegnaRiepilogo() {
+  const sede = (stato.sediInfo || []).find(x => x.slug === stato.sede);
+  const categoria = (stato.categorieInfo || []).find(c => c.slug === stato.categoria);
+  const giorno = new Date(stato.giorno + 'T12:00')
+    .toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const righe = [
+    ['Sede', sede ? sede.nome : stato.sede],
+    ['Giorno', giorno],
+    ['Orario', `${oraTesto(stato.daOra)}–${oraTesto(stato.aOra)}`],
+    ['Attività', el('titolo').value.trim()],
+    ['Categoria', categoria ? categoria.nome : ''],
+  ];
+  if (el('fissa').checked) righe.push(['Si ripete', testoCadenza() || '']);
+  if (el('vetrina').checked) righe.push(['Vetrina', 'Sì']);
+  el('riepilogo').innerHTML = righe.map(([k, v]) =>
+    `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('') +
+    (el('fissa').checked
+      ? '<p>Essendo ricorrente, lo staff della sede deve approvarla: ti scrivo appena decide.</p>' : '');
 }
 
 function abilita(si) {
   stato.prenotabile = si;
   if (el('pannello-prenota').hidden) return nascondiAzione();
-  pulsantePrincipale('Prenota', si);
+  const ultimo = stato.passo === PASSI.length;
+  pulsantePrincipale(ultimo ? (el('fissa').checked ? 'Chiedi allo staff' : 'Prenota') : 'Avanti',
+                     ultimo ? si : PASSI[stato.passo - 1].pronto());
 }
 
 // Il pulsante d'azione, una capsula sopra il menu. Quello di Telegram non
@@ -1465,6 +1560,7 @@ async function prenota() {
       contaDescrizione();
       aggiornaEsito();
       sincronizzaVetrina();
+      vaiAPasso(1);
       return;
     }
 
@@ -1490,6 +1586,7 @@ async function prenota() {
     delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
     await caricaMese();
     await scegliGiorno(stato.giorno);
+    vaiAPasso(1);
   } catch (err) {
     lamenta(err.message);
   } finally {
@@ -1619,7 +1716,6 @@ function mostraRegistrazione(info) {
   el('pannello-prenota').hidden = true;
   el('pannello-mie').hidden = true;
   el('pannello-inventario').hidden = true;
-  el('blocco-esito').hidden = true;
   el('pannello-registrazione').hidden = false;
 
   if (info.inAttesa) return esitoRegistrazione(
@@ -2361,15 +2457,14 @@ const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi'];
 
 function mostra(quale) {
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
-  const scheda = quale === 'aggiungi' ? 'inventario' : quale;
-  for (const t of ['prenota', 'mie', 'inventario']) {
+  const scheda = quale === 'aggiungi' ? 'inventario' : quale === 'mie' ? 'prenota' : quale;
+  for (const t of ['prenota', 'inventario']) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
-  el('blocco-esito').hidden = quale !== 'prenota';
-  // Dall'aggiunta di un bene si torna indietro anche con la freccia di
-  // Telegram, in alto: e' li' che la si cerca.
-  if (quale === 'aggiungi') tg?.BackButton?.show(); else tg?.BackButton?.hide();
-  azionePrincipale = quale === 'prenota' ? prenota : quale === 'inventario' ? prendiScelto : null;
+  // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
+  const siTorna = quale === 'aggiungi' || quale === 'mie' || (quale === 'prenota' && stato.passo > 1);
+  if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
+  azionePrincipale = quale === 'prenota' ? azionePrenota : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') abilita(stato.prenotabile);
   else nascondiAzione();
   if (quale === 'mie') caricaMie();
@@ -2387,6 +2482,8 @@ async function avvia() {
   if (!info.socio) return mostraRegistrazione(info.registrazione);
 
   stato.limiti = info.limiti;
+  stato.sediInfo = info.sedi;
+  stato.categorieInfo = info.categorie || [];
   stato.daOra = 18;
   stato.aOra = 21;
 
@@ -2403,6 +2500,7 @@ async function avvia() {
       await caricaMese();
       if (stato.giorno) await scegliGiorno(stato.giorno);
       else aggiornaEsito();
+      if (stato.passo === 1) vaiAPasso(2);
     };
   });
 
@@ -2462,16 +2560,19 @@ async function avvia() {
   });
 
   el('tab-prenota').onclick = () => mostra('prenota');
-  el('tab-mie').onclick = () => mostra('mie');
+  el('apri-mie').onclick = () => mostra('mie');
+  el('chiudi-mie').onclick = () => mostra('prenota');
+  el('passo-indietro').onclick = indietro;
   el('tab-inventario').onclick = () => mostra('inventario');
-  azionePrincipale = prenota;
-  tg?.BackButton?.onClick(() => mostra('inventario'));
+  azionePrincipale = azionePrenota;
+  tg?.BackButton?.onClick(indietro);
 
   if (info.bloccato) {
     el('pannello-prenota').querySelectorAll('input, textarea, button')
       .forEach(n => n.disabled = true);
   }
   aggiornaEsito();
+  vaiAPasso(1);
 }
 
 function cambiaMese(passo) {
