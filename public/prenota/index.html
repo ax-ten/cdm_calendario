@@ -690,9 +690,15 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .riga .ritardo { color: var(--pieno); }
 .nessuna-mia p { color: var(--tenue); text-align: center; margin: 34px 0 0; }
 /* La freccia sta ferma in basso a destra e finisce appena sopra il +. */
-.freccia-curva { position: fixed; right: 42px;
-  bottom: calc(var(--ingombro-menu) + 5px);
-  width: 120px; height: 120px; color: var(--testo); opacity: .9; pointer-events: none; }
+.freccia-curva { position: fixed; right: 76px;
+  bottom: calc(var(--ingombro-menu) + 19px);
+  width: 110px; height: 119px; pointer-events: none; }
+.freccia-curva i { display: block; width: 100%; height: 100%; background: var(--testo); opacity: .9;
+  -webkit-mask: url(freccia.png) center / contain no-repeat;
+  mask: url(freccia.png) center / contain no-repeat; }
+.freccia-curva span { position: absolute; bottom: 100%; left: -18px; margin-bottom: 6px;
+  white-space: nowrap; color: var(--testo); font-size: 1rem; font-weight: 600; }
+.avviso-foto { margin: 10px 0 -2px; font-size: .84rem; color: var(--tenue); }
 .mio-prestito { padding: 2px 0 16px; margin-bottom: 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
 .mio-prestito .scadenza { font-size: .88rem; margin-top: 6px; }
@@ -1728,26 +1734,16 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
-// Nessuna attivita': la frase, e una freccia che scende verso il +. E' una
-// freccia a pennarello: il corpo e' una forma piena che si assottiglia agli
-// estremi, la punta due tratti, e un filtro ne sporca appena i bordi. Si
-// disegna come una curva che sale verso destra e si gira finche' la punta
-// guarda il +.
+// Nessuna attivita': la frase, e la freccia disegnata a mano che scende sul
+// +. La freccia e' un'immagine (freccia.png) usata come maschera: prende il
+// colore del testo del tema, chiaro sul fondo scuro.
 const NESSUNA_MIA = `
   <div class="nessuna-mia">
     <p>Non hai attività in arrivo.</p>
-    <svg class="freccia-curva" viewBox="0 0 460 460" aria-hidden="true">
-      <defs>
-        <filter id="pennarello" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4"/>
-          <feDisplacementMap in="SourceGraphic" scale="5"/>
-        </filter>
-      </defs>
-      <g filter="url(#pennarello)" fill="currentColor" stroke="currentColor"
-         stroke-linecap="round" stroke-linejoin="round">
-        <path stroke-width="3" d="M152 92 C 96 160, 100 250, 190 300 C 236 326, 290 336, 330 338 C 290 326, 236 312, 196 288 C 122 244, 110 168, 152 92 Z"/>
-        <path fill="none" stroke-width="13" d="M300 302 L 370 344 L 296 368"/>
-      </g>
+    <div class="freccia-curva" aria-hidden="true">
+      <span>creane una!</span>
+      <i></i>
+    </div>
   </div>`;
 
 async function caricaMie() {
@@ -2059,6 +2055,7 @@ function disegnaMioPrestito() {
         <div class="scadenza">${scaduto
           ? `Scaduto il ${dataTesto(p.scadenza)}: riportalo a ${esc(p.sede)} appena puoi.`
           : `Da riportare a ${esc(p.sede)} entro il ${dataTesto(p.scadenza)}.`}</div>
+        <p class="avviso-foto">Per restituirlo manda una foto del bene rimesso al suo posto.</p>
         <div class="azioni">
           <button type="button" class="bottone" data-restituisci="${p.id}">L’ho restituito</button>
         </div>
@@ -2362,7 +2359,9 @@ async function caricaPrestitiAdmin() {
 }
 
 async function chiudiPrestito(prestitoId, titolo, socio, bottone) {
-  if (!await conferma(`Chiudere il prestito di “${titolo}” a ${socio}? Il bene torna disponibile.`)) return;
+  // Basta il nome: chi amministra sa di chi si parla, e la domanda resta corta.
+  const nome = String(socio || '').trim().split(/\s+/)[0];
+  if (!await conferma(`Sei sicurə di voler chiudere il prestito a ${nome}?`)) return;
   bottone.disabled = true;
   try {
     await chiama('inventario/admin/chiudi', { prestitoId });
