@@ -590,6 +590,10 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
   transition: opacity .22s ease, transform .22s ease;
 }
 #toast-annulla.visibile { opacity: 1; transform: none; }
+/* display: flex vince sull'attributo hidden: senza questa riga il toast resta
+   li', trasparente, sopra "Prendi in prestito", e si prende il tocco. */
+#toast-annulla[hidden] { display: none; }
+#toast-annulla:not(.visibile) { pointer-events: none; }
 #toast-annulla span { flex: 1; min-width: 0; }
 #toast-annulla button { appearance: none; border: 0; background: none; color: var(--accento);
   font: inherit; font-weight: 700; padding: 6px 8px; cursor: pointer; }
