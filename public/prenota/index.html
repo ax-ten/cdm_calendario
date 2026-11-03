@@ -1176,6 +1176,33 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 </section>
 
 <script>
+// Gli errori della pagina vanno al server, che li dice al direttivo: un
+// pulsante che non risponde non deve restare un segreto di chi lo preme.
+// Ognuno una volta sola per apertura dell'app.
+(() => {
+  const mandati = new Set();
+  const manda = (messaggio, dove) => {
+    const chiave = `${messaggio}|${dove}`;
+    if (!messaggio || mandati.has(chiave) || mandati.size > 10) return;
+    mandati.add(chiave);
+    fetch('/prenota/api/errore-pagina', {
+      method: 'POST', keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaggio: String(messaggio).slice(0, 300), dove }),
+    }).catch(() => {});
+  };
+  window.addEventListener('error', (e) => {
+    // Script di altri (quello di Telegram) danno solo "Script error.": non
+    // dicono niente, e non sono nostri.
+    if (!e.filename || !e.filename.includes('/prenota/')) return;
+    manda(e.message, `riga ${e.lineno}:${e.colno}`);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e.reason;
+    manda(r?.message || String(r), (r?.stack || '').split('\n')[1]?.trim().slice(0, 120) || '');
+  });
+})();
+
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 

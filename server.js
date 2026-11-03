@@ -1584,6 +1584,53 @@ app.post('/prenota/api/inventario/admin/modifica', (req, res) => conUtente(req, 
   res.json({ bene });
 }));
 
+// ---------- errori della pagina ----------
+// La pagina manda qui i suoi errori JavaScript: senza, un pulsante che non
+// risponde lo scopre solo chi lo preme. Non serve initData (un errore puo'
+// capitare prima della registrazione), quindi il tetto va per indirizzo e
+// gli errori diversi tenuti sono pochi. Il bot li legge col controllo di
+// salute e li dice al direttivo, una volta per errore al giorno.
+const ERRORI_MAX = 30;
+const erroriPagina = new Map();
+
+// Dietro nginx req.ip e' sempre 127.0.0.1: l'indirizzo vero sta in
+// X-Real-IP, che si crede solo se la richiesta arriva da nginx.
+const indirizzo = (req) =>
+  (['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip) && req.get('x-real-ip')) || req.ip;
+
+app.post('/prenota/api/errore-pagina', (req, res) => {
+  const ip = indirizzo(req);
+  if (troppeChiamate(`ip:${ip}`)) return res.status(429).end();
+  const messaggio = String(req.body?.messaggio || '').slice(0, 300);
+  if (!messaggio) return res.status(400).end();
+  const dove = String(req.body?.dove || '').slice(0, 120);
+  console.error('pagina:', messaggio, dove);
+  const chiave = `${messaggio}|${dove}`;
+  const e = erroriPagina.get(chiave);
+  if (e) {
+    e.volte += 1;
+    e.da.add(ip);
+  } else if (erroriPagina.size < ERRORI_MAX) {
+    erroriPagina.set(chiave, { messaggio, dove, volte: 1, da: new Set([ip]), detto: null });
+  }
+  res.status(204).end();
+});
+
+// Quelli da dire al direttivo: mai detti, o detti un altro giorno e
+// tornati. Si segnano come detti.
+function erroriDaDire() {
+  const oggi = DateTime.now().setZone('Europe/Rome').toISODate();
+  const fuori = [];
+  for (const e of erroriPagina.values()) {
+    if (e.detto === oggi || !e.volte) continue;
+    fuori.push({ messaggio: e.messaggio, dove: e.dove, volte: e.volte, persone: e.da.size });
+    e.detto = oggi;
+    e.volte = 0;
+    e.da = new Set();
+  }
+  return fuori;
+}
+
 // ---------- rotte interne, per il bot ----------
 // Il bot non e' una pagina dentro Telegram, quindi non ha un initData da
 // firmare: si autentica con un segreto condiviso. Non riusiamo il token del
@@ -1891,16 +1938,46 @@ app.post('/prenota/api/interno/registrazioni', async (req, res) => {
 // direttivo. Se non risponde nemmeno questa rotta, e' giu' il server.
 app.post('/prenota/api/interno/salute', async (req, res) => {
   if (!soloBot(req, res)) return;
-  if (!odoo.attivo()) return res.json({ odoo: 'non configurato' });
+  const errori = erroriDaDire();
+  if (!odoo.attivo()) return res.json({ odoo: 'non configurato', errori });
   try {
     await Promise.race([
       odoo.miniapp('socio_da_telegram', '0'),
       new Promise((_, ko) => setTimeout(() => ko(new Error('nessuna risposta in 15 secondi')), 15000)),
     ]);
-    res.json({ odoo: 'ok' });
+    res.json({ odoo: 'ok', errori });
   } catch (err) {
-    res.json({ odoo: err.message });
+    res.json({ odoo: err.message, errori });
   }
+});
+
+// Ogni giorno: a chi ha un prestito che scade fra tre giorni, un messaggio
+// in privato, finche' c'e' tempo per riportarlo o chiedere di prolungarlo.
+const GIORNI_PRIMA = 3;
+app.post('/prenota/api/interno/promemoria-scadenza', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  let prestiti;
+  try {
+    prestiti = await odoo.miniapp('in_scadenza', GIORNI_PRIMA);
+  } catch (err) {
+    console.error('promemoria scadenza:', err.message);
+    return res.status(500).json({ errore: err.message });
+  }
+  let mandati = 0;
+  for (const p of prestiti) {
+    const giorno = DateTime.fromISO(p.scadenza).setLocale('it').toFormat('cccc d MMMM');
+    try {
+      await telegram('sendMessage', {
+        chat_id: p.telegram_id,
+        text: `“${p.titolo}” va riportato a ${p.sede} entro ${giorno}. ` +
+              'Se ti serve più tempo, chiedi allo staff di prolungarlo.',
+      });
+      mandati += 1;
+    } catch (err) {
+      console.error('promemoria scadenza: non mandato:', err.message);
+    }
+  }
+  res.json({ ok: true, prestiti: prestiti.length, mandati });
 });
 
 // Il lunedi': a chi ha un prestito scaduto un messaggio in privato, e allo
