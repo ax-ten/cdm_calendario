@@ -605,16 +605,21 @@ async function conUtente(req, res, azione, { soloSoci = true } = {}) {
   try {
     utente = prenotazioni.verificaInitData(req.body?.initData || '', BOT_TOKEN);
   } catch (err) {
-    return res.status(401).json({ errore: `identita non verificata: ${err.message}` });
+    // L'initData vale un giorno: chi tiene l'app aperta da ieri finisce qui, e
+    // l'unica cosa da fare e' riaprirla.
+    console.error('identita non verificata:', err.message);
+    return res.status(401).json({ errore: /scaduto/.test(err.message)
+      ? 'È passato troppo tempo: chiudi e riapri l’app.'
+      : 'Non riesco a riconoscerti: chiudi e riapri l’app.' });
   }
   if (troppeChiamate(utente.id)) {
-    return res.status(429).json({ errore: 'troppe richieste in poco tempo: riprova fra un minuto' });
+    return res.status(429).json({ errore: 'Troppe richieste in poco tempo: riprova fra un minuto.' });
   }
   try {
     if (soloSoci) {
       utente.socio = await socioDi(utente.id);
       if (!utente.socio) {
-        return res.status(403).json({ errore: 'l app è riservata al corpo associativo: registrati prima', registrati: true });
+        return res.status(403).json({ errore: 'L’app è riservata al corpo associativo: registrati prima.', registrati: true });
       }
     }
     await azione(utente);
@@ -622,8 +627,10 @@ async function conUtente(req, res, azione, { soloSoci = true } = {}) {
     if (err instanceof odoo.ErroreOdoo && err.perUtente) {
       return res.status(409).json({ errore: err.message });
     }
+    // Un guasto di Odoo o di Google non dice niente a chi usa l'app: il
+    // dettaglio va nel log.
     console.error('prenotazioni:', err);
-    res.status(500).json({ errore: err.message || String(err) });
+    res.status(500).json({ errore: 'Qualcosa non ha funzionato, riprova.' });
   }
 }
 
@@ -772,44 +779,44 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   const nome = String(req.body?.nome || '').trim();
   const cognome = String(req.body?.cognome || '').trim();
   if (!nome || !cognome || nome.length > PAROLA_MAX || cognome.length > PAROLA_MAX) {
-    return res.status(400).json({ errore: 'servono nome e cognome' });
+    return res.status(400).json({ errore: 'Servono nome e cognome.' });
   }
   if (req.body?.socio !== true) {
-    return res.status(400).json({ errore: 'l app è riservata al corpo associativo' });
+    return res.status(400).json({ errore: 'L’app è riservata al corpo associativo.' });
   }
   // Registrarsi all'app non e' tesserarsi: lo si fa dire in chiaro, se no
   // qualcunə pensa di aver rinnovato la tessera premendo un bottone.
   if (req.body?.tesseramento !== true) {
-    return res.status(400).json({ errore: 'serve confermare che la registrazione non sostituisce il tesseramento' });
+    return res.status(400).json({ errore: 'Serve confermare che la registrazione non sostituisce il tesseramento.' });
   }
   if (req.body?.privacy !== true) {
-    return res.status(400).json({ errore: 'serve accettare l informativa' });
+    return res.status(400).json({ errore: 'Serve accettare l’informativa.' });
   }
   if (await socioDi(utente.id, { fresco: true })) {
-    return res.status(409).json({ errore: 'sei già registratə' });
+    return res.status(409).json({ errore: 'Sei già registratə.' });
   }
   if (soci.richiestaDi(utente.id)) return res.json({ ok: true, inAttesa: true });
   // Chi lo staff ha sospeso con /blocca non manda richieste: e' lo stesso
   // comando delle prenotazioni.
   if (prenotazioni.eBloccato(utente.id)) {
-    return res.status(403).json({ errore: 'sei statə sospesə dallo staff: parlane in sede' });
+    return res.status(403).json({ errore: 'Sei statə sospesə dallo staff: parlane in sede.' });
   }
   // Un account Telegram fa una richiesta per volta, ma cento account finti
   // ne fanno cento, e finiscono tutte nel gruppo direttivo. Oltre il tetto
   // si aspetta che il direttivo smaltisca.
   if (soci.quanteInAttesa() >= soci.MAX_IN_ATTESA) {
     console.error('registrazione: troppe richieste in attesa, nuove respinte');
-    return res.status(503).json({ errore: 'troppe richieste in attesa: riprova fra qualche ora' });
+    return res.status(503).json({ errore: 'Troppe richieste in attesa: riprova fra qualche ora.' });
   }
   const fino = soci.rifiutatoFinoA(utente.id);
   if (fino) {
     return res.status(403).json({
-      errore: `il direttivo non ti ha riconosciutə come sociə: puoi riprovare dal ` +
+      errore: `Il direttivo non ti ha riconosciutə come sociə: puoi riprovare dal ` +
               `${fino.setLocale('it').toFormat('d MMMM')}, o parlarne in sede`,
     });
   }
   const chatDirettivo = GRUPPI.get('direttivo');
-  if (!chatDirettivo) return res.status(500).json({ errore: 'nessun gruppo direttivo configurato' });
+  if (!chatDirettivo) return res.status(500).json({ errore: 'Manca il gruppo del direttivo nella configurazione.' });
 
   // L'esito arriva in chat privata, e i promemoria dei prestiti pure: se il
   // bot non puo' scrivere a questa persona, lo si dice adesso e non quando
@@ -818,7 +825,7 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
     await telegram('sendChatAction', { chat_id: utente.id, action: 'typing' });
   } catch {
     return res.status(409).json({
-      errore: 'apri la chat privata con il bot, premi Avvia, poi riapri l app da li',
+      errore: 'Apri la chat privata con il bot, premi Avvia, poi riapri l’app da lì.',
     });
   }
 
@@ -843,7 +850,7 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   } catch (err) {
     console.error('registrazione: gruppo direttivo:', err.message);
     soci.chiudi(id);
-    return res.status(500).json({ errore: 'non sono riuscito ad avvisare il direttivo' });
+    return res.status(500).json({ errore: 'Non sono riuscito ad avvisare il direttivo: riprova.' });
   }
   soci.aggiorna(id, { messaggi: [{ chat: chatDirettivo, id: messaggio.message_id }] });
   res.json({ ok: true, inAttesa: true });
@@ -852,7 +859,7 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
 app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, data, oraInizio, oraFine } = req.body || {};
   const calendarId = calendarioDi(sede);
-  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!calendarId) return res.status(400).json({ errore: 'Sede sconosciuta.' });
 
   const guai = prenotazioni.validaRichiesta({ data, oraInizio, oraFine });
   if (guai.length) return res.json({ ok: false, guai });
@@ -876,10 +883,10 @@ app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (
 app.post('/prenota/api/mese', (req, res) => conUtente(req, res, async () => {
   const { sede, anno, mese } = req.body || {};
   const calendarId = calendarioDi(sede);
-  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!calendarId) return res.status(400).json({ errore: 'Sede sconosciuta.' });
   const a = Number(anno), m = Number(mese);
   if (!Number.isInteger(a) || !Number.isInteger(m) || m < 1 || m > 12) {
-    return res.status(400).json({ errore: 'anno o mese non validi' });
+    return res.status(400).json({ errore: 'Anno o mese non validi.' });
   }
   const auth = await getAuth();
   res.json({ giorni: await prenotazioni.occupazioneDelMese(auth, calendarId, a, m) });
@@ -889,20 +896,20 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   const { sede, data, oraInizio, oraFine, titolo, note, serveApertura, categoria,
           fissa, ricorrenza, vetrina } = req.body || {};
   const calendarId = calendarioDi(sede);
-  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!calendarId) return res.status(400).json({ errore: 'Sede sconosciuta.' });
   if (!titolo || !String(titolo).trim()) {
-    return res.status(400).json({ errore: 'serve un titolo' });
+    return res.status(400).json({ errore: 'Dai un nome all’attività.' });
   }
   const tipo = CATEGORIE.find(c => c.slug === categoria);
-  if (!tipo) return res.status(400).json({ errore: 'serve la categoria' });
+  if (!tipo) return res.status(400).json({ errore: 'Scegli la categoria.' });
   if (fissa && !prenotazioni.RICORRENZE[ricorrenza]) {
-    return res.status(400).json({ errore: 'scegli ogni quanto si ripete' });
+    return res.status(400).json({ errore: 'Scegli ogni quanto si ripete.' });
   }
   if (prenotazioni.eBloccato(utente.id)) {
-    return res.status(403).json({ errore: 'le tue prenotazioni sono state sospese dallo staff' });
+    return res.status(403).json({ errore: 'Lo staff ha sospeso le tue attività.' });
   }
   if (vetrina && !(await eDirettivo(utente.id))) {
-    return res.status(403).json({ errore: 'solo il direttivo mette le attivita in vetrina' });
+    return res.status(403).json({ errore: 'Solo il direttivo mette le attività in vetrina.' });
   }
 
   const guai = prenotazioni.validaRichiesta({ data, oraInizio, oraFine });
@@ -915,7 +922,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   // pagina web si puo' riscrivere.
   const sovrapposti = await prenotazioni.occupazione(auth, calendarId, inizio, fine);
   if (sovrapposti.length >= prenotazioni.MAX_CONTEMPORANEI) {
-    return res.status(409).json({ errore: 'in quello slot ci sono gia due attivita' });
+    return res.status(409).json({ errore: 'In quelle ore ci sono già due attività.' });
   }
   // La parola chiave va in CIMA e da sola: il calendario pubblico guarda la
   // prima parola della descrizione, ed e' cosi' che l'attivita' esce con la
@@ -936,7 +943,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
     const chatStaff = STAFF.get(sede);
     if (!chatStaff) {
       prenotazioni.chiudiRichiesta(idRichiesta);
-      return res.status(500).json({ errore: 'nessun gruppo staff per questa sede' });
+      return res.status(500).json({ errore: 'Manca il gruppo staff di questa sede nella configurazione.' });
     }
     try {
       await telegram('sendMessage', {
@@ -959,7 +966,8 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
       });
     } catch (err) {
       prenotazioni.chiudiRichiesta(idRichiesta);
-      return res.status(500).json({ errore: `non ho avvisato lo staff: ${err.message}` });
+      console.error('attivita periodica: staff non avvisato:', err.message);
+      return res.status(500).json({ errore: 'Non sono riuscito ad avvisare lo staff: riprova.' });
     }
     return res.json({ ok: true, inAttesa: true });
   }
@@ -1085,13 +1093,13 @@ app.post('/prenota/api/mie', (req, res) => conUtente(req, res, async (utente) =>
 app.post('/prenota/api/annulla', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, eventId } = req.body || {};
   const calendarId = calendarioDi(sede);
-  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!calendarId) return res.status(400).json({ errore: 'Sede sconosciuta.' });
 
   const evento = await prenotazioni.leggiPrenotazione(await getAuthScrittura(), calendarId, eventId);
   const proprietario = evento.extendedProperties?.private?.telegram_id;
   // Si annulla la propria, o qualsiasi se si e' staff.
   if (proprietario !== utente.id && !(await eStaff(utente.id))) {
-    return res.status(403).json({ errore: 'non e una tua prenotazione' });
+    return res.status(403).json({ errore: 'Non è una tua attività.' });
   }
   await prenotazioni.annullaPrenotazione(await getAuthScrittura(), calendarId, eventId);
   res.json({ ok: true });
@@ -1124,30 +1132,30 @@ function noteDallEvento(descrizione) {
 app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, eventId } = req.body || {};
   const calendarId = calendarioDi(sede);
-  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!calendarId) return res.status(400).json({ errore: 'Sede sconosciuta.' });
   if (prenotazioni.eBloccato(utente.id)) {
-    return res.status(403).json({ errore: 'le tue prenotazioni sono state sospese dallo staff' });
+    return res.status(403).json({ errore: 'Lo staff ha sospeso le tue attività.' });
   }
 
   const evento = await prenotazioni.leggiPrenotazione(
     await getAuthScrittura(), calendarId, eventId);
   const priv = evento.extendedProperties?.private || {};
   if (priv.telegram_id !== utente.id) {
-    return res.status(403).json({ errore: 'non e una tua prenotazione' });
+    return res.status(403).json({ errore: 'Non è una tua attività.' });
   }
   if (priv.fissa === 'si' || evento.recurringEventId) {
-    return res.status(409).json({ errore: 'questa si ripete gia ogni settimana' });
+    return res.status(409).json({ errore: 'Questa si ripete già ogni settimana.' });
   }
 
   const inizio = DateTime.fromISO(evento.start?.dateTime, { zone: 'Europe/Rome' });
   const fine = DateTime.fromISO(evento.end?.dateTime, { zone: 'Europe/Rome' });
   if (!inizio.isValid || !fine.isValid) {
-    return res.status(400).json({ errore: 'questa prenotazione non ha un orario' });
+    return res.status(400).json({ errore: 'Questa attività non ha un orario.' });
   }
 
   const chatStaff = STAFF.get(sede);
   if (!chatStaff) {
-    return res.status(500).json({ errore: 'nessun gruppo staff per questa sede' });
+    return res.status(500).json({ errore: 'Manca il gruppo staff di questa sede nella configurazione.' });
   }
 
   const titolo = evento.summary || 'senza titolo';
@@ -1191,7 +1199,8 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
     });
   } catch (err) {
     prenotazioni.chiudiRichiesta(idRichiesta);
-    return res.status(500).json({ errore: `non ho avvisato lo staff: ${err.message}` });
+    console.error('attivita periodica: staff non avvisato:', err.message);
+    return res.status(500).json({ errore: 'Non sono riuscito ad avvisare lo staff: riprova.' });
   }
 
   res.json({ ok: true, inAttesa: true });
@@ -1226,13 +1235,13 @@ async function adminBiblioteca(utente) {
 
 async function soloAdmin(utente, res) {
   if (await adminBiblioteca(utente)) return true;
-  res.status(403).json({ errore: 'lo puo fare solo chi amministra la biblioteca' });
+  res.status(403).json({ errore: 'Lo può fare solo chi amministra la biblioteca.' });
   return false;
 }
 
 async function soloStaff(utente, res) {
   if (await staffInventario(utente.id)) return true;
-  res.status(403).json({ errore: 'lo puo fare solo lo staff' });
+  res.status(403).json({ errore: 'Lo può fare solo lo staff.' });
   return false;
 }
 
@@ -1324,30 +1333,56 @@ app.post('/prenota/api/inventario/suggerimenti', (req, res) => conUtente(req, re
   res.json({ ...esito, beni: (esito.beni || []).map(senzaPrestito) });
 }));
 
-app.post('/prenota/api/inventario/presta', (req, res) => conUtente(req, res, async (utente) => {
-  const beneId = Number(req.body?.beneId);
-  if (!beneId) return res.status(400).json({ errore: 'quale bene?' });
-  const note = String(req.body?.note || '').trim().slice(0, 500) || false;
-  const prestito = await odoo.miniapp('presta', utente.id, beneId, note);
-  // Lo staff della sede lo deve sapere: il bene esce dallo scaffale. Il
-  // prestito in Odoo c'e' gia', quindi se il messaggio non parte lo si
-  // scrive nel log e il socio non ne paga le conseguenze.
+// Dopo aver preso un bene, per dieci secondi lo si puo' annullare (un tocco
+// sbagliato). L'avviso allo staff della sede parte quando la finestra e'
+// chiusa: un prestito annullato non lascia messaggi in giro.
+const ATTESA_AVVISO_MS = 12 * 1000;
+const avvisiInSospeso = new Map();
+
+function avvisaStaffDelPrestito(prestito, utente, note) {
   const chatStaff = STAFF.get(String(prestito?.sede || '').toLowerCase());
   if (!chatStaff) {
     console.error(`prestito: nessun gruppo staff per ${prestito?.sede}`);
-  } else {
-    const scade = prestito.scadenza
-      ? DateTime.fromISO(prestito.scadenza).setLocale('it').toFormat('d MMMM') : '';
-    telegram('sendMessage', {
-      chat_id: chatStaff,
-      text: `${prestito.socio || nomeTelegram(utente)}` +
-        `${utente.username && prestito.socio ? ' (@' + utente.username + ')' : ''}` +
-        ` ha preso in prestito “${prestito.titolo}” a ${prestito.sede}.` +
-        (scade ? `\nDa riportare entro il ${scade}.` : '') +
-        (note ? `\nNote: ${note}` : ''),
-    }).catch(err => console.error('prestito: messaggio allo staff non mandato:', err.message));
+    return;
   }
+  const scade = prestito.scadenza
+    ? DateTime.fromISO(prestito.scadenza).setLocale('it').toFormat('d MMMM') : '';
+  telegram('sendMessage', {
+    chat_id: chatStaff,
+    text: `${prestito.socio || nomeTelegram(utente)}` +
+      `${utente.username && prestito.socio ? ' (@' + utente.username + ')' : ''}` +
+      ` ha preso in prestito “${prestito.titolo}” a ${prestito.sede}.` +
+      (scade ? `\nDa riportare entro il ${scade}.` : '') +
+      (note ? `\nNote: ${note}` : ''),
+  }).catch(err => console.error('prestito: messaggio allo staff non mandato:', err.message));
+}
+
+app.post('/prenota/api/inventario/presta', (req, res) => conUtente(req, res, async (utente) => {
+  const beneId = Number(req.body?.beneId);
+  if (!beneId) return res.status(400).json({ errore: 'Quale bene?' });
+  const note = String(req.body?.note || '').trim().slice(0, 500) || false;
+  const prestito = await odoo.miniapp('presta', utente.id, beneId, note);
+  // Il prestito in Odoo c'e' gia': se poi il messaggio non parte lo si scrive
+  // nel log, e il socio non ne paga le conseguenze.
+  avvisiInSospeso.set(prestito.id, setTimeout(() => {
+    avvisiInSospeso.delete(prestito.id);
+    avvisaStaffDelPrestito(prestito, utente, note);
+  }, ATTESA_AVVISO_MS));
   res.json({ prestito });
+}));
+
+app.post('/prenota/api/inventario/annulla-prestito', (req, res) => conUtente(req, res, async (utente) => {
+  const prestitoId = Number(req.body?.prestitoId);
+  if (!prestitoId) return res.status(400).json({ errore: 'Quale prestito?' });
+  // Si annulla solo finche' lo staff non e' stato avvisato: dopo, per lui il
+  // bene e' uscito, e va restituito come gli altri.
+  if (!avvisiInSospeso.has(prestitoId)) {
+    return res.status(409).json({ errore: 'È passato troppo tempo per annullarlo: restituiscilo.' });
+  }
+  await odoo.miniapp('annulla_prestito', utente.id, prestitoId);
+  clearTimeout(avvisiInSospeso.get(prestitoId));
+  avvisiInSospeso.delete(prestitoId);
+  res.json({ ok: true });
 }));
 
 app.post('/prenota/api/inventario/miei', (req, res) => conUtente(req, res, async (utente) => {
@@ -1372,20 +1407,20 @@ async function fotoAlloStaff(chatId, foto, didascalia) {
 
 app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res, async (utente) => {
   const prestitoId = Number(req.body?.prestitoId);
-  if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
+  if (!prestitoId) return res.status(400).json({ errore: 'Quale prestito?' });
 
   const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.foto || ''));
-  if (!m) return res.status(400).json({ errore: 'serve la foto del bene in sede' });
+  if (!m) return res.status(400).json({ errore: 'Serve la foto del bene in sede.' });
   const foto = Buffer.from(m[1], 'base64');
   if (foto.length > FOTO_MAX_BYTE || foto[0] !== 0xff || foto[1] !== 0xd8) {
-    return res.status(400).json({ errore: 'questa foto non va: riprova a scattarla' });
+    return res.status(400).json({ errore: 'Questa foto non va: riprova a scattarla.' });
   }
 
   // Dai propri prestiti aperti: cosi' si sa la sede, e si sa che e' suo.
   const prestito = (await odoo.miniapp('miei_prestiti', utente.id)).find(p => p.id === prestitoId);
-  if (!prestito) return res.status(404).json({ errore: 'non e un tuo prestito aperto' });
+  if (!prestito) return res.status(404).json({ errore: 'Non è un tuo prestito aperto.' });
   const chatStaff = STAFF.get(String(prestito.sede || '').toLowerCase());
-  if (!chatStaff) return res.status(500).json({ errore: `nessun gruppo staff per ${prestito.sede}` });
+  if (!chatStaff) return res.status(500).json({ errore: `Manca il gruppo staff di ${prestito.sede} nella configurazione.` });
 
   const chi = `${prestito.socio}${utente.username ? ' (@' + utente.username + ')' : ''}`;
   try {
@@ -1393,7 +1428,7 @@ app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res
       `${chi} ha riportato “${prestito.titolo}” a ${prestito.sede}.`);
   } catch (err) {
     console.error('restituzione: foto non mandata:', err.message);
-    return res.status(502).json({ errore: 'non sono riuscito a mandare la foto allo staff: riprova' });
+    return res.status(502).json({ errore: 'Non sono riuscito a mandare la foto allo staff: riprova.' });
   }
   res.json({ prestito: await odoo.miniapp('restituisci', utente.id, prestitoId) });
 }));
@@ -1408,14 +1443,14 @@ app.post('/prenota/api/inventario/admin/prestiti', (req, res) => conUtente(req, 
 app.post('/prenota/api/inventario/admin/chiudi', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdmin(utente, res)) return;
   const prestitoId = Number(req.body?.prestitoId);
-  if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
+  if (!prestitoId) return res.status(400).json({ errore: 'Quale prestito?' });
   res.json({ prestito: await odoo.miniapp('chiudi_prestito', prestitoId, nomeTelegram(utente)) });
 }));
 
 app.post('/prenota/api/inventario/prolunga', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdmin(utente, res)) return;
   const prestitoId = Number(req.body?.prestitoId);
-  if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
+  if (!prestitoId) return res.status(400).json({ errore: 'Quale prestito?' });
   // Quanti giorni in piu' lo sceglie chi prolunga; senza, quelli di un prestito.
   const giorni = Math.min(365, Math.max(0, Math.round(Number(req.body?.giorni) || 0)));
   res.json({ prestito: await odoo.miniapp('prolunga', prestitoId, giorni, nomeTelegram(utente)) });
@@ -1426,7 +1461,7 @@ app.post('/prenota/api/inventario/prolunga', (req, res) => conUtente(req, res, a
 app.post('/prenota/api/inventario/isbn', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloStaff(utente, res)) return;
   const codice = isbn.normalizza(req.body?.isbn);
-  if (!isbn.valido(codice)) return res.status(400).json({ errore: 'questo ISBN non torna: controlla le cifre' });
+  if (!isbn.valido(codice)) return res.status(400).json({ errore: 'Questo ISBN non torna: controlla le cifre.' });
   const [esistenti, dati] = await Promise.all([
     odoo.miniapp('stesso_isbn', codice, Number(req.body?.sedeId) || false),
     isbn.cerca(codice),
@@ -1502,7 +1537,7 @@ app.post('/prenota/api/interno/apre', async (req, res) => {
   if (!soloBot(req, res)) return;
   const { sede, eventId, chi } = req.body || {};
   const calendarId = calendarioDi(sede);
-  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!calendarId) return res.status(400).json({ errore: 'Sede sconosciuta.' });
   try {
     const gia = await prenotazioni.segnaChiApre(await getAuthScrittura(), calendarId, eventId, chi);
     res.json({ ok: true, giaPreso: gia });
@@ -1538,7 +1573,7 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
   if (!soloBot(req, res)) return;
   const { id, daChi } = req.body || {};
   const richiesta = prenotazioni.leggiRichiesta(id);
-  if (!richiesta) return res.status(404).json({ errore: 'richiesta non trovata' });
+  if (!richiesta) return res.status(404).json({ errore: 'Richiesta non trovata.' });
 
   const calendarId = calendarioDi(richiesta.sede);
   const tipo = CATEGORIE.find(c => c.slug === richiesta.categoria);
@@ -1604,7 +1639,7 @@ app.post('/prenota/api/interno/rifiuta', (req, res) => {
   if (!soloBot(req, res)) return;
   const { id } = req.body || {};
   const richiesta = prenotazioni.leggiRichiesta(id);
-  if (!richiesta) return res.status(404).json({ errore: 'richiesta non trovata' });
+  if (!richiesta) return res.status(404).json({ errore: 'Richiesta non trovata.' });
   prenotazioni.chiudiRichiesta(id);
   res.json({ ok: true, richiesta });
 });
@@ -1618,9 +1653,9 @@ app.post('/prenota/api/interno/socio', async (req, res) => {
   const { id, scelta, daChi } = req.body || {};
   const chi = daChi || 'staff';
   const presa = soci.prendiInCarico(id, chi);
-  if (presa.esito === 'sparita') return res.status(404).json({ errore: 'qualcuno ha gia risposto' });
+  if (presa.esito === 'sparita') return res.status(404).json({ errore: 'Qualcuno ha già risposto.' });
   if (presa.esito === 'occupata') {
-    return res.status(409).json({ errore: `ci sta gia pensando ${presa.daChi}` });
+    return res.status(409).json({ errore: `Ci sta già pensando ${presa.daChi}.` });
   }
   const r = presa.richiesta;
 
@@ -1651,7 +1686,7 @@ app.post('/prenota/api/interno/salta', async (req, res) => {
   if (!soloBot(req, res)) return;
   const { sede, istanzaId } = req.body || {};
   const calendarId = calendarioDi(sede);
-  if (!calendarId) return res.status(400).json({ errore: 'sede sconosciuta' });
+  if (!calendarId) return res.status(400).json({ errore: 'Sede sconosciuta.' });
   try {
     await prenotazioni.saltaIstanza(await getAuthScrittura(), calendarId, istanzaId);
     res.json({ ok: true });

@@ -526,10 +526,11 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   background: var(--accento); color: var(--su-accento); box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
   align-items: center; justify-content: center; cursor: pointer; }
 .tondo:not([hidden]) { display: flex; }
+.tondo.esteso { width: auto; padding: 0 18px 0 14px; gap: 8px; font: inherit; font-size: .92rem; font-weight: 600; }
 .tondo.chiaro { background: var(--scheda); color: var(--testo);
   border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .tondo.secondo { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
-#azione:disabled { cursor: default;
+#azione:disabled, #azione.spento { cursor: default;
   background: color-mix(in srgb, var(--scheda) 88%, var(--testo));
   color: var(--tenue); }
 #azione[aria-busy="true"] { color: transparent; }
@@ -554,6 +555,23 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 /* ------------------------------------------------------------------ toast
    Il popup di Telegram vuole un tocco per sparire, e per dire "fatto" e'
    troppo: si fa vedere da solo sopra la barra e se ne va. */
+#toast-annulla {
+  position: fixed; z-index: 30;
+  left: 12px; right: calc(22px + var(--azione));
+  bottom: calc(var(--ingombro-menu) + 10px);
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 8px 14px 14px; border-radius: 14px; overflow: hidden;
+  background: #2b3036; color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  font-size: .9rem; opacity: 0; transform: translateY(10px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+#toast-annulla.visibile { opacity: 1; transform: none; }
+#toast-annulla span { flex: 1; min-width: 0; }
+#toast-annulla button { appearance: none; border: 0; background: none; color: var(--accento);
+  font: inherit; font-weight: 700; padding: 6px 8px; cursor: pointer; }
+#toast-annulla .tempo { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+  background: var(--accento); }
+
 #toast {
   position: fixed;
   left: 14px; right: 14px;
@@ -642,7 +660,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .ordina { position: relative; flex: 0 0 44px; display: flex; align-items: center; justify-content: center;
   border-radius: 12px; background: var(--scheda); color: var(--testo); }
 .ordina.attivo { color: var(--accento); }
-.ordina svg { width: 20px; height: 20px; }
+.ordina svg { width: 20px; height: 20px; display: block; }
 .ordina select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
   padding: 0; cursor: pointer; }
 .solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: 0 0 12px; }
@@ -878,6 +896,13 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
 <!-- Sta fuori dai pannelli: e' una barra sua, non un campo del modulo. -->
 <div id="toast" role="status" aria-live="polite" hidden></div>
+<!-- Il toast con "Annulla": resta dieci secondi, e la barra in fondo dice
+     quanto manca. Come quelli di Telegram. -->
+<div id="toast-annulla" role="status" aria-live="polite" hidden>
+  <span id="toast-annulla-testo"></span>
+  <button type="button" id="toast-annulla-bottone">Annulla</button>
+  <i class="tempo"></i>
+</div>
 
 <!-- ---------------------------------------------------------------- mie -->
 <section class="pannello" id="pannello-mie">
@@ -899,7 +924,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     <!-- lucide: arrow-down-up. Il select e' invisibile sopra l'icona: si
          tocca l'icona e si apre la scelta del telefono. -->
     <label class="ordina" id="campo-ordine" title="Ordina">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
+      <span id="icona-ordine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg></span>
       <select id="ordine-beni" aria-label="Ordina">
         <option value="popolari">Più presi in prestito</option>
         <option value="recenti">Ultimi aggiunti</option>
@@ -914,7 +939,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <!-- lucide: plus -->
   <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta sopra il +
        quando c'e' anche quello. -->
-  <button type="button" class="tondo chiaro" id="apri-prestiti" aria-label="Prestiti in corso" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
+  <button type="button" class="tondo chiaro esteso" id="apri-prestiti" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg><span>Prestiti</span></button>
   <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
   <div id="elenco-beni"></div>
   <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
@@ -1125,13 +1150,18 @@ const el = (id) => document.getElementById(id);
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
 async function chiama(percorso, dati = {}) {
-  const risposta = await fetch(`/prenota/api/${percorso}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...dati, initData: tg?.initData || '' }),
-  });
-  const esito = await risposta.json().catch(() => ({ errore: 'risposta illeggibile' }));
-  if (!risposta.ok) throw new Error(esito.errore || `errore ${risposta.status}`);
+  let risposta;
+  try {
+    risposta = await fetch(`/prenota/api/${percorso}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...dati, initData: tg?.initData || '' }),
+    });
+  } catch {
+    throw new Error('Non riesco a raggiungere il server: controlla la connessione e riprova.');
+  }
+  const esito = await risposta.json().catch(() => ({}));
+  if (!risposta.ok) throw new Error(esito.errore || 'Qualcosa non ha funzionato, riprova.');
   return esito;
 }
 
@@ -1485,11 +1515,19 @@ function abilita(si) {
   if (el('pannello-prenota').hidden) return;
   if (stato.passo === PASSI.length) {
     pulsantePrincipale(el('fissa').checked ? 'Chiedi allo staff' : 'Prenota', si);
-  } else if (PASSI[stato.passo - 1].pronto()) {
-    pulsanteFreccia();
   } else {
-    nascondiAzione();
+    // La freccia c'e' sempre: spenta finche' il passo non e' completo, e se la
+    // si tocca lo stesso dice cosa manca.
+    pulsanteTondo('freccia', 'Avanti');
+    el('azione').classList.toggle('spento', !PASSI[stato.passo - 1].pronto());
   }
+}
+
+function cosaManca() {
+  if (stato.passo === 1) return 'Scegli la sede.';
+  if (stato.passo === 2) return stato.giorno ? 'In quelle ore non c’è posto: sposta l’orario.' : 'Scegli il giorno.';
+  if (stato.passo === 3) return stato.categoria ? 'Dai un nome all’attività.' : 'Scegli la categoria.';
+  return '';
 }
 
 // Il pulsante d'azione, una capsula sopra il menu. Quello di Telegram non
@@ -1497,10 +1535,15 @@ function abilita(si) {
 // Spento e' grigio, e dice perche'. Cosa fa dipende dalla scheda.
 let azionePrincipale = null;
 tg?.MainButton?.hide();
-el('azione').onclick = () => { if (!el('azione').disabled) azionePrincipale?.(); };
+el('azione').onclick = () => {
+  const b = el('azione');
+  if (b.classList.contains('spento')) return toast(cosaManca(), false);
+  if (!b.disabled) azionePrincipale?.();
+};
 
 function pulsantePrincipale(testo, attivo) {
   const b = el('azione');
+  b.classList.remove('spento');
   b.classList.remove('freccia');
   b.removeAttribute('aria-label');
   b.textContent = testo;
@@ -1517,6 +1560,7 @@ const ICONE = {
 
 function pulsanteTondo(icona, etichetta, attivo = true) {
   const b = el('azione');
+  b.classList.remove('spento');
   b.classList.add('freccia');
   b.setAttribute('aria-label', etichetta);
   b.innerHTML = ICONE[icona];
@@ -1524,9 +1568,6 @@ function pulsanteTondo(icona, etichetta, attivo = true) {
   b.hidden = false;
 }
 
-function pulsanteFreccia() {
-  pulsanteTondo('freccia', 'Avanti');
-}
 
 function nascondiAzione() {
   el('azione').hidden = true;
@@ -1553,6 +1594,35 @@ function toast(testo, ok = true) {
     t.classList.remove('visibile');
     setTimeout(() => { t.hidden = true; }, 250);
   }, ok ? 4000 : 6000);
+}
+
+// Il toast con "Annulla": dieci secondi per ripensarci, con la barra che si
+// accorcia. Se si preme, fa `azione`.
+const DURATA_ANNULLA_MS = 10 * 1000;
+let annullaVia;
+function toastAnnulla(testo, azione) {
+  const t = el('toast-annulla');
+  const barra = t.querySelector('.tempo');
+  el('toast-annulla-testo').textContent = testo;
+  barra.style.transition = 'none';
+  barra.style.width = '100%';
+  t.hidden = false;
+  // Un attimo dopo, non al prossimo fotogramma: se la pagina e' in secondo
+  // piano i fotogrammi tardano, e la barra partiva in ritardo.
+  void barra.offsetWidth;
+  setTimeout(() => {
+    barra.style.transition = `width ${DURATA_ANNULLA_MS}ms linear`;
+    barra.style.width = '0%';
+    t.classList.add('visibile');
+  }, 20);
+  const chiudi = () => {
+    clearTimeout(annullaVia);
+    t.classList.remove('visibile');
+    setTimeout(() => { t.hidden = true; }, 250);
+  };
+  clearTimeout(annullaVia);
+  annullaVia = setTimeout(chiudi, DURATA_ANNULLA_MS);
+  el('toast-annulla-bottone').onclick = () => { chiudi(); azione(); };
 }
 
 function lamenta(testo) {
@@ -1769,7 +1839,7 @@ async function caricaMie() {
           </button>
           ${p.fissa ? '' : `
             <button data-sede="${p.sede}" data-id="${p.id}"
-                    data-cosa="settimanale">Rendi periodico</button>`}
+                    data-cosa="settimanale">Rendi ricorrente</button>`}
           ${p.fissa && p.serieId ? `
             <button class="grave" data-sede="${p.sede}" data-id="${p.serieId}"
                     data-cosa="serie">Elimina la serie</button>` : ''}
@@ -1795,7 +1865,7 @@ function quandoTesto(inizio, fine) {
 // cosa: "una" una prenotazione singola, "volta" una sola data di
 // un'attivita' periodica, "serie" tutte le date.
 const DOMANDE = {
-  una: ['Annullo questa prenotazione?', 'Annullo…', 'Annulla'],
+  una: ['Annullo questa attività?', 'Annullo…', 'Annulla'],
   volta: ['Salto solo questa volta? Le prossime restano.',
           'Salto…', 'Salta questa volta'],
   serie: ['Elimino tutte le date? Non si torna indietro.',
@@ -1850,7 +1920,7 @@ function rendiSettimanale(sede, id, bottone) {
       toast('Richiesta mandata allo staff. Ti scrivo appena decidono.');
     } catch (err) {
       riga.querySelectorAll('button').forEach(b => b.disabled = false);
-      bottone.textContent = 'Rendi periodico';
+      bottone.textContent = 'Rendi ricorrente';
       lamenta(err.message);
     }
   };
@@ -1998,6 +2068,7 @@ async function apriInventario() {
     }
     el('ordine-beni').addEventListener('change', () => {
       el('campo-ordine').classList.toggle('attivo', el('ordine-beni').value !== 'popolari');
+      el('icona-ordine').innerHTML = ICONE_ORDINE[el('ordine-beni').value] || ICONE_ORDINE.popolari;
       // Ogni volta che si sceglie "A caso" e' un'estrazione nuova.
       inv.seme = Math.floor(Math.random() * 1e9);
       cercaBeni(true);
@@ -2068,6 +2139,18 @@ function disegnaMioPrestito() {
   });
 }
 
+// L'icona dell'ordinamento mostra l'ordine scelto. Lucide (ISC): barre che
+// calano per i piu' presi, orologio per gli ultimi aggiunti, A-Z in colonna
+// per titolo; per autore la stessa A-Z con una testolina al posto della
+// freccia; a caso, la freccia con un punto interrogativo.
+const ICONE_ORDINE = {
+  popolari: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg>',
+  recenti: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.338 21.994A10 10 0 1 1 21.925 13.227"/><path d="M12 6v6l2 1"/><path d="m14 18 4 4 4-4"/><path d="M18 14v8"/></svg>',
+  titolo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/></svg>',
+  autore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6.5" cy="8" r="3"/><path d="M2 18a4.5 4.5 0 0 1 9 0"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/></svg>',
+  casuale: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M14 7.5a3 3 0 1 1 4 2.8c-.8.4-1 .9-1 1.7V13"/><path d="M17 18h.01"/></svg>',
+};
+
 function filtriBeni() {
   return {
     testo: el('cerca-beni').value.trim(),
@@ -2109,7 +2192,7 @@ async function cercaBeni(daCapo) {
   const f = filtriBeni();
   if (!inv.tipo && !f.testo && !f.sede_id && !f.bene_id && !f.autore) {
     inv.totale = 0; inv.offset = 0; inv.beni = new Map(); sceglieBene(null);
-    dove.className = ''; dove.innerHTML = '';
+    dove.className = 'vuoto'; dove.textContent = 'Scegli un tipo o una sede, o cerca un titolo.';
     el('altri-beni').hidden = true;
     return;
   }
@@ -2230,7 +2313,17 @@ async function prendiScelto() {
     const { prestito } = await chiama('inventario/presta', { beneId: b.id });
     inv.prestiti = [prestito];
     tg?.HapticFeedback?.notificationOccurred('success');
-    toast(`È tuo fino al ${dataTesto(prestito.scadenza)}. Buona lettura, buon gioco!`);
+    toastAnnulla(`Preso in prestito: “${b.titolo}”.`, async () => {
+      try {
+        await chiama('inventario/annulla-prestito', { prestitoId: prestito.id });
+        inv.prestiti = [];
+        disegnaMioPrestito();
+        cercaBeni(true);
+        toast('Prestito annullato.');
+      } catch (err) {
+        lamenta(err.message);
+      }
+    });
     disegnaMioPrestito();
     window.scrollTo(0, 0);
     cercaBeni(true);
