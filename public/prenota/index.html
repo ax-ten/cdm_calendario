@@ -465,7 +465,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
 
 /* --------------------------------------------------------- registrazione */
-.informativa { margin-top: 12px; font-size: .88rem; }
+.intro { font-size: 1rem; margin: 0 0 22px; }
+.informativa { margin-top: 8px; font-size: .88rem; }
 .informativa summary { color: var(--accento); cursor: pointer; }
 .informativa > div {
   margin-top: 10px; padding: 12px; border-radius: 12px;
@@ -602,8 +603,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 <section class="pannello" id="pannello-registrazione" hidden>
   <div id="modulo-registrazione">
     <h1>Registrati</h1>
-    <p class="spiega">L’app è riservata ai sociɜ del Crocevia dei Mondi. Dicci chi sei:
-      lo staff conferma e ti scrivo qui in chat.</p>
+    <p class="intro">L’app è riservata al corpo associativo del Crocevia dei Mondi:
+      prima di poterne usufruire, dobbiamo confermare che tu sia sociə.</p>
 
     <div class="campo">
       <label for="reg-nome">Nome</label>
@@ -619,7 +620,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
         <input type="checkbox" id="reg-socio">
         <div>
           <label for="reg-socio">Sono sociə del Crocevia dei Mondi</label>
-          <small>Lo staff lo verifica sul libro dellɜ sociɜ.</small>
         </div>
       </div>
     </div>
@@ -629,7 +629,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
         <input type="checkbox" id="reg-tesseramento">
         <div>
           <label for="reg-tesseramento">So che registrarmi qui non sostituisce il tesseramento</label>
-          <small>La tessera si fa e si rinnova in sede, come sempre.</small>
         </div>
       </div>
     </div>
@@ -639,7 +638,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
         <input type="checkbox" id="reg-privacy">
         <div>
           <label for="reg-privacy">Ho letto l’informativa privacy</label>
-          <small>Nome, cognome e il tuo account Telegram vanno sulla tua scheda sociə.</small>
           <details class="informativa" id="campo-informativa">
             <summary>Leggi l’informativa</summary>
             <div id="informativa"></div>

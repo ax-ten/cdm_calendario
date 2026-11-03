@@ -608,7 +608,7 @@ async function conUtente(req, res, azione, { soloSoci = true } = {}) {
     if (soloSoci) {
       utente.socio = await socioDi(utente.id);
       if (!utente.socio) {
-        return res.status(403).json({ errore: 'l app è riservata ai sociɜ: registrati prima', registrati: true });
+        return res.status(403).json({ errore: 'l app è riservata al corpo associativo: registrati prima', registrati: true });
       }
     }
     await azione(utente);
@@ -736,7 +736,7 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
     return res.status(400).json({ errore: 'servono nome e cognome' });
   }
   if (req.body?.socio !== true) {
-    return res.status(400).json({ errore: 'l app è riservata ai sociɜ' });
+    return res.status(400).json({ errore: 'l app è riservata al corpo associativo' });
   }
   // Registrarsi all'app non e' tesserarsi: lo si fa dire in chiaro, se no
   // qualcunə pensa di aver rinnovato la tessera premendo un bottone.
