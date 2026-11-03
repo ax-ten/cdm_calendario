@@ -829,16 +829,18 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
     });
   }
 
+  // Si entra subito: nasce una scheda provvisoria e l'app si usa da adesso.
+  // Il direttivo decide dopo; se dice di no, l'accesso si chiude.
+  const privacy = DateTime.now().toUTC().toFormat('yyyy-LL-dd HH:mm:ss');
   const candidati = await odoo.miniapp('candidati', nome, cognome);
+  const provvisorio = await odoo.miniapp('registra_provvisorio', utente.id, nome, cognome, privacy);
   const testo =
-    `Richiesta di registrazione all app.\n` +
+    `Nuova registrazione all’app.\n` +
     `Dice di chiamarsi ${nome} ${cognome}.\n` +
-    `Su Telegram: ${nomeTelegram(utente)}, id ${utente.id}.\n\n` +
+    `Su Telegram: ${nomeTelegram(utente)}, id ${utente.id}.\n` +
+    `Intanto usa già l’app: se non è sociə, «Non è sociə» chiude il suo accesso.\n\n` +
     testoCandidati(candidati);
-  const id = soci.salva({
-    utente, nome, cognome, testo,
-    privacy: DateTime.now().toUTC().toFormat('yyyy-LL-dd HH:mm:ss'),
-  });
+  const id = soci.salva({ utente, nome, cognome, testo, privacy, provvisorio: provvisorio.id });
 
   const tastiera = tastieraRegistrazione(id, candidati);
 
@@ -848,12 +850,17 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
       chat_id: chatDirettivo, text: testo, reply_markup: { inline_keyboard: tastiera },
     });
   } catch (err) {
+    // Senza il messaggio nessuno deciderebbe mai: la scheda provvisoria si
+    // toglie, e si riprova da capo.
     console.error('registrazione: gruppo direttivo:', err.message);
     soci.chiudi(id);
+    await odoo.miniapp('rifiuta_provvisorio', provvisorio.id, 'sistema (direttivo non avvisato)')
+      .catch(e => console.error('registrazione: provvisoria non tolta:', e.message));
     return res.status(500).json({ errore: 'Non sono riuscito ad avvisare il direttivo: riprova.' });
   }
   soci.aggiorna(id, { messaggi: [{ chat: chatDirettivo, id: messaggio.message_id }] });
-  res.json({ ok: true, inAttesa: true });
+  sociVisti.delete(String(utente.id));
+  res.json({ ok: true, socio: provvisorio });
 }, { soloSoci: false }));
 
 app.post('/prenota/api/disponibilita', (req, res) => conUtente(req, res, async (utente) => {
@@ -1660,15 +1667,31 @@ app.post('/prenota/api/interno/socio', async (req, res) => {
   const r = presa.richiesta;
 
   if (scelta === 'no') {
+    // Con la scheda provvisoria, "no" chiude anche l'accesso all'app.
+    if (r.provvisorio) {
+      try {
+        await odoo.miniapp('rifiuta_provvisorio', r.provvisorio, chi);
+      } catch (err) {
+        soci.rilascia(id);
+        console.error('registrazione:', err.message);
+        return res.status(err.perUtente ? 409 : 500).json({ errore: err.message });
+      }
+    }
     soci.chiudi(id);
     soci.segnaRifiutato(r.utente.id, chi);
+    sociVisti.delete(String(r.utente.id));
     return res.json({ ok: true, esito: 'no', richiesta: r });
   }
 
   try {
-    const socio = scelta === 'nuovo'
-      ? await odoo.miniapp('crea_socio', r.utente.id, r.nome, r.cognome, r.privacy, chi)
-      : await odoo.miniapp('collega_socio', r.utente.id, Number(scelta), r.privacy, chi);
+    // Le richieste fatte prima della registrazione provvisoria non hanno una
+    // scheda: per quelle valgono ancora i metodi di prima.
+    const partner = scelta === 'nuovo' ? false : Number(scelta);
+    const socio = r.provvisorio
+      ? await odoo.miniapp('conferma_provvisorio', r.provvisorio, partner, chi)
+      : scelta === 'nuovo'
+        ? await odoo.miniapp('crea_socio', r.utente.id, r.nome, r.cognome, r.privacy, chi)
+        : await odoo.miniapp('collega_socio', r.utente.id, partner, r.privacy, chi);
     soci.chiudi(id);
     soci.dimenticaRifiuto(r.utente.id);
     sociVisti.delete(String(r.utente.id));

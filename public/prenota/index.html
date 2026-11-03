@@ -1065,7 +1065,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <div id="modulo-registrazione">
     <h1>Registrati</h1>
     <p class="intro">L’app è riservata al corpo associativo del Crocevia dei Mondi:
-      prima di poterne usufruire, dobbiamo confermare che tu sia sociə.</p>
+      registrati e usala da subito, il direttivo poi conferma che tu sia sociə.</p>
 
     <div class="campo">
       <label for="reg-nome">Nome</label>
@@ -1990,11 +1990,10 @@ async function registrati() {
       tesseramento: reg('tesseramento').checked,
       privacy: reg('privacy').checked,
     });
-    esitoRegistrazione(
-      'Richiesta inviata al direttivo. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
+    // Si entra subito: la pagina riparte, e stavolta sei sociə (per ora).
+    location.reload();
   } catch (err) {
     lamenta(err.message);
-  } finally {
     attesaAzione(false);
   }
 }
@@ -2192,7 +2191,7 @@ async function cercaBeni(daCapo) {
   const f = filtriBeni();
   if (!inv.tipo && !f.testo && !f.sede_id && !f.bene_id && !f.autore) {
     inv.totale = 0; inv.offset = 0; inv.beni = new Map(); sceglieBene(null);
-    dove.className = 'vuoto'; dove.textContent = 'Scegli un tipo o una sede, o cerca un titolo.';
+    dove.className = 'vuoto'; dove.textContent = 'Seleziona un filtro.';
     el('altri-beni').hidden = true;
     return;
   }
