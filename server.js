@@ -682,7 +682,12 @@ async function socioDi(userId, { fresco = false } = {}) {
   }
 }
 
-app.use(express.json({ limit: '64kb' }));
+// Le richieste dell'app sono piccole; l'unica eccezione e' la foto del bene
+// riportato in sede, che arriva gia' rimpicciolita dalla pagina.
+const jsonPiccolo = express.json({ limit: '64kb' });
+const jsonConFoto = express.json({ limit: '6mb' });
+app.use((req, res, next) =>
+  (req.path === '/prenota/api/inventario/restituisci' ? jsonConFoto : jsonPiccolo)(req, res, next));
 
 app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) => {
   // Qui si arriva anche da non soci: e' la rotta che dice all'app se
@@ -1263,9 +1268,47 @@ app.post('/prenota/api/inventario/miei', (req, res) => conUtente(req, res, async
   res.json({ prestiti: await odoo.miniapp('miei_prestiti', utente.id) });
 }));
 
+// Restituire vuol dire riportare in sede, e lo si dimostra con una foto: va
+// nel gruppo staff della sede del bene, e solo se e' arrivata il prestito si
+// chiude. Se si chiudesse prima, una foto persa sarebbe un prestito chiuso
+// senza prova.
+const FOTO_MAX_BYTE = 4 * 1024 * 1024;
+
+async function fotoAlloStaff(chatId, foto, didascalia) {
+  const form = new FormData();
+  form.append('chat_id', String(chatId));
+  form.append('caption', didascalia);
+  form.append('photo', new Blob([foto], { type: 'image/jpeg' }), 'restituzione.jpg');
+  const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
+  const esito = await r.json();
+  if (!esito.ok) throw new Error(`sendPhoto: ${esito.description}`);
+}
+
 app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res, async (utente) => {
   const prestitoId = Number(req.body?.prestitoId);
   if (!prestitoId) return res.status(400).json({ errore: 'quale prestito?' });
+
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.foto || ''));
+  if (!m) return res.status(400).json({ errore: 'serve la foto del bene in sede' });
+  const foto = Buffer.from(m[1], 'base64');
+  if (foto.length > FOTO_MAX_BYTE || foto[0] !== 0xff || foto[1] !== 0xd8) {
+    return res.status(400).json({ errore: 'questa foto non va: riprova a scattarla' });
+  }
+
+  // Dai propri prestiti aperti: cosi' si sa la sede, e si sa che e' suo.
+  const prestito = (await odoo.miniapp('miei_prestiti', utente.id)).find(p => p.id === prestitoId);
+  if (!prestito) return res.status(404).json({ errore: 'non e un tuo prestito aperto' });
+  const chatStaff = STAFF.get(String(prestito.sede || '').toLowerCase());
+  if (!chatStaff) return res.status(500).json({ errore: `nessun gruppo staff per ${prestito.sede}` });
+
+  const chi = `${prestito.socio}${utente.username ? ' (@' + utente.username + ')' : ''}`;
+  try {
+    await fotoAlloStaff(chatStaff, foto,
+      `${chi} ha riportato “${prestito.titolo}” a ${prestito.sede}.`);
+  } catch (err) {
+    console.error('restituzione: foto non mandata:', err.message);
+    return res.status(502).json({ errore: 'non sono riuscito a mandare la foto allo staff: riprova' });
+  }
   res.json({ prestito: await odoo.miniapp('restituisci', utente.id, prestitoId) });
 }));
 

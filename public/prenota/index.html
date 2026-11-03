@@ -546,6 +546,12 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .riga-campi .bottone { flex: 0 0 auto; }
 .esito-isbn { font-size: .84rem; color: var(--tenue); margin: 8px 0 0; }
 .esito-isbn.attento { color: var(--occupato); }
+#anteprima-foto { position: fixed; inset: 0; background: var(--sfondo); z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 16px; }
+#anteprima-foto[hidden] { display: none; }
+#anteprima-foto p { margin: 0; text-align: center; color: var(--tenue); font-size: .9rem; }
+#anteprima-foto img { max-width: 100%; max-height: 62vh; border-radius: 12px; object-fit: contain; }
 #scanner { position: fixed; inset: 0; background: #000; z-index: 20;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
 #scanner[hidden] { display: none; }
@@ -790,6 +796,18 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
   <button type="button" class="bottone largo" id="salva-bene">Salva</button>
 </section>
+
+<!-- La foto del bene riportato in sede. capture apre direttamente la
+     fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
+<input type="file" id="foto-restituzione" accept="image/*" capture="environment" hidden>
+<div id="anteprima-foto" hidden>
+  <p>Questa foto va allo staff della sede: si deve vedere il bene al suo posto.</p>
+  <img id="foto-scelta" alt="La foto scattata">
+  <div class="azioni">
+    <button type="button" class="bottone secondario" id="rifai-foto">Rifalla</button>
+    <button type="button" class="bottone" id="invia-foto">Invia e chiudi il prestito</button>
+  </div>
+</div>
 
 <div id="scanner" hidden>
   <video id="video-isbn" playsinline muted></video>
@@ -1653,13 +1671,13 @@ function disegnaMioPrestito() {
           ? `Scaduto il ${dataTesto(p.scadenza)}: riportalo in sede appena puoi.`
           : `Da riportare entro il ${dataTesto(p.scadenza)}.`}</div>
         <div class="azioni">
-          <button type="button" class="bottone" data-restituisci="${p.id}">L’ho restituito</button>
+          <button type="button" class="bottone" data-restituisci="${p.id}">L’ho riportato: scatta la foto</button>
         </div>
       </div>`;
   }).join('') + (inv.prestiti.length >= inv.maxPrestiti
     ? '<p class="nota-prestito">Per prendere altro, prima restituisci questo.</p>' : '');
   dove.querySelectorAll('[data-restituisci]').forEach(b => {
-    b.onclick = () => restituisci(Number(b.dataset.restituisci), b);
+    b.onclick = () => restituisci(Number(b.dataset.restituisci));
   });
 }
 
@@ -1869,19 +1887,69 @@ async function prendi(beneId, titolo, bottone) {
   }
 }
 
-async function restituisci(prestitoId, bottone) {
-  if (!await conferma('Confermi di averlo riportato in sede?')) return;
-  bottone.disabled = true;
+// Si restituisce con una foto del bene rimesso al suo posto: la vede lo
+// staff della sede, ed e' l'unica prova che e' tornato davvero.
+let fotoPerPrestito = null;
+
+function restituisci(prestitoId) {
+  fotoPerPrestito = prestitoId;
+  const campo = el('foto-restituzione');
+  campo.value = '';
+  campo.onchange = () => campo.files[0] && preparaFoto(campo.files[0]);
+  campo.click();
+}
+
+// Una foto del telefono pesa diversi MB: la si rimpicciolisce qui, prima di
+// mandarla. Al gruppo staff basta vedere il bene sullo scaffale.
+async function rimpicciolisci(file, lato = 1600) {
+  let immagine;
   try {
-    await chiama('inventario/restituisci', { prestitoId });
-    inv.prestiti = inv.prestiti.filter(p => p.id !== prestitoId);
-    toast('Grazie! Ora è di nuovo disponibile.');
-    disegnaMioPrestito();
-    cercaBeni(true);
-  } catch (err) {
-    bottone.disabled = false;
-    lamenta(err.message);
+    immagine = await createImageBitmap(file);
+  } catch {
+    immagine = await new Promise((ok, ko) => {
+      const img = new Image();
+      img.onload = () => ok(img);
+      img.onerror = ko;
+      img.src = URL.createObjectURL(file);
+    });
   }
+  const scala = Math.min(1, lato / Math.max(immagine.width, immagine.height));
+  const tela = document.createElement('canvas');
+  tela.width = Math.round(immagine.width * scala);
+  tela.height = Math.round(immagine.height * scala);
+  tela.getContext('2d').drawImage(immagine, 0, 0, tela.width, tela.height);
+  return tela.toDataURL('image/jpeg', 0.8);
+}
+
+async function preparaFoto(file) {
+  let foto;
+  try {
+    foto = await rimpicciolisci(file);
+  } catch {
+    return lamenta('Non riesco a leggere questa foto: riprova.');
+  }
+  el('foto-scelta').src = foto;
+  el('anteprima-foto').hidden = false;
+  el('rifai-foto').onclick = () => {
+    el('anteprima-foto').hidden = true;
+    restituisci(fotoPerPrestito);
+  };
+  el('invia-foto').disabled = false;
+  el('invia-foto').onclick = async () => {
+    el('invia-foto').disabled = true;
+    try {
+      await chiama('inventario/restituisci', { prestitoId: fotoPerPrestito, foto });
+      inv.prestiti = inv.prestiti.filter(p => p.id !== fotoPerPrestito);
+      el('anteprima-foto').hidden = true;
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast('Grazie! Lo staff ha la foto, ora è di nuovo disponibile.');
+      disegnaMioPrestito();
+      cercaBeni(true);
+    } catch (err) {
+      el('invia-foto').disabled = false;
+      lamenta(err.message);
+    }
+  };
 }
 
 async function prolunga(prestitoId, bottone) {
@@ -1897,10 +1965,12 @@ async function prolunga(prestitoId, bottone) {
 }
 
 // ------------------------------------------------- aggiunta beni (staff)
-// La fotocamera legge il codice a barre dove il browser sa farlo
-// (BarcodeDetector: Chrome e il WebView di Android). Altrove, iPhone
-// compreso, l'ISBN si scrive a mano.
-const SI_SCANSIONA = 'BarcodeDetector' in window && Boolean(navigator.mediaDevices?.getUserMedia);
+// La fotocamera legge il codice a barre: dove il browser lo sa fare da
+// solo (BarcodeDetector, Chrome e il WebView di Android) con quello, altrove
+// (iPhone) con ZXing, che si carica solo in quel momento. Se la fotocamera
+// non si apre, l'ISBN si scrive a mano.
+const SI_SCANSIONA = Boolean(navigator.mediaDevices?.getUserMedia);
+const LETTORE_NATIVO = 'BarcodeDetector' in window;
 let formAggiungiPronto = false;
 
 function apriAggiungi() {
@@ -2001,7 +2071,47 @@ async function cercaIsbn() {
   }
 }
 
+function caricaZxing() {
+  if (window.ZXing) return Promise.resolve(window.ZXing);
+  return new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = 'vendor/zxing-0.21.3.min.js';
+    s.onload = () => ok(window.ZXing);
+    s.onerror = ko;
+    document.head.appendChild(s);
+  });
+}
+
+async function scansionaConZxing() {
+  let ZXing;
+  try {
+    ZXing = await caricaZxing();
+  } catch {
+    return lamenta('Non riesco a caricare il lettore: scrivi l’ISBN a mano.');
+  }
+  const indizi = new Map([[ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13]]]);
+  const lettore = new ZXing.BrowserMultiFormatReader(indizi, 250);
+  const chiudi = () => { lettore.reset(); el('scanner').hidden = true; };
+  el('chiudi-scanner').onclick = chiudi;
+  el('scanner').hidden = false;
+  try {
+    await lettore.decodeFromConstraints(
+      { video: { facingMode: 'environment' } }, el('video-isbn'), (risultato) => {
+        const testo = risultato?.getText();
+        if (!testo || !/^97[89]\d{10}$/.test(testo)) return;
+        chiudi();
+        tg?.HapticFeedback?.notificationOccurred('success');
+        el('agg-isbn').value = testo;
+        cercaIsbn();
+      });
+  } catch {
+    chiudi();
+    lamenta('Non riesco ad aprire la fotocamera: scrivi l’ISBN a mano.');
+  }
+}
+
 async function scansiona() {
+  if (!LETTORE_NATIVO) return scansionaConZxing();
   let flusso;
   try {
     flusso = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
