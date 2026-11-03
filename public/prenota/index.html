@@ -546,14 +546,18 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 .tondo { position: fixed; right: 12px; bottom: calc(var(--ingombro-menu) + 10px); z-index: 24;
   width: var(--azione); height: var(--azione); padding: 0; border: 0; border-radius: 999px;
   background: var(--accento); color: var(--su-accento); box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
-  align-items: center; justify-content: center; cursor: pointer; }
+  align-items: center; justify-content: center; cursor: pointer;
+  /* Un bottone non eredita il font: senza, le scritte accanto uscivano in
+     Arial e non combaciavano con quella del + delle attivita'. */
+  font: inherit; }
 .tondo:not([hidden]) { display: flex; }
 /* La scritta accanto all'hamburger e al +: sta a sinistra del pulsante, senza
    sfondo, e si vede solo quando non c'e' nessun filtro (l'elenco e' vuoto e
    lo spazio c'e'). E' dentro al pulsante solo per seguirlo dove si sposta. */
-.etichetta-tondo { position: absolute; right: 100%; margin-right: 10px; white-space: nowrap;
-  color: var(--testo); font-size: .92rem; font-weight: 600; pointer-events: none;
-  display: none; }
+.etichetta-tondo { position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+  margin-right: 10px; white-space: nowrap;
+  color: var(--testo); font-size: .92rem; font-weight: 600;
+  line-height: 1.2; pointer-events: none; display: none; }
 .tondo.con-etichetta .etichetta-tondo, #azione.con-etichetta .etichetta-tondo { display: block; }
 .tondo.chiaro { background: var(--scheda); color: var(--testo);
   border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
