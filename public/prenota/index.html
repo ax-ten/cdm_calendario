@@ -482,7 +482,13 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
    ma non occupa la riga. */
 #azione.freccia { left: auto; right: 12px; transform: none; width: var(--azione); align-items: center; justify-content: center; padding: 0; }
 #azione.freccia:not([hidden]) { display: flex; }
-#azione.freccia svg { width: 24px; height: 24px; }
+#azione.freccia svg, .tondo svg { width: 24px; height: 24px; }
+/* Il + per aggiungere un bene: tondo, in basso a destra come la freccia. */
+.tondo { position: fixed; right: 12px; bottom: calc(var(--ingombro-menu) + 10px); z-index: 24;
+  width: var(--azione); height: var(--azione); padding: 0; border: 0; border-radius: 999px;
+  background: var(--accento); color: var(--su-accento); box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+  align-items: center; justify-content: center; cursor: pointer; }
+.tondo:not([hidden]) { display: flex; }
 #azione:disabled { cursor: default;
   background: color-mix(in srgb, var(--scheda) 88%, var(--testo));
   color: var(--tenue); }
@@ -612,7 +618,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   background: none; color: var(--testo); font: inherit; font-size: .86rem; cursor: pointer;
 }
 .tipi button[aria-selected="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
-#apri-aggiungi { margin-bottom: 14px; }
 .azioni-form { display: flex; gap: 8px; }
 .azioni-form .bottone { flex: 1; padding: 11px 14px; }
 
@@ -836,7 +841,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   </div>
   <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
   <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
-  <button type="button" class="bottone secondario largo" id="apri-aggiungi" hidden>Aggiungi un bene</button>
+  <!-- lucide: plus -->
+  <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
   <p class="conteggio" id="conteggio-beni"></p>
   <div id="elenco-beni"></div>
   <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
@@ -1423,14 +1429,24 @@ function pulsantePrincipale(testo, attivo) {
   b.hidden = false;
 }
 
-function pulsanteFreccia() {
+// Il pulsante d'azione tondo, in basso a destra: la freccia per andare
+// avanti, o il + per crearne una nuova. Icone di Lucide (arrow-right, plus).
+const ICONE = {
+  freccia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+  piu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+};
+
+function pulsanteTondo(icona, etichetta, attivo = true) {
   const b = el('azione');
   b.classList.add('freccia');
-  b.setAttribute('aria-label', 'Avanti');
-  // lucide: arrow-right
-  b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
-  b.disabled = false;
+  b.setAttribute('aria-label', etichetta);
+  b.innerHTML = ICONE[icona];
+  b.disabled = !attivo;
   b.hidden = false;
+}
+
+function pulsanteFreccia() {
+  pulsanteTondo('freccia', 'Avanti');
 }
 
 function nascondiAzione() {
@@ -1639,7 +1655,7 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
-const NESSUNA_MIA = 'Non hai attività in arrivo: creane una con Nuova attività.';
+const NESSUNA_MIA = 'Non hai attività in arrivo: creane una col + in basso.';
 
 async function caricaMie() {
   const dove = el('elenco-mie');
@@ -2203,6 +2219,8 @@ function aggiornaPrestito() {
   else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
 
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
+  // Il + sta dove sta il pulsante del prestito: si vede solo senza un bene scelto.
+  el('apri-aggiungi').hidden = !inv.staff || Boolean(b);
 }
 
 async function prendiScelto() {
@@ -2570,7 +2588,7 @@ function mostra(quale) {
     : quale === 'mie' ? nuovaPrenotazione
     : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
-  else if (quale === 'mie') pulsantePrincipale('Nuova attività', !stato.bloccato);
+  else if (quale === 'mie') pulsanteTondo('piu', 'Nuova attività', !stato.bloccato);
   else nascondiAzione();
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();
