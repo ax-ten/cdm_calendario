@@ -31,6 +31,10 @@
 
 /* La pagina non scorre mai di lato. */
 html, body { overflow-x: hidden; }
+/* Dove la barra di scorrimento occupa spazio (Telegram Desktop), il suo posto
+   resta sempre riservato: se no menu e pulsanti tondi saltano di lato appena
+   l'elenco diventa piu' lungo dello schermo. */
+html { scrollbar-gutter: stable; }
 
 body {
   margin: 0;
