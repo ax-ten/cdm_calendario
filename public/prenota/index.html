@@ -1624,7 +1624,7 @@ const ICONE = {
 };
 
 // `scritta` e' la parola accanto al pulsante, come quelle della biblioteca:
-// si vede solo con la classe con-etichetta, cioe' quando l'elenco e' vuoto.
+// si vede solo con la classe con-etichetta.
 function pulsanteTondo(icona, etichetta, attivo = true, scritta = '') {
   const b = el('azione');
   b.classList.remove('spento', 'con-etichetta');
@@ -1874,6 +1874,7 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
+const MAX_CON_AGGIUNGI = 2;
 const NESSUNA_MIA = `
   <div class="nessuna-mia">
     <p>Non hai attività in programma.</p>
@@ -1885,7 +1886,7 @@ async function caricaMie() {
   dove.textContent = 'Carico…';
   try {
     const { prenotazioni } = await chiama('mie');
-    el('azione').classList.toggle('con-etichetta', !prenotazioni.length);
+    el('azione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
     if (!prenotazioni.length) {
       dove.className = '';
       dove.innerHTML = NESSUNA_MIA;
@@ -1952,6 +1953,8 @@ function annulla(sede, id, bottone, cosa = 'una') {
         el('elenco-mie').className = 'vuoto';
         el('elenco-mie').className = '';
         el('elenco-mie').innerHTML = NESSUNA_MIA;
+      }
+      if (el('elenco-mie').querySelectorAll('.riga').length <= MAX_CON_AGGIUNGI) {
         el('azione').classList.add('con-etichetta');
       }
       // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
@@ -2981,7 +2984,12 @@ function mostra(quale) {
     : quale === 'mie' ? nuovaPrenotazione
     : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
-  else if (quale === 'mie') pulsanteTondo('piu', 'Nuova attività', !stato.bloccato, 'Aggiungi');
+  else if (quale === 'mie') {
+    pulsanteTondo('piu', 'Nuova attività', !stato.bloccato, 'Aggiungi');
+    // "Aggiungi" c'e' da subito; se ne va solo con piu' di due attivita',
+    // quando l'elenco arriva in fondo e la scritta finirebbe sopra.
+    el('azione').classList.add('con-etichetta');
+  }
   else nascondiAzione();
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();

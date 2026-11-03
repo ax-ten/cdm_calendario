@@ -749,15 +749,28 @@ function nomeTelegram(utente) {
 
 const nomeScheda = (c) => `${c.nome}${c.numero_socio ? ' (n. ' + c.numero_socio + ')' : ''}`;
 
-function testoCandidati(candidati) {
-  if (!candidati.length) return 'In Odoo non c’è nessuna scheda con un nome simile.';
+// I messaggi della registrazione vanno con parse_mode HTML, per il
+// monospace: tutto quello che arriva da fuori passa di qui.
+const escHtml = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Chi si iscrive e cosa dice di essere. La domanda sotto (testoCandidati)
+// resta fuori: quando qualcuno risponde, al suo posto va l'esito.
+function testoRegistrazione(utente, nome, cognome) {
+  return `<code>${escHtml(`${nomeTelegram(utente)}, id ${utente.id}`)}</code> si sta iscrivendo,\n` +
+         `dice di essere ${escHtml(`${nome} ${cognome}`)}.`;
+}
+
+function testoCandidati(candidati, nome, cognome) {
+  if (!candidati.length) return 'Su Odoo non c’è nessunə con questo nome: è sociə nuovə?';
+  const stesso = (c) => c.nome.trim().toLowerCase() === `${nome} ${cognome}`.trim().toLowerCase();
   if (candidati.length === 1) {
-    return `In Odoo c’è già una scheda con un nome simile: ${nomeScheda(candidati[0])}. ` +
-           'Se è la stessa persona collegala, così non nasce una scheda doppia.';
+    return stesso(candidati[0])
+      ? 'Su Odoo c’è un utente omonimo, collego gli account?'
+      : `Su Odoo c’è un utente con un nome simile, ${escHtml(nomeScheda(candidati[0]))}: collego gli account?`;
   }
-  return 'In Odoo ci sono schede con un nome simile:\n' +
-         candidati.map(c => `- ${nomeScheda(c)}`).join('\n') +
-         '\nSe è una di queste collegala, così non nasce una scheda doppia.';
+  return 'Su Odoo ci sono utenti con un nome simile:\n' +
+         candidati.map(c => `- ${escHtml(nomeScheda(c))}`).join('\n') +
+         '\nCollego gli account a uno di questi?';
 }
 
 // Con una sola scheda simile il pulsante dice solo cosa fa; con piu' di una
@@ -834,20 +847,18 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   const privacy = DateTime.now().toUTC().toFormat('yyyy-LL-dd HH:mm:ss');
   const candidati = await odoo.miniapp('candidati', nome, cognome);
   const provvisorio = await odoo.miniapp('registra_provvisorio', utente.id, nome, cognome, privacy);
-  const testo =
-    `Nuova registrazione all’app.\n` +
-    `Dice di chiamarsi ${nome} ${cognome}.\n` +
-    `Su Telegram: ${nomeTelegram(utente)}, id ${utente.id}.\n` +
-    `Intanto usa già l’app: se non è sociə, «Non è sociə» chiude il suo accesso.\n\n` +
-    testoCandidati(candidati);
-  const id = soci.salva({ utente, nome, cognome, testo, privacy, provvisorio: provvisorio.id });
+  const testo = testoRegistrazione(utente, nome, cognome);
+  // `html`: il testo va mandato con parse_mode HTML. Le richieste salvate
+  // prima non ce l'hanno, e restano testo semplice.
+  const id = soci.salva({ utente, nome, cognome, testo, html: true, privacy, provvisorio: provvisorio.id });
 
   const tastiera = tastieraRegistrazione(id, candidati);
 
   let messaggio;
   try {
     messaggio = await telegram('sendMessage', {
-      chat_id: chatDirettivo, text: testo, reply_markup: { inline_keyboard: tastiera },
+      chat_id: chatDirettivo, text: `${testo}\n\n${testoCandidati(candidati, nome, cognome)}`,
+      parse_mode: 'HTML', reply_markup: { inline_keyboard: tastiera },
     });
   } catch (err) {
     // Senza il messaggio nessuno deciderebbe mai: la scheda provvisoria si
@@ -1828,6 +1839,7 @@ app.post('/prenota/api/interno/cancella-dati', async (req, res) => {
       telegram('editMessageText', {
         chat_id: m.chat, message_id: m.id,
         text: `${richiesta.testo}\n\nRitirata: ha chiesto di cancellare i suoi dati.`,
+        ...(richiesta.html ? { parse_mode: 'HTML' } : {}),
       }).catch(err => console.error('cancella dati: messaggio non aggiornato:', err.message));
     }
   }
@@ -1860,7 +1872,10 @@ app.post('/prenota/api/interno/registrazioni', async (req, res) => {
       const quando = DateTime.fromISO(r.quando).setZone('Europe/Rome').setLocale('it').toFormat('d MMMM');
       const m = await telegram('sendMessage', {
         chat_id: chatDirettivo,
-        text: `In attesa dal ${quando}.\n${r.testo}`,
+        text: r.html
+          ? `In attesa dal ${quando}.\n${r.testo}\n\n${testoCandidati(candidati, r.nome, r.cognome)}`
+          : `In attesa dal ${quando}.\n${r.testo}`,
+        ...(r.html ? { parse_mode: 'HTML' } : {}),
         reply_markup: { inline_keyboard: tastieraRegistrazione(r.id, candidati) },
       });
       soci.aggiorna(r.id, { messaggi: [...(r.messaggi || []), { chat: chatDirettivo, id: m.message_id }] });
