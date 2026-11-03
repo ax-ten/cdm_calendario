@@ -128,6 +128,10 @@ body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
 /* Chi deve ancora registrarsi non ha schede da scegliere. */
 .tab[hidden] { display: none; }
 body.senza-menu { --ingombro-menu: calc(env(safe-area-inset-bottom) + 6px); }
+/* Con la tastiera aperta il menu non serve e ruberebbe spazio: sparisce, e
+   la barra dei passi e il pulsante scendono al suo posto, sopra la tastiera. */
+body.tastiera { --ingombro-menu: 6px; }
+body.tastiera .tab { display: none; }
 
 h1 {
   font-size: 1.35rem;
@@ -2723,6 +2727,25 @@ function cambiaMese(passo) {
   stato.mese = { anno, mese };
   if (stato.sede) caricaMese();
   else disegnaCalendario();
+}
+
+// La tastiera si apre quando si scrive in un campo di testo, e solo sul
+// telefono: al computer il menu resta dov'e'. Passando da un campo all'altro
+// la tastiera non si chiude, quindi si aspetta un attimo prima di dirlo.
+const CAMPI_TESTO = 'input[type="text"], input[type="search"], input[type="number"], input:not([type]), textarea';
+if (window.matchMedia?.('(pointer: coarse)').matches) {
+  let chiusa;
+  document.addEventListener('focusin', (e) => {
+    if (!e.target.matches?.(CAMPI_TESTO)) return;
+    clearTimeout(chiusa);
+    document.body.classList.add('tastiera');
+  });
+  document.addEventListener('focusout', (e) => {
+    if (!e.target.matches?.(CAMPI_TESTO)) return;
+    chiusa = setTimeout(() => {
+      if (!document.activeElement?.matches?.(CAMPI_TESTO)) document.body.classList.remove('tastiera');
+    }, 100);
+  });
 }
 
 avvia();
