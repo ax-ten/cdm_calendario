@@ -729,6 +729,34 @@ function nomeTelegram(utente) {
   return `${utente.nome}${utente.username ? ' (@' + utente.username + ')' : ''}`;
 }
 
+const nomeScheda = (c) => `${c.nome}${c.numero_socio ? ' (n. ' + c.numero_socio + ')' : ''}`;
+
+function testoCandidati(candidati) {
+  if (!candidati.length) return 'In Odoo non c’è nessuna scheda con un nome simile.';
+  if (candidati.length === 1) {
+    return `In Odoo c’è già una scheda con un nome simile: ${nomeScheda(candidati[0])}. ` +
+           'Se è la stessa persona collegala, così non nasce una scheda doppia.';
+  }
+  return 'In Odoo ci sono schede con un nome simile:\n' +
+         candidati.map(c => `- ${nomeScheda(c)}`).join('\n') +
+         '\nSe è una di queste collegala, così non nasce una scheda doppia.';
+}
+
+// Con una sola scheda simile il pulsante dice solo cosa fa; con piu' di una
+// deve dire anche quale.
+function tastieraRegistrazione(id, candidati) {
+  return [
+    ...candidati.map(c => [{
+      text: candidati.length === 1 ? 'Collega ad utente Odoo' : `Collega ad utente Odoo: ${nomeScheda(c)}`,
+      callback_data: `socio:${id}:${c.id}`,
+    }]),
+    [
+      { text: 'Sociə nuovə', callback_data: `socio:${id}:nuovo` },
+      { text: 'Non è sociə', callback_data: `socio:${id}:no` },
+    ],
+  ];
+}
+
 app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (utente) => {
   const nome = String(req.body?.nome || '').trim();
   const cognome = String(req.body?.cognome || '').trim();
@@ -788,24 +816,13 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
     `Richiesta di registrazione all app.\n` +
     `Dice di chiamarsi ${nome} ${cognome}.\n` +
     `Su Telegram: ${nomeTelegram(utente)}, id ${utente.id}.\n\n` +
-    (candidati.length
-      ? 'Ci sono sociɜ con un nome simile: se è la stessa persona sceglila, così non nasce una scheda doppia.'
-      : 'Nessunə sociə in Odoo con un nome simile.');
+    testoCandidati(candidati);
   const id = soci.salva({
     utente, nome, cognome, testo,
     privacy: DateTime.now().toUTC().toFormat('yyyy-LL-dd HH:mm:ss'),
   });
 
-  const tastiera = [
-    ...candidati.map(c => [{
-      text: `Stessa persona di ${c.nome}${c.numero_socio ? ' (n. ' + c.numero_socio + ')' : ''}`,
-      callback_data: `socio:${id}:${c.id}`,
-    }]),
-    [
-      { text: 'Sociə nuovə', callback_data: `socio:${id}:nuovo` },
-      { text: 'Non è sociə', callback_data: `socio:${id}:no` },
-    ],
-  ];
+  const tastiera = tastieraRegistrazione(id, candidati);
 
   let messaggio;
   try {
@@ -1312,7 +1329,7 @@ app.post('/prenota/api/interno/rifiuta', (req, res) => {
 });
 
 // Il direttivo ha risposto a una registrazione. `scelta` e' l'id della
-// scheda ("stessa persona"), "nuovo" o "no". Il bot poi aggiorna il
+// scheda da collegare, "nuovo" o "no". Il bot poi aggiorna il
 // messaggio e scrive alla persona: per questo la risposta riporta la
 // richiesta intera.
 app.post('/prenota/api/interno/socio', async (req, res) => {
