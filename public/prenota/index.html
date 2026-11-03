@@ -626,6 +626,12 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 #toast.visibile { opacity: 1; transform: none; }
 #toast.guasto { background: var(--pieno); }
 #toast[hidden] { display: none; }
+/* Durante la prenotazione il toast ("manca l'orario") sta accanto alla
+   freccia che si e' appena premuta, alla stessa altezza, non sopra. */
+body.in-passi #toast { right: calc(12px + var(--azione) + 10px); left: 12px;
+  bottom: calc(var(--ingombro-menu) + 22px); min-height: var(--azione);
+  display: flex; align-items: center; padding: 8px 14px; }
+body.in-passi #toast[hidden] { display: none; }
 
 /* Dice cosa succede a questo nome, non come funziona il raggruppamento: la
    regola non interessa a nessuno, la conseguenza si'. */
