@@ -548,7 +548,7 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
   background: var(--accento); color: var(--su-accento); box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
   align-items: center; justify-content: center; cursor: pointer; }
 .tondo:not([hidden]) { display: flex; }
-/* La scritta accanto all'hamburger: sta a sinistra del pulsante, senza
+/* La scritta accanto all'hamburger e al +: sta a sinistra del pulsante, senza
    sfondo, e si vede solo quando non c'e' nessun filtro (l'elenco e' vuoto e
    lo spazio c'e'). E' dentro al pulsante solo per seguirlo dove si sposta. */
 .etichetta-tondo { position: absolute; right: 100%; margin-right: 10px; white-space: nowrap;
@@ -740,15 +740,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
 .riga .ritardo { color: var(--pieno); }
 .nessuna-mia p { color: var(--tenue); text-align: center; margin: 34px 0 0; }
-/* La freccia sta ferma in basso a destra e finisce appena sopra il +. */
-.freccia-curva { position: fixed; right: 76px;
-  bottom: calc(var(--ingombro-menu) + 19px);
-  width: 110px; height: 119px; pointer-events: none; }
-.freccia-curva i { display: block; width: 100%; height: 100%; background: var(--testo); opacity: .9;
-  -webkit-mask: url(freccia.png) center / contain no-repeat;
-  mask: url(freccia.png) center / contain no-repeat; }
-.freccia-curva span { position: absolute; bottom: 100%; left: -18px; margin-bottom: 6px;
-  white-space: nowrap; color: var(--testo); font-size: 1rem; font-weight: 600; }
 .avviso-foto { margin: 10px 0 -2px; font-size: .84rem; color: var(--tenue); }
 .mio-prestito { padding: 2px 0 16px; margin-bottom: 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
@@ -980,7 +971,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta sopra il +
        quando c'e' anche quello. -->
   <button type="button" class="tondo chiaro" id="apri-prestiti" aria-label="Prestiti" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg><span class="etichetta-tondo" aria-hidden="true">Prestiti</span></button>
-  <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+  <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span class="etichetta-tondo" aria-hidden="true">Aggiungi</span></button>
   <div id="elenco-beni"></div>
   <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
 </section>
@@ -1870,16 +1861,9 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
-// Nessuna attivita': la frase, e la freccia disegnata a mano che scende sul
-// +. La freccia e' un'immagine (freccia.png) usata come maschera: prende il
-// colore del testo del tema, chiaro sul fondo scuro.
 const NESSUNA_MIA = `
   <div class="nessuna-mia">
     <p>Non hai attività in programma.</p>
-    <div class="freccia-curva" aria-hidden="true">
-      <span>creane una!</span>
-      <i></i>
-    </div>
   </div>`;
 
 async function caricaMie() {
@@ -2259,10 +2243,12 @@ async function cercaBeni(daCapo) {
     inv.totale = 0; inv.offset = 0; inv.beni = new Map(); sceglieBene(null);
     dove.className = 'vuoto'; dove.textContent = 'Seleziona un filtro.';
     el('apri-prestiti').classList.add('con-etichetta');
+    el('apri-aggiungi').classList.add('con-etichetta');
     el('altri-beni').hidden = true;
     return;
   }
   el('apri-prestiti').classList.remove('con-etichetta');
+  el('apri-aggiungi').classList.remove('con-etichetta');
   if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; }
   el('altri-beni').disabled = true;
   try {
