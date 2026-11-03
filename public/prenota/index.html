@@ -94,11 +94,16 @@ body {
 .testa-passi .indietro { padding: 6px 0; }
 .link-mie { appearance: none; border: 0; background: none; color: var(--accento);
   font: inherit; font-size: .88rem; padding: 6px 0; margin-left: auto; cursor: pointer; }
-.avanzamento { height: 6px; border-radius: 999px; overflow: hidden; margin: 6px 0 8px;
+.link-mie[hidden] { display: none; }
+/* La barra sta ferma in fondo, fra il menu e il pulsante d'azione: si vede
+   sempre quanto manca, anche scorrendo. */
+.avanzamento { position: fixed; left: 50%; transform: translateX(-50%); z-index: 24;
+  bottom: calc(var(--ingombro-menu) + 8px); width: min(440px, calc(100% - 24px));
+  height: 5px; border-radius: 999px; overflow: hidden;
   background: color-mix(in srgb, var(--tenue) 25%, transparent); }
+body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
 .avanzamento-pieno { height: 100%; width: 20%; border-radius: 999px; background: var(--accento);
   transition: width .3s ease; }
-.passo-di { margin: 0 0 4px; font-size: .78rem; color: var(--tenue); letter-spacing: .03em; }
 .passo[hidden] { display: none; }
 .esito-orario { margin: 4px 0 22px; }
 .esito-orario:empty { display: none; }
@@ -114,6 +119,11 @@ body {
   background: color-mix(in srgb, var(--accento) 16%, transparent);
 }
 .tab button svg { width: 24px; height: 24px; flex: 0 0 auto; }
+/* La scheda scelta ha l'icona piena: le forme si riempiono, i dettagli dentro
+   (la costa del libro, la maniglia) restano incisi col colore del fondo. */
+.tab button svg .riempi { fill: transparent; transition: fill .15s; }
+.tab button[aria-selected="true"] svg .riempi { fill: currentColor; }
+.tab button[aria-selected="true"] svg .dentro { stroke: var(--scheda); }
 .tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: -2px; }
 /* Chi deve ancora registrarsi non ha schede da scegliere. */
 .tab[hidden] { display: none; }
@@ -127,6 +137,7 @@ h1 {
   font-weight: 600;
 }
 .spiega { color: var(--tenue); font-size: .9rem; margin: 0 0 22px; }
+h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; }
 
 .pannello[hidden] { display: none; }
 
@@ -467,6 +478,11 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   z-index: 24;
 }
 #azione[hidden] { display: none; }
+/* A meta' prenotazione il pulsante e' solo una freccia, a destra: va avanti,
+   ma non occupa la riga. */
+#azione.freccia { left: auto; right: 12px; transform: none; width: var(--azione); align-items: center; justify-content: center; padding: 0; }
+#azione.freccia:not([hidden]) { display: flex; }
+#azione.freccia svg { width: 24px; height: 24px; }
 #azione:disabled { cursor: default;
   background: color-mix(in srgb, var(--scheda) 88%, var(--testo));
   color: var(--tenue); }
@@ -576,6 +592,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .sugg-vuoto { color: var(--tenue); font-size: .88rem; padding: 10px 12px; }
 .filtri { display: flex; gap: 8px; margin: 10px 0; }
 .filtri select { flex: 1; min-width: 0; font-size: .88rem; padding: 10px 26px 10px 10px; }
+.filtri select[hidden] { display: none; }
 .solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: 0 0 12px; }
 .solo-disp input { width: 18px; height: 18px; margin: 0; accent-color: var(--accento); }
 .conteggio { color: var(--tenue); font-size: .84rem; margin: 0 0 8px; }
@@ -625,7 +642,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
 .indietro { appearance: none; border: 0; background: none; color: var(--accento);
   font: inherit; padding: 14px 0 6px; cursor: pointer; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 168px; overflow-y: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips:empty { display: none; }
 .chips button {
   padding: 6px 10px; border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
   border-radius: 999px; background: none; color: var(--testo); font: inherit; font-size: .84rem; cursor: pointer;
@@ -664,23 +682,22 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <body>
 
 <nav class="tab" role="tablist">
-  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: library-big --><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg><span>Biblioteca</span></button>
-  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg><span>Prenotazioni</span></button>
+  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: library-big --><rect class="riempi" width="8" height="18" x="3" y="3" rx="1"/><path class="dentro" d="M7 3v18"/><path class="riempi" d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg><span>Biblioteca</span></button>
+  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path class="riempi" d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/><path class="dentro" d="M10 12v.01"/></svg><span>Prenotazioni</span></button>
 </nav>
 
 <!-- ------------------------------------------------------------ prenota -->
-<section class="pannello" id="pannello-prenota" role="tabpanel" aria-labelledby="tab-prenota">
-  <!-- La prenotazione e' fatta a passi: un pezzo per volta, e la barra dice
-       quanto manca. Si va avanti col pulsante in basso, indietro con la
-       freccia di Telegram o con "Indietro". -->
+<section class="pannello" id="pannello-prenota" role="tabpanel" aria-labelledby="tab-prenota" hidden>
+  <!-- La prenotazione e' fatta a passi: un pezzo per volta, e la barra in
+       fondo dice quanto manca. Si va avanti compilando (la sede porta da sola
+       al passo dopo, altrimenti c'e' la freccia), indietro con la freccia di
+       Telegram o con "Indietro". -->
   <div class="testa-passi">
-    <button type="button" class="indietro" id="passo-indietro" hidden>‹ Indietro</button>
-    <button type="button" class="link-mie" id="apri-mie">Le tue prenotazioni ›</button>
+    <button type="button" class="indietro" id="passo-indietro">‹ Indietro</button>
   </div>
   <div class="avanzamento" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="avanzamento">
     <div class="avanzamento-pieno" id="avanzamento-pieno"></div>
   </div>
-  <p class="passo-di" id="passo-di"></p>
   <h1 id="titolo-passo"></h1>
 
   <div class="passo" data-passo="1">
@@ -798,19 +815,15 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- ---------------------------------------------------------------- mie -->
-<section class="pannello" id="pannello-mie" hidden>
-  <button type="button" class="indietro" id="chiudi-mie">‹ Prenota una stanza</button>
+<section class="pannello" id="pannello-mie">
   <h1>Le tue prenotazioni</h1>
-  <p class="spiega">Quelle che devono ancora arrivare. Puoi annullarle da qui.</p>
   <div id="elenco-mie" class="vuoto">…</div>
 </section>
 
 <!-- --------------------------------------------------------- inventario -->
 <section class="pannello" id="pannello-inventario" role="tabpanel" aria-labelledby="tab-inventario" hidden>
-  <h1>Biblioteca</h1>
   <div id="mio-prestito"></div>
-
-  <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
+  <h2>Prendi in prestito</h2>
 
   <div class="campo ricerca" style="margin: 0">
     <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off"
@@ -821,6 +834,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     <select id="filtro-sede" aria-label="Sede"><option value="">Sede</option></select>
     <select id="filtro-genere" aria-label="Genere"><option value="">Genere</option></select>
   </div>
+  <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
   <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
   <button type="button" class="bottone secondario largo" id="apri-aggiungi" hidden>Aggiungi un bene</button>
   <p class="conteggio" id="conteggio-beni"></p>
@@ -877,7 +891,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     <span class="titolo">Generi</span>
     <div class="chips" id="agg-generi"></div>
     <div class="riga-campi" style="margin-top: 8px">
-      <input type="text" id="agg-nuovo-genere" maxlength="60" placeholder="Un genere che non c’è">
+      <input type="text" id="agg-nuovo-genere" maxlength="60" placeholder="Nuovo genere">
       <button type="button" class="bottone secondario" id="aggiungi-genere">Aggiungi</button>
     </div>
   </div>
@@ -1319,14 +1333,8 @@ function vaiAPasso(n) {
   el('dopo-giorno').hidden = !stato.giorno;
   el('avanzamento-pieno').style.width = `${stato.passo / PASSI.length * 100}%`;
   el('avanzamento').setAttribute('aria-valuenow', String(stato.passo));
-  el('passo-di').textContent = `Passo ${stato.passo} di ${PASSI.length}`;
+  el('avanzamento').setAttribute('aria-valuetext', `Passo ${stato.passo} di ${PASSI.length}`);
   el('titolo-passo').textContent = PASSI[stato.passo - 1].titolo;
-  el('passo-indietro').hidden = stato.passo === 1;
-  // Le tue prenotazioni si guardano all'inizio, non a meta' di una nuova.
-  el('apri-mie').hidden = stato.passo !== 1;
-  if (!el('pannello-prenota').hidden) {
-    if (stato.passo > 1) tg?.BackButton?.show(); else tg?.BackButton?.hide();
-  }
   if (stato.passo === PASSI.length) disegnaRiepilogo();
   window.scrollTo(0, 0);
   abilita(stato.prenotabile);
@@ -1340,18 +1348,28 @@ function avanti() {
   vaiAPasso(stato.passo + 1);
 }
 
-// Il pulsante in basso nelle stanze: Avanti, e all'ultimo passo Prenota.
+// Il pulsante in basso nelle stanze: la freccia per andare avanti, e
+// all'ultimo passo Prenota.
 function azionePrenota() {
   return stato.passo === PASSI.length ? prenota() : avanti();
 }
 
 // Indietro, con la freccia di Telegram o il link in alto: dall'aggiunta di un
-// bene alla biblioteca, dalle tue prenotazioni alla prenotazione, da un passo
-// a quello prima.
+// bene alla biblioteca, da un passo a quello prima, e dal primo passo alle
+// tue prenotazioni.
 function indietro() {
   if (!el('pannello-aggiungi').hidden) return mostra('inventario');
-  if (!el('pannello-mie').hidden) return mostra('prenota');
-  if (!el('pannello-prenota').hidden && stato.passo > 1) vaiAPasso(stato.passo - 1);
+  if (!el('pannello-prenota').hidden) {
+    if (stato.passo > 1) vaiAPasso(stato.passo - 1); else mostra('mie');
+  }
+}
+
+// Da Le tue prenotazioni si comincia una prenotazione nuova.
+function nuovaPrenotazione() {
+  if (stato.bloccato) return;
+  stato.passo = 1;
+  mostra('prenota');
+  vaiAPasso(1);
 }
 
 function disegnaRiepilogo() {
@@ -1374,12 +1392,19 @@ function disegnaRiepilogo() {
       ? '<p>Essendo ricorrente, lo staff della sede deve approvarla: ti scrivo appena decide.</p>' : '');
 }
 
+// Fino al penultimo passo non c'e' un pulsante Avanti: si va avanti
+// compilando. La freccia, piccola a destra, compare quando il passo e' gia'
+// completo (per esempio tornando indietro), e all'ultimo c'e' Prenota.
 function abilita(si) {
   stato.prenotabile = si;
-  if (el('pannello-prenota').hidden) return nascondiAzione();
-  const ultimo = stato.passo === PASSI.length;
-  pulsantePrincipale(ultimo ? (el('fissa').checked ? 'Chiedi allo staff' : 'Prenota') : 'Avanti',
-                     ultimo ? si : PASSI[stato.passo - 1].pronto());
+  if (el('pannello-prenota').hidden) return;
+  if (stato.passo === PASSI.length) {
+    pulsantePrincipale(el('fissa').checked ? 'Chiedi allo staff' : 'Prenota', si);
+  } else if (PASSI[stato.passo - 1].pronto()) {
+    pulsanteFreccia();
+  } else {
+    nascondiAzione();
+  }
 }
 
 // Il pulsante d'azione, una capsula sopra il menu. Quello di Telegram non
@@ -1391,8 +1416,20 @@ el('azione').onclick = () => { if (!el('azione').disabled) azionePrincipale?.();
 
 function pulsantePrincipale(testo, attivo) {
   const b = el('azione');
+  b.classList.remove('freccia');
+  b.removeAttribute('aria-label');
   b.textContent = testo;
   b.disabled = !attivo;
+  b.hidden = false;
+}
+
+function pulsanteFreccia() {
+  const b = el('azione');
+  b.classList.add('freccia');
+  b.setAttribute('aria-label', 'Avanti');
+  // lucide: arrow-right
+  b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+  b.disabled = false;
   b.hidden = false;
 }
 
@@ -1565,7 +1602,8 @@ async function prenota() {
       contaDescrizione();
       aggiornaEsito();
       sincronizzaVetrina();
-      vaiAPasso(1);
+      stato.passo = 1;
+      mostra('mie');
       return;
     }
 
@@ -1591,7 +1629,8 @@ async function prenota() {
     delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
     await caricaMese();
     await scegliGiorno(stato.giorno);
-    vaiAPasso(1);
+    stato.passo = 1;
+    mostra('mie');
   } catch (err) {
     lamenta(err.message);
   } finally {
@@ -1600,6 +1639,8 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
+const NESSUNA_MIA = 'Non hai prenotazioni in arrivo: creane una con Nuova prenotazione.';
+
 async function caricaMie() {
   const dove = el('elenco-mie');
   dove.className = 'vuoto';
@@ -1607,7 +1648,7 @@ async function caricaMie() {
   try {
     const { prenotazioni } = await chiama('mie');
     if (!prenotazioni.length) {
-      dove.textContent = 'Non hai prenotazioni in arrivo.';
+      dove.textContent = NESSUNA_MIA;
       return;
     }
     dove.className = '';
@@ -1669,7 +1710,7 @@ function annulla(sede, id, bottone, cosa = 'una') {
       riga.remove();
       if (!el('elenco-mie').querySelector('.riga')) {
         el('elenco-mie').className = 'vuoto';
-        el('elenco-mie').textContent = 'Non hai prenotazioni in arrivo.';
+        el('elenco-mie').textContent = NESSUNA_MIA;
       }
       // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
       Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
@@ -1842,7 +1883,6 @@ async function apriInventario() {
     const opzioni = (lista) => lista.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}</option>`).join('');
     el('filtro-sede').insertAdjacentHTML('beforeend', opzioni(o.sedi));
     disegnaTipi();
-    el('filtro-genere').insertAdjacentHTML('beforeend', opzioni(o.generi));
     el('apri-aggiungi').hidden = !inv.staff;
 
     collegaRicerca();
@@ -1853,7 +1893,31 @@ async function apriInventario() {
     el('apri-aggiungi').onclick = apriAggiungi;
   }
   disegnaMioPrestito();
+  if (inv.tipoIniziale) { const t = inv.tipoIniziale; inv.tipoIniziale = null; return scegliTipo(t); }
+  aggiornaFiltroGeneri();
   cercaBeni(true);
+}
+
+// I generi che hanno i beni di queste categorie (nessuna: tutti). Il server
+// li ricava dal catalogo; se non ci sono, si mostrano tutti.
+function generiDi(categorie) {
+  const mappa = inv.opzioni.generi_categoria;
+  if (!mappa || !categorie.length) return inv.opzioni.generi;
+  const ids = new Set(categorie.flatMap(c => mappa[c] || []));
+  return inv.opzioni.generi.filter(g => ids.has(g.id));
+}
+
+// Il filtro del genere segue la categoria scelta: solo i generi che ci sono
+// davvero, e se non ce n'e' nessuno (o non c'e' categoria) non si vede.
+function aggiornaFiltroGeneri() {
+  const t = TIPI.find(x => x.chiave === inv.tipo);
+  const generi = t ? generiDi(t.categorie) : [];
+  const campo = el('filtro-genere');
+  const prima = campo.value;
+  campo.innerHTML = '<option value="">Genere</option>' +
+    generi.map(g => `<option value="${esc(g.id)}">${esc(g.nome)}</option>`).join('');
+  campo.value = generi.some(g => String(g.id) === prima) ? prima : '';
+  campo.hidden = !generi.length;
 }
 
 function disegnaMioPrestito() {
@@ -1874,8 +1938,7 @@ function disegnaMioPrestito() {
           <button type="button" class="bottone" data-restituisci="${p.id}">L’ho riportato: scatta la foto</button>
         </div>
       </div>`;
-  }).join('') + (inv.prestiti.length >= inv.maxPrestiti
-    ? '<p class="nota-prestito">Per prendere altro, prima riporta questo.</p>' : '');
+  }).join('');
   dove.querySelectorAll('[data-restituisci]').forEach(b => {
     b.onclick = () => restituisci(Number(b.dataset.restituisci));
   });
@@ -1885,7 +1948,7 @@ function filtriBeni() {
   return {
     testo: el('cerca-beni').value.trim(),
     sede_id: el('filtro-sede').value,
-    categoria: TIPI.find(t => t.chiave === inv.tipo).categorie,
+    categoria: TIPI.find(t => t.chiave === inv.tipo)?.categorie || [],
     genere_id: el('filtro-genere').value,
     solo_disponibili: el('filtro-disponibili').checked,
     bene_id: inv.beneId || '',
@@ -2011,6 +2074,7 @@ function scegliSuggerimento(v) {
     scegliTipo('tutto', false);
   } else {
     inv.beneId = null; inv.autore = null; campo.value = '';
+    scegliTipo('tutto', false);
     el('filtro-genere').value = String(v.id);
   }
   campo.blur();
@@ -2022,10 +2086,20 @@ async function cercaBeni(daCapo) {
   const mio = ++ricercaInCorso;
   if (daCapo) inv.offset = 0;
   const dove = el('elenco-beni');
+  // Finche' non si sceglie una categoria (o Tutto) o non si cerca qualcosa,
+  // l'elenco resta vuoto.
+  const f = filtriBeni();
+  if (!inv.tipo && !f.testo && !f.bene_id && !f.autore) {
+    inv.totale = 0; inv.offset = 0; inv.beni = new Map(); sceglieBene(null);
+    dove.className = ''; dove.innerHTML = '';
+    el('conteggio-beni').textContent = '';
+    el('altri-beni').hidden = true;
+    return;
+  }
   if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; }
   el('altri-beni').disabled = true;
   try {
-    const { beni, totale } = await chiama('inventario/catalogo', { filtri: filtriBeni(), offset: inv.offset });
+    const { beni, totale } = await chiama('inventario/catalogo', { filtri: f, offset: inv.offset });
     // Chi scrive veloce manda piu' ricerche: conta solo l'ultima.
     if (mio !== ricercaInCorso) return;
     inv.totale = totale;
@@ -2047,22 +2121,26 @@ async function cercaBeni(daCapo) {
 
 const TIPI = [
   { chiave: 'libri', nome: 'Libri', categorie: ['libro'] },
-  { chiave: 'giochi', nome: 'Giochi da tavolo', categorie: ['gioco_da_tavolo'] },
-  { chiave: 'gdr', nome: 'GdR e manuali', categorie: ['gioco_di_ruolo', 'manuale'] },
+  { chiave: 'giochi', nome: 'GdT', categorie: ['gioco_da_tavolo'] },
+  { chiave: 'gdr', nome: 'GdR', categorie: ['gioco_di_ruolo', 'manuale'] },
   { chiave: 'altro', nome: 'Altro', categorie: ['altro'] },
   { chiave: 'tutto', nome: 'Tutto', categorie: [] },
 ];
 
 function disegnaTipi() {
-  inv.tipo = inv.tipo || 'libri';
+  inv.tipo = inv.tipo || null;
   el('tipi-beni').innerHTML = TIPI.map(t =>
     `<button type="button" role="tab" data-tipo="${t.chiave}" aria-selected="${t.chiave === inv.tipo}">${t.nome}</button>`
   ).join('');
-  el('tipi-beni').querySelectorAll('button').forEach(b => { b.onclick = () => scegliTipo(b.dataset.tipo); });
+  // Toccare la categoria gia' scelta la toglie, e l'elenco torna vuoto.
+  el('tipi-beni').querySelectorAll('button').forEach(b => {
+    b.onclick = () => scegliTipo(inv.tipo === b.dataset.tipo ? null : b.dataset.tipo);
+  });
 }
 
 function scegliTipo(chiave, cerca = true) {
   inv.tipo = chiave;
+  aggiornaFiltroGeneri();
   el('tipi-beni').querySelectorAll('button').forEach(b => {
     const si = b.dataset.tipo === chiave;
     b.setAttribute('aria-selected', String(si));
@@ -2122,7 +2200,7 @@ function aggiornaPrestito() {
   let testo = 'Prendi in prestito', attivo = true;
   if (b && b.stato === 'in_prestito') { testo = 'Già in prestito'; attivo = false; }
   else if (b && b.stato === 'mancante') { testo = 'Risulta mancante'; attivo = false; }
-  else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Prima riporta quello che hai'; attivo = false; }
+  else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
 
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
 }
@@ -2244,7 +2322,6 @@ function apriAggiungi() {
     el('agg-categoria').value = 'libro';
     el('agg-sede').innerHTML = opzioni(o.sedi);
     el('agg-sistema').insertAdjacentHTML('beforeend', opzioni(o.sistemi));
-    disegnaGeneri();
     el('agg-categoria').onchange = aggiornaCategoria;
     el('scansiona-isbn').hidden = !SI_SCANSIONA;
     el('scansiona-isbn').onclick = scansiona;
@@ -2256,6 +2333,11 @@ function apriAggiungi() {
     el('annulla-bene').onclick = () => mostra('inventario');
     formAggiungiPronto = true;
   }
+  // Si parte dalla categoria che si stava guardando.
+  const t = TIPI.find(x => x.chiave === inv.tipo);
+  if (t?.categorie.length && [...el('agg-categoria').options].some(o => o.value === t.categorie[0])) {
+    el('agg-categoria').value = t.categorie[0];
+  }
   aggiornaCategoria();
   mostra('aggiungi');
   window.scrollTo(0, 0);
@@ -2266,11 +2348,21 @@ function aggiornaCategoria() {
   el('campo-sistema').hidden = c !== 'gioco_di_ruolo';
   // L'ISBN e' dei libri e dei manuali; per un gioco da tavolo e' rumore.
   el('campo-isbn').hidden = !['libro', 'manuale', 'gioco_di_ruolo'].includes(c);
+  // I generi proposti sono quelli di questa categoria: quelli scelti per
+  // un'altra non valgono piu'.
+  const validi = new Set(generiDi([c]).map(g => String(g.id)));
+  for (const k of [...inv.generiScelti]) {
+    if (!k.startsWith('nuovo:') && !validi.has(k)) inv.generiScelti.delete(k);
+  }
+  disegnaGeneri();
 }
 
 function disegnaGeneri() {
+  const c = el('agg-categoria').value;
   const tutti = [
-    ...inv.opzioni.generi.map(g => ({ chiave: String(g.id), nome: g.nome })),
+    ...inv.opzioni.generi
+      .filter(g => generiDi([c]).includes(g) || inv.generiScelti.has(String(g.id)))
+      .map(g => ({ chiave: String(g.id), nome: g.nome })),
     ...inv.nuoviGeneri.map(n => ({ chiave: 'nuovo:' + n, nome: n + ' (nuovo)' })),
   ];
   el('agg-generi').innerHTML = tutti.map(g =>
@@ -2444,6 +2536,10 @@ async function salvaBene() {
       el(id).value = '';
     }
     el('agg-sistema').value = '';
+    // I generi usati adesso sono di questa categoria anche per i prossimi.
+    const mappa = inv.opzioni.generi_categoria;
+    const c = valori.categoria;
+    if (mappa) mappa[c] = [...new Set([...(mappa[c] || []), ...valori.generi.map(Number)])];
     inv.generiScelti.clear();
     // I generi nuovi adesso esistono: si ricaricano al prossimo avvio, e
     // intanto restano scritti cosi'.
@@ -2467,10 +2563,14 @@ function mostra(quale) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
-  const siTorna = quale === 'aggiungi' || quale === 'mie' || (quale === 'prenota' && stato.passo > 1);
+  const siTorna = quale === 'aggiungi' || quale === 'prenota';
   if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
-  azionePrincipale = quale === 'prenota' ? azionePrenota : quale === 'inventario' ? prendiScelto : null;
-  if (quale === 'prenota') abilita(stato.prenotabile);
+  document.body.classList.toggle('in-passi', quale === 'prenota');
+  azionePrincipale = quale === 'prenota' ? azionePrenota
+    : quale === 'mie' ? nuovaPrenotazione
+    : quale === 'inventario' ? prendiScelto : null;
+  if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
+  else if (quale === 'mie') pulsantePrincipale('Nuova prenotazione', !stato.bloccato);
   else nascondiAzione();
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();
@@ -2549,6 +2649,9 @@ async function avvia() {
   el('note').addEventListener('input', contaDescrizione);
   el('titolo').addEventListener('input', aggiornaEsito);
   el('titolo').addEventListener('input', aggiornaSerie);
+  el('titolo').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); el('titolo').blur(); avanti(); }
+  });
   el('vetrina').addEventListener('change', async () => {
     // L'elenco si chiede solo a chi accende la spunta: per tutti gli altri
     // sarebbe un giro su Google che non serve a niente.
@@ -2564,20 +2667,34 @@ async function avvia() {
     };
   });
 
-  el('tab-prenota').onclick = () => mostra('prenota');
-  el('apri-mie').onclick = () => mostra('mie');
-  el('chiudi-mie').onclick = () => mostra('prenota');
+  el('tab-prenota').onclick = () => mostra('mie');
   el('passo-indietro').onclick = indietro;
   el('tab-inventario').onclick = () => mostra('inventario');
-  azionePrincipale = azionePrenota;
   tg?.BackButton?.onClick(indietro);
 
+  stato.bloccato = Boolean(info.bloccato);
   if (info.bloccato) {
     el('pannello-prenota').querySelectorAll('input, textarea, button')
       .forEach(n => n.disabled = true);
   }
   aggiornaEsito();
   vaiAPasso(1);
+  mostra(paginaIniziale());
+}
+
+// Si puo' aprire l'app direttamente su una pagina: dal link
+// t.me/<bot>/<app>?startapp=biblioteca (arriva come start_param), o dal
+// pulsante di un messaggio con l'indirizzo .../prenota/?pagina=biblioteca.
+// "biblioteca_libri", "biblioteca_gdt", "biblioteca_gdr", "biblioteca_altro"
+// e "biblioteca_tutto" aprono anche gia' su quella categoria.
+function paginaIniziale() {
+  const chiesta = String(tg?.initDataUnsafe?.start_param ||
+    new URLSearchParams(location.search).get('pagina') || '').toLowerCase();
+  const [pagina, tipo] = chiesta.split(/[_-]/);
+  if (pagina !== 'biblioteca') return 'mie';
+  const tipi = { libri: 'libri', gdt: 'giochi', giochi: 'giochi', gdr: 'gdr', altro: 'altro', tutto: 'tutto' };
+  inv.tipoIniziale = tipi[tipo] || null;
+  return 'inventario';
 }
 
 function cambiaMese(passo) {

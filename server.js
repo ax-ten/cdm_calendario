@@ -1222,13 +1222,51 @@ async function soloStaff(utente, res) {
   return false;
 }
 
+// Quali generi ha ogni categoria: Odoo i generi li ha tutti insieme, ma un
+// genere di romanzi in mezzo ai giochi da tavolo non serve a niente. Si
+// ricava dal catalogo, guardando i generi dei beni di ciascuna categoria, e
+// si tiene dieci minuti (o fino al prossimo bene aggiunto).
+const GENERI_VALIDI_PER_MS = 10 * 60 * 1000;
+let generiVisti = null;
+
+async function generiPerCategoria(opzioni) {
+  if (generiVisti && Date.now() - generiVisti.quando < GENERI_VALIDI_PER_MS) return generiVisti.mappa;
+  const perNome = new Map(opzioni.generi.map(g => [String(g.nome).toLowerCase(), g.id]));
+  const mappa = {};
+  await Promise.all(opzioni.categorie.map(async (c) => {
+    const ids = new Set();
+    for (let offset = 0; offset < 5000;) {
+      const { beni, totale } = await odoo.miniapp('catalogo', {
+        testo: '', sede_id: false, categoria: String(c.id), genere_id: false, sistema_id: false,
+        solo_disponibili: false, bene_id: false, autore: '',
+      }, offset, 200, false);
+      for (const b of beni) {
+        for (const nome of b.generi || []) {
+          const id = perNome.get(String(nome).toLowerCase());
+          if (id) ids.add(id);
+        }
+      }
+      offset += beni.length;
+      if (!beni.length || offset >= totale) break;
+    }
+    mappa[c.id] = [...ids];
+  }));
+  generiVisti = { mappa, quando: Date.now() };
+  return mappa;
+}
+
 app.post('/prenota/api/inventario/opzioni', (req, res) => conUtente(req, res, async (utente) => {
   const [opzioni, staff, prestiti] = await Promise.all([
     odoo.miniapp('opzioni'),
     staffInventario(utente.id),
     odoo.miniapp('miei_prestiti', utente.id),
   ]);
-  res.json({ ...opzioni, staff, prestiti });
+  // Senza la mappa l'app mostra tutti i generi: meglio troppi che nessuno.
+  const generi_categoria = await generiPerCategoria(opzioni).catch((err) => {
+    console.error('generi per categoria:', err.message);
+    return null;
+  });
+  res.json({ ...opzioni, staff, prestiti, generi_categoria });
 }));
 
 const PAGINA_CATALOGO = 30;
@@ -1364,7 +1402,9 @@ app.post('/prenota/api/inventario/aggiungi', (req, res) => conUtente(req, res, a
   } else if (Number(v.sistemaId)) {
     valori.sistema_id = Number(v.sistemaId);
   }
-  res.json({ bene: await odoo.miniapp('crea_bene', valori, nomeTelegram(utente)) });
+  const bene = await odoo.miniapp('crea_bene', valori, nomeTelegram(utente));
+  generiVisti = null;   // un genere nuovo, o nuovo per questa categoria
+  res.json({ bene });
 }));
 
 // ---------- rotte interne, per il bot ----------
