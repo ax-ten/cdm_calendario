@@ -2099,8 +2099,27 @@ function dataTesto(iso) {
   return `${g} ${MESI[m - 1]}${a !== new Date().getFullYear() ? ' ' + a : ''}`;
 }
 
-function conferma(testo) {
-  return new Promise(ok => tg?.showConfirm ? tg.showConfirm(testo, ok) : ok(window.confirm(testo)));
+// Con `titolo` la conferma ha un titolo, che Telegram scrive in grassetto:
+// e' l'unico grassetto che i suoi popup permettono. Il titolo sta in 64
+// caratteri. Se il popup non parte (Telegram vecchio, testo troppo lungo) si
+// ripiega sul confirm del browser, invece di lasciare il tocco senza effetto.
+function conferma(testo, titolo = '') {
+  return new Promise(ok => {
+    try {
+      if (titolo && tg?.showPopup && tg.isVersionAtLeast?.('6.2')) {
+        const corto = titolo.length > 64 ? titolo.slice(0, 63) + '…' : titolo;
+        tg.showPopup({ title: corto, message: testo,
+          buttons: [{ id: 'si', type: 'default', text: 'Conferma' }, { type: 'cancel' }] },
+          id => ok(id === 'si'));
+      } else if (tg?.showConfirm) {
+        tg.showConfirm(titolo ? `${titolo}\n${testo}` : testo, ok);
+      } else {
+        ok(window.confirm(titolo ? `${titolo}\n${testo}` : testo));
+      }
+    } catch {
+      ok(window.confirm(titolo ? `${titolo}\n${testo}` : testo));
+    }
+  });
 }
 
 async function apriInventario() {
@@ -2463,8 +2482,8 @@ async function prendiScelto() {
   const b = inv.scelto && inv.beni?.get(inv.scelto);
   if (!b || b.stato !== 'disponibile' || inv.prestiti.length >= inv.maxPrestiti) return;
   const entro = new Date(); entro.setDate(entro.getDate() + inv.giorni);
-  if (!await conferma(`Sei sicurə di voler prendere in prestito “${b.titolo}”?\n` +
-                      `Va riportato nella sede di ${b.sede} entro il ${dataTesto(iso(entro))}.`)) return;
+  if (!await conferma(`Confermi la prenotazione? Va riportato nella sede di ${b.sede} ` +
+                      `entro il ${dataTesto(iso(entro))}.`, b.titolo)) return;
   attesaAzione(true);
   try {
     const { prestito } = await chiama('inventario/presta', { beneId: b.id });
