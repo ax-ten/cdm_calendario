@@ -19,6 +19,8 @@
   --occupato: #e0a92a;
   --pieno: #d9534f;
   --libero: #4caf7d;
+  /* Altezza del menu in basso: le barre fisse ci stanno sopra. */
+  --menu: 58px;
 }
 
 * { box-sizing: border-box; }
@@ -26,7 +28,7 @@
 body {
   margin: 0;
   /* Lo spazio in fondo tiene conto della barra dell'esito, che e' fissa. */
-  padding: 0 14px 150px;
+  padding: 18px 14px calc(150px + var(--menu));
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--sfondo);
   color: var(--testo);
@@ -37,38 +39,39 @@ body {
 
 /* ------------------------------------------------------------------- tab */
 .tab {
+  /* Il menu sta in basso, come quello di Telegram: col pollice ci si
+     arriva, e in alto lascia il posto ai titoli. Le icone sono di Lucide
+     (licenza ISC, vendor/lucide-LICENSE.txt), scritte qui dentro. */
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: calc(var(--menu) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
   display: flex;
-  gap: 14px;
-  /* Tre schede su un telefono stretto: se non ci stanno si scorre, invece
-     di andare a capo o tagliare le parole. */
-  overflow-x: auto;
-  scrollbar-width: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent);
-  margin-bottom: 20px;
-  position: sticky;
-  top: 0;
-  background: var(--sfondo);
-  z-index: 5;
+  background: var(--scheda);
+  border-top: 1px solid color-mix(in srgb, var(--tenue) 25%, transparent);
+  z-index: 25;
 }
 .tab button {
-  flex: 0 0 auto;
-  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   appearance: none;
   border: 0;
   background: none;
   color: var(--tenue);
   font: inherit;
-  font-size: .9rem;
-  padding: 14px 0 11px;
+  font-size: .7rem;
+  line-height: 1.1;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  white-space: nowrap;
 }
-.tab button[aria-selected="true"] {
-  color: var(--testo);
-  border-bottom-color: var(--accento);
-}
-.tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: 2px; }
+.tab button svg { width: 24px; height: 24px; }
+.tab button[aria-selected="true"] { color: var(--accento); }
+.tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: -4px; }
 /* Chi deve ancora registrarsi non ha schede da scegliere. */
 .tab[hidden] { display: none; }
 
@@ -400,8 +403,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
    scorso fino in fondo. */
 #blocco-esito {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  left: 0; right: 0; bottom: calc(var(--menu) + env(safe-area-inset-bottom));
+  padding: 10px 14px;
   background: var(--sfondo);
   border-top: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent);
   z-index: 20;
@@ -423,7 +426,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 #toast {
   position: fixed;
   left: 14px; right: 14px;
-  bottom: calc(78px + env(safe-area-inset-bottom));
+  bottom: calc(78px + var(--menu) + env(safe-area-inset-bottom));
   z-index: 30;
   padding: 12px 14px;
   border-radius: 12px;
@@ -508,7 +511,29 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .solo-disp input { width: 18px; height: 18px; margin: 0; accent-color: var(--accento); }
 .conteggio { color: var(--tenue); font-size: .84rem; margin: 0 0 8px; }
 
-.bene { background: var(--scheda); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px; }
+.bene { background: var(--scheda); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px;
+  border: 1.5px solid transparent; }
+/* Un bene si sceglie toccandolo; il pulsante per prenderlo e' quello grande
+   in fondo, non uno per scheda. */
+.bene[role="button"] { cursor: pointer; -webkit-user-select: none; user-select: none; }
+.bene.scelto { border-color: var(--accento);
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda)); }
+.bene:not(.scelto) .solo-scelto { display: none; }
+.tipi { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; }
+.tipi button {
+  flex: 0 0 auto; padding: 7px 13px; border-radius: 999px; white-space: nowrap;
+  border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
+  background: none; color: var(--testo); font: inherit; font-size: .86rem; cursor: pointer;
+}
+.tipi button[aria-selected="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+#apri-aggiungi { margin-bottom: 14px; }
+.azioni-form { display: flex; gap: 8px; }
+.azioni-form .bottone { flex: 1; padding: 11px 14px; }
+#barra-prestito { position: fixed; left: 0; right: 0; z-index: 7;
+  bottom: calc(var(--menu) + env(safe-area-inset-bottom));
+  padding: 10px 14px; background: var(--sfondo);
+  border-top: 1px solid color-mix(in srgb, var(--tenue) 25%, transparent); }
+#barra-prestito[hidden] { display: none; }
 .bene-testa { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .bene-testa b { font-weight: 600; }
 .bene-info { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
@@ -574,9 +599,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <body>
 
 <nav class="tab" role="tablist">
-  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota">Prenota stanza</button>
-  <button role="tab" id="tab-mie" aria-selected="false" aria-controls="pannello-mie">Le mie prenotazioni</button>
-  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario">Inventario</button>
+  <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: door-open --><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg><span>Prenota stanza</span></button>
+  <button role="tab" id="tab-mie" aria-selected="false" aria-controls="pannello-mie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: calendar-check --><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg><span>Le mie prenotazioni</span></button>
+  <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!-- lucide: library-big --><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg><span>Biblioteca</span></button>
 </nav>
 
 <!-- ------------------------------------------------------------ prenota -->
@@ -695,21 +720,22 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
 <!-- --------------------------------------------------------- inventario -->
 <section class="pannello" id="pannello-inventario" role="tabpanel" aria-labelledby="tab-inventario" hidden>
-  <h1>Inventario</h1>
+  <h1>Biblioteca</h1>
   <div id="mio-prestito"></div>
-  <button type="button" class="bottone secondario largo" id="apri-aggiungi" hidden>Aggiungi un bene</button>
 
-  <div class="campo ricerca" style="margin: 14px 0 0">
+  <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
+
+  <div class="campo ricerca" style="margin: 0">
     <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off"
            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggerimenti">
     <div id="suggerimenti" role="listbox" hidden></div>
   </div>
   <div class="filtri">
     <select id="filtro-sede" aria-label="Sede"><option value="">Sede</option></select>
-    <select id="filtro-categoria" aria-label="Categoria"><option value="">Tipo</option></select>
     <select id="filtro-genere" aria-label="Genere"><option value="">Genere</option></select>
   </div>
   <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
+  <button type="button" class="bottone secondario largo" id="apri-aggiungi" hidden>Aggiungi un bene</button>
   <p class="conteggio" id="conteggio-beni"></p>
   <div id="elenco-beni"></div>
   <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
@@ -717,7 +743,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
 <!-- ------------------------------------------------- aggiunta (staff) -->
 <section class="pannello" id="pannello-aggiungi" hidden>
-  <button type="button" class="indietro" id="chiudi-aggiungi">‹ Inventario</button>
+  <button type="button" class="indietro" id="chiudi-aggiungi">‹ Biblioteca</button>
   <h1>Aggiungi un bene</h1>
 
   <div class="campo riga-campi">
@@ -794,8 +820,17 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     <textarea id="agg-note" maxlength="2000"></textarea>
   </div>
 
-  <button type="button" class="bottone largo" id="salva-bene">Salva</button>
+  <div class="azioni-form">
+    <button type="button" class="bottone secondario" id="annulla-bene">Annulla</button>
+    <button type="button" class="bottone" id="salva-bene">Salva</button>
+  </div>
 </section>
+
+<!-- Fuori da Telegram (o dove il pulsante grande non c'e') la stessa
+     azione sta in una barra in fondo alla pagina. -->
+<div id="barra-prestito" hidden>
+  <button type="button" class="bottone largo" id="bottone-prestito"></button>
+</div>
 
 <!-- La foto del bene riportato in sede. capture apre direttamente la
      fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
@@ -1190,9 +1225,23 @@ function abilita(si) {
   stato.prenotabile = si;
   if (!tg?.MainButton) return;
   if (el('pannello-prenota').hidden) return tg.MainButton.hide();
-  tg.MainButton.setText('Prenota');
-  tg.MainButton.show();
-  si ? tg.MainButton.enable() : tg.MainButton.disable();
+  pulsantePrincipale('Prenota', si);
+}
+
+// Il pulsante grande di Telegram, in fondo. Spento vuol dire grigio:
+// disable() da solo lo lascia del colore di sempre, e sembra premibile.
+// Fuori da Telegram non si vede, e la biblioteca usa una barra sua.
+const DENTRO_TELEGRAM = Boolean(tg) && tg.platform !== 'unknown';
+let azionePrincipale = null;
+
+function pulsantePrincipale(testo, attivo) {
+  if (!tg?.MainButton) return;
+  const tema = tg.themeParams || {};
+  tg.MainButton.setParams(attivo
+    ? { text: testo, is_active: true, is_visible: true,
+        color: tema.button_color || '#4a9ee0', text_color: tema.button_text_color || '#ffffff' }
+    : { text: testo, is_active: false, is_visible: true,
+        color: tema.secondary_bg_color || '#3a4553', text_color: tema.hint_color || '#8a9aa9' });
 }
 
 // ------------------------------------------------------------------ toast
@@ -1641,12 +1690,12 @@ async function apriInventario() {
     inv.opzioni = o;
     const opzioni = (lista) => lista.map(x => `<option value="${esc(x.id)}">${esc(x.nome)}</option>`).join('');
     el('filtro-sede').insertAdjacentHTML('beforeend', opzioni(o.sedi));
-    el('filtro-categoria').insertAdjacentHTML('beforeend', opzioni(o.categorie));
+    disegnaTipi();
     el('filtro-genere').insertAdjacentHTML('beforeend', opzioni(o.generi));
     el('apri-aggiungi').hidden = !inv.staff;
 
     collegaRicerca();
-    for (const id of ['filtro-sede', 'filtro-categoria', 'filtro-genere', 'filtro-disponibili']) {
+    for (const id of ['filtro-sede', 'filtro-genere', 'filtro-disponibili']) {
       el(id).addEventListener('change', () => cercaBeni(true));
     }
     el('altri-beni').onclick = () => cercaBeni(false);
@@ -1675,7 +1724,7 @@ function disegnaMioPrestito() {
         </div>
       </div>`;
   }).join('') + (inv.prestiti.length >= inv.maxPrestiti
-    ? '<p class="nota-prestito">Per prendere altro, prima restituisci questo.</p>' : '');
+    ? '<p class="nota-prestito">Per prendere altro, prima riporta questo.</p>' : '');
   dove.querySelectorAll('[data-restituisci]').forEach(b => {
     b.onclick = () => restituisci(Number(b.dataset.restituisci));
   });
@@ -1685,7 +1734,7 @@ function filtriBeni() {
   return {
     testo: el('cerca-beni').value.trim(),
     sede_id: el('filtro-sede').value,
-    categoria: el('filtro-categoria').value,
+    categoria: TIPI.find(t => t.chiave === inv.tipo).categorie,
     genere_id: el('filtro-genere').value,
     solo_disponibili: el('filtro-disponibili').checked,
     bene_id: inv.beneId || '',
@@ -1801,10 +1850,14 @@ function scegliSuggerimento(v) {
   chiudiSuggerimenti();
   clearTimeout(sugg.timerElenco);
   const campo = el('cerca-beni');
+  // I suggerimenti cercano in tutta la biblioteca: un titolo scelto porta
+  // nella sua scheda, un autore in Tutto (puo' avere libri e giochi).
   if (v.tipo === 'bene') {
     inv.beneId = v.id; inv.autore = null; campo.value = v.titolo;
+    scegliTipo(TIPI.find(t => t.categorie.includes(v.categoria))?.chiave || 'tutto', false);
   } else if (v.tipo === 'autore') {
     inv.autore = v.nome; inv.beneId = null; campo.value = v.nome;
+    scegliTipo('tutto', false);
   } else {
     inv.beneId = null; inv.autore = null; campo.value = '';
     el('filtro-genere').value = String(v.id);
@@ -1826,11 +1879,13 @@ async function cercaBeni(daCapo) {
     if (mio !== ricercaInCorso) return;
     inv.totale = totale;
     inv.offset += beni.length;
-    if (daCapo) { dove.className = ''; dove.innerHTML = ''; }
-    if (!totale) { dove.className = 'vuoto'; dove.textContent = 'Nessun bene con questi filtri.'; }
+    if (daCapo) { dove.className = ''; dove.innerHTML = ''; inv.beni = new Map(); sceglieBene(null); }
+    for (const b of beni) inv.beni.set(b.id, b);
+    if (!totale) { dove.className = 'vuoto'; dove.textContent = 'Niente con questi filtri.'; }
     dove.insertAdjacentHTML('beforeend', beni.map(schedaBene).join(''));
     collegaBottoni(dove);
-    el('conteggio-beni').textContent = totale ? `${totale} ${totale === 1 ? 'bene' : 'beni'}` : '';
+    el('conteggio-beni').textContent = totale
+      ? `${totale} ${totale === 1 ? 'bene' : 'beni'}, prima i più presi in prestito` : '';
     el('altri-beni').hidden = inv.offset >= totale;
   } catch (err) {
     if (mio === ricercaInCorso) { dove.className = 'vuoto'; dove.textContent = err.message; }
@@ -1839,13 +1894,39 @@ async function cercaBeni(daCapo) {
   }
 }
 
+const TIPI = [
+  { chiave: 'libri', nome: 'Libri', categorie: ['libro'] },
+  { chiave: 'giochi', nome: 'Giochi da tavolo', categorie: ['gioco_da_tavolo'] },
+  { chiave: 'gdr', nome: 'GdR e manuali', categorie: ['gioco_di_ruolo', 'manuale'] },
+  { chiave: 'altro', nome: 'Altro', categorie: ['altro'] },
+  { chiave: 'tutto', nome: 'Tutto', categorie: [] },
+];
+
+function disegnaTipi() {
+  inv.tipo = inv.tipo || 'libri';
+  el('tipi-beni').innerHTML = TIPI.map(t =>
+    `<button type="button" role="tab" data-tipo="${t.chiave}" aria-selected="${t.chiave === inv.tipo}">${t.nome}</button>`
+  ).join('');
+  el('tipi-beni').querySelectorAll('button').forEach(b => { b.onclick = () => scegliTipo(b.dataset.tipo); });
+}
+
+function scegliTipo(chiave, cerca = true) {
+  inv.tipo = chiave;
+  el('tipi-beni').querySelectorAll('button').forEach(b => {
+    const si = b.dataset.tipo === chiave;
+    b.setAttribute('aria-selected', String(si));
+    if (si) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
+  if (cerca) cercaBeni(true);
+}
+
 function schedaBene(b) {
   const riga1 = [b.autore, [b.editore, b.anno].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
-  const riga2 = [inv.categorie[b.categoria], b.sistema, b.sede, b.generi.join(', ')].filter(Boolean).join(' · ');
-  const puoPrendere = b.stato === 'disponibile' && inv.prestiti.length < inv.maxPrestiti;
+  const riga2 = [inv.tipo === 'tutto' || inv.tipo === 'gdr' ? inv.categorie[b.categoria] : '',
+                 b.sistema, b.sede, b.generi.join(', ')].filter(Boolean).join(' · ');
   const p = b.prestito;
   return `
-    <div class="bene" data-bene="${b.id}">
+    <div class="bene" role="button" tabindex="0" aria-pressed="false" data-bene="${b.id}">
       <div class="bene-testa">
         <b>${esc(b.titolo)}</b>
         <span class="stato stato-${esc(b.stato)}">${STATI_BENE[b.stato] || esc(b.stato)}</span>
@@ -1853,37 +1934,75 @@ function schedaBene(b) {
       ${riga1 ? `<div class="bene-info">${esc(riga1)}</div>` : ''}
       <div class="bene-info">${esc(riga2)}</div>
       ${p ? `<div class="bene-info">Da ${esc(p.socio)}${p.scadenza ? `, entro il ${dataTesto(p.scadenza)}` : ''}</div>` : ''}
-      ${puoPrendere || (inv.staff && p) ? `
-        <div class="azioni">
-          ${puoPrendere ? `<button type="button" class="bottone" data-prendi="${b.id}" data-titolo="${esc(b.titolo)}">Lo prendo io</button>` : ''}
-          ${inv.staff && p ? `<button type="button" class="bottone secondario" data-prolunga="${p.id}">+${inv.giorni} giorni</button>` : ''}
+      ${inv.staff && p ? `
+        <div class="azioni solo-scelto">
+          <button type="button" class="bottone secondario" data-prolunga="${p.id}">+${inv.giorni} giorni</button>
         </div>` : ''}
     </div>`;
 }
 
 function collegaBottoni(dove) {
-  dove.querySelectorAll('[data-prendi]').forEach(b => {
-    b.onclick = () => prendi(Number(b.dataset.prendi), b.dataset.titolo, b);
+  dove.querySelectorAll('.bene[data-bene]:not([data-collegato])').forEach(scheda => {
+    scheda.dataset.collegato = '1';
+    const id = Number(scheda.dataset.bene);
+    scheda.onclick = () => sceglieBene(inv.scelto === id ? null : id);
+    scheda.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scheda.click(); } };
   });
   dove.querySelectorAll('[data-prolunga]').forEach(b => {
-    b.onclick = () => prolunga(Number(b.dataset.prolunga), b);
+    b.onclick = (e) => { e.stopPropagation(); prolunga(Number(b.dataset.prolunga), b); };
   });
 }
 
-async function prendi(beneId, titolo, bottone) {
+// Toccare un bene lo sceglie (toccarlo di nuovo lo lascia), e in fondo
+// compare il pulsante per prenderlo, o il motivo per cui non si puo'.
+function sceglieBene(id) {
+  inv.scelto = id;
+  el('elenco-beni').querySelectorAll('.bene[data-bene]').forEach(s => {
+    const si = Number(s.dataset.bene) === id;
+    s.classList.toggle('scelto', si);
+    s.setAttribute('aria-pressed', String(si));
+  });
+  aggiornaPrestito();
+}
+
+function aggiornaPrestito() {
+  const b = inv.scelto && inv.beni?.get(inv.scelto);
+  const visibile = Boolean(b) && !el('pannello-inventario').hidden;
+  let testo = 'Prendi in prestito', attivo = true;
+  if (b && b.stato === 'in_prestito') { testo = 'Già in prestito'; attivo = false; }
+  else if (b && b.stato === 'mancante') { testo = 'Risulta mancante'; attivo = false; }
+  else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Prima riporta quello che hai'; attivo = false; }
+
+  if (DENTRO_TELEGRAM) {
+    if (visibile) pulsantePrincipale(testo, attivo); else tg.MainButton.hide();
+    return;
+  }
+  el('barra-prestito').hidden = !visibile;
+  el('bottone-prestito').textContent = testo;
+  el('bottone-prestito').disabled = !attivo;
+  el('bottone-prestito').onclick = prendiScelto;
+}
+
+async function prendiScelto() {
+  const b = inv.scelto && inv.beni?.get(inv.scelto);
+  if (!b || b.stato !== 'disponibile' || inv.prestiti.length >= inv.maxPrestiti) return;
   const entro = new Date(); entro.setDate(entro.getDate() + inv.giorni);
-  if (!await conferma(`Prendi in prestito “${titolo}”? Va riportato in sede entro il ${dataTesto(iso(entro))}.`)) return;
-  bottone.disabled = true;
+  if (!await conferma(`Prendi in prestito “${b.titolo}”? Va riportato a ${b.sede} entro il ${dataTesto(iso(entro))}.`)) return;
+  tg?.MainButton.showProgress();
+  el('bottone-prestito').disabled = true;
   try {
-    const { prestito } = await chiama('inventario/presta', { beneId });
+    const { prestito } = await chiama('inventario/presta', { beneId: b.id });
     inv.prestiti = [prestito];
     tg?.HapticFeedback?.notificationOccurred('success');
     toast(`È tuo fino al ${dataTesto(prestito.scadenza)}. Buona lettura, buon gioco!`);
     disegnaMioPrestito();
+    window.scrollTo(0, 0);
     cercaBeni(true);
   } catch (err) {
-    bottone.disabled = false;
     lamenta(err.message);
+    aggiornaPrestito();
+  } finally {
+    tg?.MainButton.hideProgress();
   }
 }
 
@@ -1990,6 +2109,7 @@ function apriAggiungi() {
     el('aggiungi-genere').onclick = aggiungiGenere;
     el('salva-bene').onclick = salvaBene;
     el('chiudi-aggiungi').onclick = () => mostra('inventario');
+    el('annulla-bene').onclick = () => mostra('inventario');
     formAggiungiPronto = true;
   }
   aggiornaCategoria();
@@ -2203,6 +2323,11 @@ function mostra(quale) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   el('blocco-esito').hidden = quale !== 'prenota';
+  el('barra-prestito').hidden = true;
+  // Dall'aggiunta di un bene si torna indietro anche con la freccia di
+  // Telegram, in alto: e' li' che la si cerca.
+  if (quale === 'aggiungi') tg?.BackButton?.show(); else tg?.BackButton?.hide();
+  azionePrincipale = quale === 'prenota' ? prenota : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') abilita(stato.prenotabile);
   else tg?.MainButton.hide();
   if (quale === 'mie') caricaMie();
@@ -2297,7 +2422,10 @@ async function avvia() {
   el('tab-prenota').onclick = () => mostra('prenota');
   el('tab-mie').onclick = () => mostra('mie');
   el('tab-inventario').onclick = () => mostra('inventario');
-  tg?.MainButton.onClick(prenota);
+  // Un solo gestore per il pulsante grande: cosa fa dipende dalla scheda.
+  azionePrincipale = prenota;
+  tg?.MainButton.onClick(() => azionePrincipale?.());
+  tg?.BackButton?.onClick(() => mostra('inventario'));
 
   if (info.bloccato) {
     el('pannello-prenota').querySelectorAll('input, textarea, button')

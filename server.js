@@ -1238,7 +1238,10 @@ app.post('/prenota/api/inventario/catalogo', (req, res) => conUtente(req, res, a
   const filtri = {
     testo: String(f.testo || '').slice(0, 100),
     sede_id: Number(f.sede_id) || false,
-    categoria: String(f.categoria || ''),
+    // Una scheda della biblioteca puo' tenere piu' tipi (GdR e manuali).
+    categoria: Array.isArray(f.categoria)
+      ? f.categoria.map(String).slice(0, 5)
+      : String(f.categoria || ''),
     genere_id: Number(f.genere_id) || false,
     sistema_id: Number(f.sistema_id) || false,
     solo_disponibili: Boolean(f.solo_disponibili),
