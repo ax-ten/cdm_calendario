@@ -19,8 +19,12 @@
   --occupato: #e0a92a;
   --pieno: #d9534f;
   --libero: #4caf7d;
-  /* Altezza del menu in basso: le barre fisse ci stanno sopra. */
-  --menu: 58px;
+  /* Il menu galleggia in basso: quanto e' alto, quanto sta staccato dal
+     bordo, e quanto spazio occupa in tutto. Le barre fisse ci stanno sopra. */
+  --menu: 62px;
+  --menu-margine: 10px;
+  --azione: 50px;
+  --ingombro-menu: calc(var(--menu) + var(--menu-margine) + env(safe-area-inset-bottom));
 }
 
 * { box-sizing: border-box; }
@@ -28,7 +32,7 @@
 body {
   margin: 0;
   /* Lo spazio in fondo tiene conto della barra dell'esito, che e' fissa. */
-  padding: 18px 14px calc(150px + var(--menu));
+  padding: 18px 14px calc(150px + var(--ingombro-menu));
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--sfondo);
   color: var(--testo);
@@ -39,21 +43,31 @@ body {
 
 /* ------------------------------------------------------------------- tab */
 .tab {
-  /* Il menu sta in basso, come quello di Telegram: col pollice ci si
-     arriva, e in alto lascia il posto ai titoli. Le icone sono di Lucide
-     (licenza ISC, vendor/lucide-LICENSE.txt), scritte qui dentro. */
+  /* Il menu sta in basso, come quello di Telegram: una capsula larga quanto
+     le sue voci, che galleggia sopra la pagina staccata dai bordi, con lo
+     sfondo velato. La voce attiva sta in una capsula piu' chiara. Le icone
+     sono di Lucide (licenza ISC, vendor/lucide-LICENSE.txt), scritte qui. */
   position: fixed;
-  left: 0; right: 0; bottom: 0;
-  height: calc(var(--menu) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--menu-margine) + env(safe-area-inset-bottom));
+  max-width: calc(100% - 24px);
+  height: var(--menu);
+  padding: 5px;
   display: flex;
-  background: var(--scheda);
-  border-top: 1px solid color-mix(in srgb, var(--tenue) 25%, transparent);
+  gap: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--scheda) 82%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  border: 1px solid color-mix(in srgb, var(--testo) 8%, transparent);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .32);
   z-index: 25;
 }
 .tab button {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
+  padding: 0 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -61,19 +75,27 @@ body {
   gap: 3px;
   appearance: none;
   border: 0;
+  border-radius: 999px;
   background: none;
-  color: var(--tenue);
+  color: var(--testo);
   font: inherit;
-  font-size: .7rem;
+  font-size: .72rem;
+  font-weight: 500;
   line-height: 1.1;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color .15s, color .15s;
 }
-.tab button svg { width: 24px; height: 24px; }
-.tab button[aria-selected="true"] { color: var(--accento); }
-.tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: -4px; }
+.tab button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tab button[aria-selected="true"] {
+  color: var(--accento);
+  background: color-mix(in srgb, var(--accento) 16%, transparent);
+}
+.tab button svg { width: 24px; height: 24px; flex: 0 0 auto; }
+.tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: -2px; }
 /* Chi deve ancora registrarsi non ha schede da scegliere. */
 .tab[hidden] { display: none; }
+body.senza-menu { --ingombro-menu: calc(env(safe-area-inset-bottom) + 6px); }
 
 h1 {
   font-size: 1.35rem;
@@ -401,12 +423,51 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
    Fisso in fondo, appoggiato sopra il pulsante Prenota di Telegram: e' la
    riga che dice cosa manca ancora, e serve mentre si compila, non dopo aver
    scorso fino in fondo. */
+/* Sopra il menu, dal basso: il pulsante d'azione (Prenota, Prendi in
+   prestito, Invia richiesta), e sopra ancora, nelle stanze, cosa manca.
+   Tutti e due galleggiano come il menu: capsule staccate, mai sotto di lui. */
+#azione {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--ingombro-menu) + 10px);
+  width: min(440px, calc(100% - 24px));
+  height: var(--azione);
+  border: 0;
+  border-radius: 999px;
+  background: var(--accento);
+  color: var(--su-accento);
+  font: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+  cursor: pointer;
+  z-index: 24;
+}
+#azione[hidden] { display: none; }
+#azione:disabled { cursor: default;
+  background: color-mix(in srgb, var(--scheda) 88%, var(--testo));
+  color: var(--tenue); }
+#azione[aria-busy="true"] { color: transparent; }
+#azione[aria-busy="true"]::after {
+  content: ''; position: absolute; inset: 0; margin: auto; width: 20px; height: 20px;
+  border: 2px solid var(--su-accento); border-right-color: transparent; border-radius: 50%;
+  animation: gira .7s linear infinite;
+}
+@keyframes gira { to { transform: rotate(360deg); } }
+
 #blocco-esito {
   position: fixed;
-  left: 0; right: 0; bottom: calc(var(--menu) + env(safe-area-inset-bottom));
-  padding: 10px 14px;
-  background: var(--sfondo);
-  border-top: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent);
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--ingombro-menu) + var(--azione) + 18px);
+  width: min(440px, calc(100% - 24px));
+  padding: 9px 16px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--scheda) 88%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  border: 1px solid color-mix(in srgb, var(--testo) 8%, transparent);
   z-index: 20;
 }
 #blocco-esito[hidden] { display: none; }
@@ -426,7 +487,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 #toast {
   position: fixed;
   left: 14px; right: 14px;
-  bottom: calc(78px + var(--menu) + env(safe-area-inset-bottom));
+  bottom: calc(var(--ingombro-menu) + var(--azione) + 84px);
   z-index: 30;
   padding: 12px 14px;
   border-radius: 12px;
@@ -529,11 +590,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #apri-aggiungi { margin-bottom: 14px; }
 .azioni-form { display: flex; gap: 8px; }
 .azioni-form .bottone { flex: 1; padding: 11px 14px; }
-#barra-prestito { position: fixed; left: 0; right: 0; z-index: 7;
-  bottom: calc(var(--menu) + env(safe-area-inset-bottom));
-  padding: 10px 14px; background: var(--sfondo);
-  border-top: 1px solid color-mix(in srgb, var(--tenue) 25%, transparent); }
-#barra-prestito[hidden] { display: none; }
+
 .bene-testa { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .bene-testa b { font-weight: 600; }
 .bene-info { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
@@ -826,11 +883,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   </div>
 </section>
 
-<!-- Fuori da Telegram (o dove il pulsante grande non c'e') la stessa
-     azione sta in una barra in fondo alla pagina. -->
-<div id="barra-prestito" hidden>
-  <button type="button" class="bottone largo" id="bottone-prestito"></button>
-</div>
+<!-- Il pulsante d'azione: non quello di Telegram, che Telegram disegna sotto
+     la pagina e quindi sotto il menu, ma uno nostro che ci galleggia sopra. -->
+<button type="button" id="azione" hidden></button>
 
 <!-- La foto del bene riportato in sede. capture apre direttamente la
      fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
@@ -1223,25 +1278,34 @@ function aggiornaEsito() {
 
 function abilita(si) {
   stato.prenotabile = si;
-  if (!tg?.MainButton) return;
-  if (el('pannello-prenota').hidden) return tg.MainButton.hide();
+  if (el('pannello-prenota').hidden) return nascondiAzione();
   pulsantePrincipale('Prenota', si);
 }
 
-// Il pulsante grande di Telegram, in fondo. Spento vuol dire grigio:
-// disable() da solo lo lascia del colore di sempre, e sembra premibile.
-// Fuori da Telegram non si vede, e la biblioteca usa una barra sua.
-const DENTRO_TELEGRAM = Boolean(tg) && tg.platform !== 'unknown';
+// Il pulsante d'azione, una capsula sopra il menu. Quello di Telegram non
+// va: lo disegna Telegram sotto la pagina, cioe' sotto il nostro menu.
+// Spento e' grigio, e dice perche'. Cosa fa dipende dalla scheda.
 let azionePrincipale = null;
+tg?.MainButton?.hide();
+el('azione').onclick = () => { if (!el('azione').disabled) azionePrincipale?.(); };
 
 function pulsantePrincipale(testo, attivo) {
-  if (!tg?.MainButton) return;
-  const tema = tg.themeParams || {};
-  tg.MainButton.setParams(attivo
-    ? { text: testo, is_active: true, is_visible: true,
-        color: tema.button_color || '#4a9ee0', text_color: tema.button_text_color || '#ffffff' }
-    : { text: testo, is_active: false, is_visible: true,
-        color: tema.secondary_bg_color || '#3a4553', text_color: tema.hint_color || '#8a9aa9' });
+  const b = el('azione');
+  b.textContent = testo;
+  b.disabled = !attivo;
+  b.hidden = false;
+}
+
+function nascondiAzione() {
+  el('azione').hidden = true;
+}
+
+// Mentre si aspetta il server il pulsante gira e non si preme due volte.
+function attesaAzione(si) {
+  const b = el('azione');
+  b.setAttribute('aria-busy', String(si));
+  if (si) { b.dataset.prima = String(b.disabled); b.disabled = true; }
+  else { b.disabled = b.dataset.prima === 'true'; }
 }
 
 // ------------------------------------------------------------------ toast
@@ -1365,7 +1429,7 @@ async function prenota() {
     el('titolo').focus();
     return;
   }
-  tg?.MainButton.showProgress();
+  attesaAzione(true);
   try {
     const esito = await chiama('prenota', {
       sede: stato.sede,
@@ -1429,7 +1493,7 @@ async function prenota() {
   } catch (err) {
     lamenta(err.message);
   } finally {
-    tg?.MainButton.hideProgress();
+    attesaAzione(false);
   }
 }
 
@@ -1580,11 +1644,8 @@ function mostraRegistrazione(info) {
 
   for (const id of ['nome', 'cognome']) reg(id).addEventListener('input', aggiornaRegistrazione);
   for (const id of ['socio', 'tesseramento', 'privacy']) reg(id).addEventListener('change', aggiornaRegistrazione);
-  if (tg?.MainButton) {
-    tg.MainButton.setText('Invia richiesta');
-    tg.MainButton.onClick(registrati);
-    tg.MainButton.show();
-  }
+  document.body.classList.add('senza-menu');
+  azionePrincipale = registrati;
   aggiornaRegistrazione();
 }
 
@@ -1594,25 +1655,14 @@ function registrazioneCompleta() {
                  reg('privacy').checked);
 }
 
-// disable() di Telegram rende il pulsante inattivo ma lo lascia del colore
-// di sempre: sembra premibile e non succede niente. Finche' manca qualcosa
-// lo si fa grigio, con i colori del tema.
+// Finche' manca qualcosa il pulsante e' grigio.
 function aggiornaRegistrazione() {
-  if (!tg?.MainButton) return;
-  const tema = tg.themeParams || {};
-  const pronto = registrazioneCompleta();
-  tg.MainButton.setParams(pronto
-    ? { is_active: true,
-        color: tema.button_color || '#4a9ee0',
-        text_color: tema.button_text_color || '#ffffff' }
-    : { is_active: false,
-        color: tema.secondary_bg_color || '#3a4553',
-        text_color: tema.hint_color || '#8a9aa9' });
+  pulsantePrincipale('Invia richiesta', registrazioneCompleta());
 }
 
 async function registrati() {
   if (!registrazioneCompleta()) return;
-  tg?.MainButton.showProgress();
+  attesaAzione(true);
   try {
     await chiama('registrati', {
       nome: reg('nome').value.trim(),
@@ -1626,7 +1676,7 @@ async function registrati() {
   } catch (err) {
     lamenta(err.message);
   } finally {
-    tg?.MainButton.hideProgress();
+    attesaAzione(false);
   }
 }
 
@@ -1634,7 +1684,7 @@ function esitoRegistrazione(testo) {
   el('modulo-registrazione').hidden = true;
   el('esito-registrazione').textContent = testo;
   el('esito-registrazione').hidden = false;
-  tg?.MainButton.hide();
+  nascondiAzione();
 }
 
 // ------------------------------------------------------------- inventario
@@ -1973,23 +2023,16 @@ function aggiornaPrestito() {
   else if (b && b.stato === 'mancante') { testo = 'Risulta mancante'; attivo = false; }
   else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Prima riporta quello che hai'; attivo = false; }
 
-  if (DENTRO_TELEGRAM) {
-    if (visibile) pulsantePrincipale(testo, attivo); else tg.MainButton.hide();
-    return;
-  }
-  el('barra-prestito').hidden = !visibile;
-  el('bottone-prestito').textContent = testo;
-  el('bottone-prestito').disabled = !attivo;
-  el('bottone-prestito').onclick = prendiScelto;
+  if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
 }
 
 async function prendiScelto() {
   const b = inv.scelto && inv.beni?.get(inv.scelto);
   if (!b || b.stato !== 'disponibile' || inv.prestiti.length >= inv.maxPrestiti) return;
   const entro = new Date(); entro.setDate(entro.getDate() + inv.giorni);
-  if (!await conferma(`Prendi in prestito “${b.titolo}”? Va riportato a ${b.sede} entro il ${dataTesto(iso(entro))}.`)) return;
-  tg?.MainButton.showProgress();
-  el('bottone-prestito').disabled = true;
+  if (!await conferma(`Sei sicurə di voler prendere in prestito “${b.titolo}”?\n` +
+                      `Va riportato nella sede di ${b.sede} entro il ${dataTesto(iso(entro))}.`)) return;
+  attesaAzione(true);
   try {
     const { prestito } = await chiama('inventario/presta', { beneId: b.id });
     inv.prestiti = [prestito];
@@ -2002,7 +2045,7 @@ async function prendiScelto() {
     lamenta(err.message);
     aggiornaPrestito();
   } finally {
-    tg?.MainButton.hideProgress();
+    attesaAzione(false);
   }
 }
 
@@ -2323,13 +2366,12 @@ function mostra(quale) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   el('blocco-esito').hidden = quale !== 'prenota';
-  el('barra-prestito').hidden = true;
   // Dall'aggiunta di un bene si torna indietro anche con la freccia di
   // Telegram, in alto: e' li' che la si cerca.
   if (quale === 'aggiungi') tg?.BackButton?.show(); else tg?.BackButton?.hide();
   azionePrincipale = quale === 'prenota' ? prenota : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') abilita(stato.prenotabile);
-  else tg?.MainButton.hide();
+  else nascondiAzione();
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();
 }
@@ -2422,9 +2464,7 @@ async function avvia() {
   el('tab-prenota').onclick = () => mostra('prenota');
   el('tab-mie').onclick = () => mostra('mie');
   el('tab-inventario').onclick = () => mostra('inventario');
-  // Un solo gestore per il pulsante grande: cosa fa dipende dalla scheda.
   azionePrincipale = prenota;
-  tg?.MainButton.onClick(() => azionePrincipale?.());
   tg?.BackButton?.onClick(() => mostra('inventario'));
 
   if (info.bloccato) {
