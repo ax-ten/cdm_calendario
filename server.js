@@ -1307,7 +1307,9 @@ app.post('/prenota/api/inventario/catalogo', (req, res) => conUtente(req, res, a
   const ordine = String(req.body?.ordine || 'popolari').slice(0, 20);
   // Nel catalogo non si dice mai chi ha un bene ne' fino a quando, a
   // nessuno: chi amministra lo vede nella vista dei prestiti.
-  const esito = await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO, false, ordine);
+  // Per l'ordine a caso: lo stesso seme da' la stessa estrazione, pagina dopo pagina.
+  const seme = Math.abs(Math.round(Number(req.body?.seme) || 0)) % 1e9;
+  const esito = await odoo.miniapp('catalogo', filtri, offset, PAGINA_CATALOGO, false, ordine, seme);
   res.json({ ...esito, beni: (esito.beni || []).map(senzaPrestito) });
 }));
 

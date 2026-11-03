@@ -903,9 +903,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
       <select id="ordine-beni" aria-label="Ordina">
         <option value="popolari">Più presi in prestito</option>
         <option value="recenti">Ultimi aggiunti</option>
-        <option value="titolo">Titolo, dalla A alla Z</option>
-        <option value="autore">Autore, dalla A alla Z</option>
-        <option value="disponibili">Prima i disponibili</option>
+        <option value="titolo">Titolo A-Z</option>
+        <option value="autore">Autore A-Z</option>
+        <option value="casuale">A caso</option>
       </select>
     </label>
   </div>
@@ -1739,7 +1739,7 @@ async function prenota() {
 // colore del testo del tema, chiaro sul fondo scuro.
 const NESSUNA_MIA = `
   <div class="nessuna-mia">
-    <p>Non hai attività in arrivo.</p>
+    <p>Non hai attività in programma.</p>
     <div class="freccia-curva" aria-hidden="true">
       <span>creane una!</span>
       <i></i>
@@ -1998,6 +1998,8 @@ async function apriInventario() {
     }
     el('ordine-beni').addEventListener('change', () => {
       el('campo-ordine').classList.toggle('attivo', el('ordine-beni').value !== 'popolari');
+      // Ogni volta che si sceglie "A caso" e' un'estrazione nuova.
+      inv.seme = Math.floor(Math.random() * 1e9);
       cercaBeni(true);
     });
     el('altri-beni').onclick = () => cercaBeni(false);
@@ -2115,7 +2117,7 @@ async function cercaBeni(daCapo) {
   el('altri-beni').disabled = true;
   try {
     const { beni, totale } = await chiama('inventario/catalogo',
-      { filtri: f, offset: inv.offset, ordine: el('ordine-beni').value });
+      { filtri: f, offset: inv.offset, ordine: el('ordine-beni').value, seme: inv.seme || 0 });
     // Chi scrive veloce manda piu' ricerche: conta solo l'ultima.
     if (mio !== ricercaInCorso) return;
     inv.totale = totale;
