@@ -677,7 +677,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     <button type="button" class="indietro" id="passo-indietro" hidden>‹ Indietro</button>
     <button type="button" class="link-mie" id="apri-mie">Le tue prenotazioni ›</button>
   </div>
-  <div class="avanzamento" role="progressbar" aria-valuemin="1" aria-valuemax="5" id="avanzamento">
+  <div class="avanzamento" role="progressbar" aria-valuemin="1" aria-valuemax="4" id="avanzamento">
     <div class="avanzamento-pieno" id="avanzamento-pieno"></div>
   </div>
   <p class="passo-di" id="passo-di"></p>
@@ -705,9 +705,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     </div>
   </div>
 
-  </div>
-
-  <div class="passo" data-passo="3" hidden>
+    <!-- L'orario compare quando c'e' un giorno: prima non ha niente da dire. -->
+    <div id="dopo-giorno" hidden>
   <div class="campo" id="campo-fascia">
     <div class="fascia">
       <div class="ore" id="ore"></div>
@@ -740,9 +739,10 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     </div>
   </div>
 
+    </div>
   </div>
 
-  <div class="passo" data-passo="4" hidden>
+  <div class="passo" data-passo="3" hidden>
   <div class="campo">
     <span class="titolo">Categoria</span>
     <div class="categorie" id="categorie"></div>
@@ -778,7 +778,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
   </div>
 
-  <div class="passo" data-passo="5" hidden>
+  <div class="passo" data-passo="4" hidden>
     <div class="riepilogo" id="riepilogo"></div>
   <div class="campo">
     <div class="interruttore">
@@ -1111,7 +1111,12 @@ function disegnaCalendario() {
   el('calendario').querySelectorAll('.giorno[data-data]').forEach(b => {
     b.onclick = async () => {
       await scegliGiorno(b.dataset.data);
-      if (stato.passo === 2) vaiAPasso(3);
+      // Giorno e orario stanno nella stessa schermata: scelto il giorno, si
+      // scende all'orario.
+      const fascia = el('dopo-giorno');
+      const prima = fascia.hidden;
+      fascia.hidden = false;
+      if (prima) fascia.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
   });
 }
@@ -1268,7 +1273,7 @@ function trascina(maniglia, quale) {
 }
 
 // ------------------------------------------------------------------ esito
-// Se nella fascia scelta c'e' posto, detto sotto l'orario (passo 3). Il
+// Se nella fascia scelta c'e' posto, detto sotto l'orario (passo Quando?). Il
 // resto lo chiede un passo per volta.
 function aggiornaEsito() {
   const dove = el('esito-orario');
@@ -1300,8 +1305,7 @@ function aggiornaEsito() {
 // ------------------------------------------------------------------ passi
 const PASSI = [
   { titolo: 'Dove?', pronto: () => Boolean(stato.sede) },
-  { titolo: 'Che giorno?', pronto: () => Boolean(stato.giorno) },
-  { titolo: 'A che ora?', pronto: () => Boolean(stato.fasciaLibera) },
+  { titolo: 'Quando?', pronto: () => Boolean(stato.giorno && stato.fasciaLibera) },
   { titolo: 'Cosa fate?', pronto: () => Boolean(stato.categoria && el('titolo').value.trim()) },
   { titolo: 'Tutto giusto?', pronto: () => stato.prenotabile },
 ];
@@ -1312,6 +1316,7 @@ function vaiAPasso(n) {
   document.querySelectorAll('#pannello-prenota .passo').forEach(p => {
     p.hidden = Number(p.dataset.passo) !== stato.passo;
   });
+  el('dopo-giorno').hidden = !stato.giorno;
   el('avanzamento-pieno').style.width = `${stato.passo / PASSI.length * 100}%`;
   el('avanzamento').setAttribute('aria-valuenow', String(stato.passo));
   el('passo-di').textContent = `Passo ${stato.passo} di ${PASSI.length}`;
@@ -1329,7 +1334,7 @@ function vaiAPasso(n) {
 
 function avanti() {
   if (!PASSI[stato.passo - 1].pronto()) return;
-  if (stato.passo === 4 && !el('titolo').value.trim()) {
+  if (stato.passo === 3 && !el('titolo').value.trim()) {
     return lamenta('Dai un nome all’attività: allo staff serve per sapere chi c’è.');
   }
   vaiAPasso(stato.passo + 1);
