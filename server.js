@@ -1447,6 +1447,35 @@ app.post('/prenota/api/inventario/admin/prestiti', (req, res) => conUtente(req, 
   res.json({ prestiti: await odoo.miniapp('prestiti_aperti') });
 }));
 
+// Chi amministra segna che un bene l'ha preso qualcun altro: unə sociə
+// scelto dai suggerimenti, o solo un nome. Lo staff della sede lo sa subito.
+app.post('/prenota/api/inventario/admin/presta', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdmin(utente, res)) return;
+  const beneId = Number(req.body?.beneId);
+  if (!beneId) return res.status(400).json({ errore: 'Quale bene?' });
+  const nome = String(req.body?.nome || '').trim().slice(0, 120);
+  const partnerId = Number(req.body?.partnerId) || false;
+  const prestito = await odoo.miniapp('presta_a_nome', beneId, nome, partnerId, nomeTelegram(utente));
+  const chatStaff = STAFF.get(String(prestito.sede || '').toLowerCase());
+  if (chatStaff) {
+    const scade = prestito.scadenza
+      ? DateTime.fromISO(prestito.scadenza).setLocale('it').toFormat('d MMMM') : '';
+    telegram('sendMessage', {
+      chat_id: chatStaff,
+      text: `${nomeTelegram(utente)} ha segnato che “${prestito.titolo}” a ${prestito.sede} ` +
+        `l’ha preso ${prestito.socio}.` + (scade ? `\nDa riportare entro il ${scade}.` : ''),
+    }).catch(err => console.error('prestito a nome: messaggio allo staff non mandato:', err.message));
+  }
+  res.json({ prestito });
+}));
+
+// I nomi dellɜ sociɜ mentre si scrive, per collegare il prestito alla scheda.
+app.post('/prenota/api/inventario/admin/soci', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdmin(utente, res)) return;
+  const testo = String(req.body?.testo || '').trim().slice(0, 60);
+  res.json({ soci: testo.length < 2 ? [] : await odoo.miniapp('cerca_soci', testo) });
+}));
+
 app.post('/prenota/api/inventario/admin/chiudi', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdmin(utente, res)) return;
   const prestitoId = Number(req.body?.prestitoId);

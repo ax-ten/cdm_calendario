@@ -497,6 +497,24 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   z-index: 24;
 }
 #azione[hidden] { display: none; }
+/* Due azioni affiancate: si dividono la stessa larghezza del pulsante da
+   solo, "Segna come prestato" a sinistra. */
+#azione-a-nome {
+  position: fixed; z-index: 24;
+  left: calc((100% - min(440px, 100% - 24px)) / 2);
+  bottom: calc(var(--ingombro-menu) + 10px);
+  width: calc(min(440px, 100% - 24px) / 2 - 4px); height: var(--azione);
+  border: 1.5px solid var(--accento); border-radius: 999px;
+  background: var(--scheda); color: var(--accento);
+  font: inherit; font-size: .88rem; font-weight: 600; white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .3); cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: transform .12s ease, filter .12s ease;
+}
+#azione-a-nome[hidden] { display: none; }
+#azione-a-nome:active { transform: scale(.96); }
+body.due-azioni #azione { left: auto; right: calc((100% - min(440px, 100% - 24px)) / 2);
+  transform: none; width: calc(min(440px, 100% - 24px) / 2 - 4px); font-size: .92rem; }
+body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 
 /* Al passaggio (col mouse) si schiariscono, alla pressione si abbassano un
    attimo: si capisce che il tocco e' arrivato. */
@@ -743,6 +761,13 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .riga-campi .bottone { flex: 0 0 auto; }
 .esito-isbn { font-size: .84rem; color: var(--tenue); margin: 8px 0 0; }
 .esito-isbn.attento { color: var(--occupato); }
+#foglio-a-nome { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .5); }
+#foglio-a-nome[hidden] { display: none; }
+#foglio-a-nome .foglio { position: absolute; left: 0; right: 0; bottom: 0; background: var(--sfondo);
+  border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+#foglio-a-nome h2 { margin: 0 0 4px; }
+#foglio-a-nome .spiega { margin: 0 0 12px; }
+.aiuto-foglio { font-size: .82rem; color: var(--tenue); margin: 8px 0 14px; }
 #anteprima-foto { position: fixed; inset: 0; background: var(--sfondo); z-index: 20;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; padding: 16px; }
@@ -1046,10 +1071,28 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <!-- Il pulsante d'azione: non quello di Telegram, che Telegram disegna sotto
      la pagina e quindi sotto il menu, ma uno nostro che ci galleggia sopra. -->
 <button type="button" id="azione" hidden></button>
+<!-- Per chi amministra, accanto a "Prendi in prestito": segnare che il bene
+     l'ha preso qualcun altro. -->
+<button type="button" id="azione-a-nome" hidden>Segna come prestato</button>
 
 <!-- La foto del bene riportato in sede. capture apre direttamente la
      fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
 <input type="file" id="foto-restituzione" accept="image/*" capture="environment" hidden>
+<!-- Per chi amministra: a chi e' andato un bene, se non a sé. -->
+<div id="foglio-a-nome" hidden>
+  <div class="foglio">
+    <h2>Chi l’ha preso?</h2>
+    <p class="spiega" id="a-nome-titolo"></p>
+    <input type="text" id="a-nome" list="a-nome-soci" maxlength="120" placeholder="Nome e cognome" autocomplete="off">
+    <datalist id="a-nome-soci"></datalist>
+    <p class="aiuto-foglio">Se è unə sociə sceglilə dai suggerimenti: il prestito va sulla sua scheda.</p>
+    <div class="azioni-form">
+      <button type="button" class="bottone secondario" id="a-nome-annulla">Annulla</button>
+      <button type="button" class="bottone" id="a-nome-conferma">Segna</button>
+    </div>
+  </div>
+</div>
+
 <div id="anteprima-foto" hidden>
   <p>Questa foto va allo staff della sede: si deve vedere il bene al suo posto.</p>
   <img id="foto-scelta" alt="La foto scattata">
@@ -1577,6 +1620,8 @@ function pulsanteTondo(icona, etichetta, attivo = true) {
 
 function nascondiAzione() {
   el('azione').hidden = true;
+  el('azione-a-nome').hidden = true;
+  document.body.classList.remove('due-azioni');
 }
 
 // Mentre si aspetta il server il pulsante gira e non si preme due volte.
@@ -2282,6 +2327,61 @@ function collegaBottoni(dove) {
   });
 }
 
+// Chi amministra segna che un bene l'ha preso qualcun altro: si scrive il
+// nome, e se e' unə sociə la si sceglie dai suggerimenti, cosi' il prestito
+// va sulla sua scheda. Altrimenti resta solo il nome.
+const aNome = { bene: null, soci: new Map(), attesa: null };
+
+function apriPrestatoA(beneId) {
+  const b = inv.beni?.get(beneId);
+  if (!b) return;
+  aNome.bene = b;
+  aNome.soci = new Map();
+  el('a-nome-titolo').textContent = `“${b.titolo}”, a ${b.sede}.`;
+  el('a-nome').value = '';
+  el('a-nome-soci').innerHTML = '';
+  el('a-nome-conferma').disabled = false;
+  el('foglio-a-nome').hidden = false;
+  setTimeout(() => el('a-nome').focus(), 50);
+}
+
+function chiudiPrestatoA() {
+  el('foglio-a-nome').hidden = true;
+  el('a-nome').blur();
+}
+
+el('a-nome').addEventListener('input', () => {
+  clearTimeout(aNome.attesa);
+  const testo = el('a-nome').value.trim();
+  if (testo.length < 2) return;
+  aNome.attesa = setTimeout(async () => {
+    try {
+      const { soci } = await chiama('inventario/admin/soci', { testo });
+      for (const s of soci) aNome.soci.set(s.nome, s.id);
+      el('a-nome-soci').innerHTML = soci.map(s =>
+        `<option value="${esc(s.nome)}">${s.numero_socio ? 'Socio n. ' + esc(s.numero_socio) : 'Socio'}</option>`).join('');
+    } catch { /* i suggerimenti sono un aiuto: se non arrivano si scrive */ }
+  }, 250);
+});
+el('a-nome-annulla').onclick = chiudiPrestatoA;
+el('azione-a-nome').onclick = () => inv.scelto && apriPrestatoA(inv.scelto);
+el('foglio-a-nome').addEventListener('click', (e) => { if (e.target === el('foglio-a-nome')) chiudiPrestatoA(); });
+el('a-nome-conferma').onclick = async () => {
+  const nome = el('a-nome').value.trim();
+  if (!nome) return toast('Scrivi chi l’ha preso.', false);
+  el('a-nome-conferma').disabled = true;
+  try {
+    const { prestito } = await chiama('inventario/admin/presta',
+      { beneId: aNome.bene.id, nome, partnerId: aNome.soci.get(nome) || null });
+    chiudiPrestatoA();
+    toast(`Segnato: “${prestito.titolo}” l’ha preso ${prestito.socio}.`);
+    cercaBeni(true);
+  } catch (err) {
+    el('a-nome-conferma').disabled = false;
+    lamenta(err.message);
+  }
+};
+
 // Toccare un bene lo sceglie (toccarlo di nuovo lo lascia), e in fondo
 // compare il pulsante per prenderlo, o il motivo per cui non si puo'.
 function sceglieBene(id) {
@@ -2303,6 +2403,10 @@ function aggiornaPrestito() {
   else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
 
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
+  // Chi amministra, su un bene disponibile, ha anche "Segna come prestato".
+  const aNomeVisibile = visibile && inv.admin && b.stato === 'disponibile';
+  el('azione-a-nome').hidden = !aNomeVisibile;
+  document.body.classList.toggle('due-azioni', aNomeVisibile);
   // Il + sta dove sta il pulsante del prestito: si vede solo senza un bene scelto.
   el('apri-aggiungi').hidden = !inv.staff || Boolean(b);
   el('apri-prestiti').hidden = !inv.admin || Boolean(b);
