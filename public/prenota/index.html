@@ -554,7 +554,7 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 .etichetta-tondo { position: absolute; right: 100%; margin-right: 10px; white-space: nowrap;
   color: var(--testo); font-size: .92rem; font-weight: 600; pointer-events: none;
   display: none; }
-.tondo.con-etichetta .etichetta-tondo { display: block; }
+.tondo.con-etichetta .etichetta-tondo, #azione.con-etichetta .etichetta-tondo { display: block; }
 .tondo.chiaro { background: var(--scheda); color: var(--testo);
   border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .tondo.secondo { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
@@ -1613,12 +1613,15 @@ const ICONE = {
   piu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
 };
 
-function pulsanteTondo(icona, etichetta, attivo = true) {
+// `scritta` e' la parola accanto al pulsante, come quelle della biblioteca:
+// si vede solo con la classe con-etichetta, cioe' quando l'elenco e' vuoto.
+function pulsanteTondo(icona, etichetta, attivo = true, scritta = '') {
   const b = el('azione');
-  b.classList.remove('spento');
+  b.classList.remove('spento', 'con-etichetta');
   b.classList.add('freccia');
   b.setAttribute('aria-label', etichetta);
-  b.innerHTML = ICONE[icona];
+  b.innerHTML = ICONE[icona] +
+    (scritta ? `<span class="etichetta-tondo" aria-hidden="true">${scritta}</span>` : '');
   b.disabled = !attivo;
   b.hidden = false;
 }
@@ -1872,6 +1875,7 @@ async function caricaMie() {
   dove.textContent = 'Carico…';
   try {
     const { prenotazioni } = await chiama('mie');
+    el('azione').classList.toggle('con-etichetta', !prenotazioni.length);
     if (!prenotazioni.length) {
       dove.className = '';
       dove.innerHTML = NESSUNA_MIA;
@@ -1938,6 +1942,7 @@ function annulla(sede, id, bottone, cosa = 'una') {
         el('elenco-mie').className = 'vuoto';
         el('elenco-mie').className = '';
         el('elenco-mie').innerHTML = NESSUNA_MIA;
+        el('azione').classList.add('con-etichetta');
       }
       // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
       Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
@@ -2947,7 +2952,7 @@ function mostra(quale) {
     : quale === 'mie' ? nuovaPrenotazione
     : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
-  else if (quale === 'mie') pulsanteTondo('piu', 'Nuova attività', !stato.bloccato);
+  else if (quale === 'mie') pulsanteTondo('piu', 'Nuova attività', !stato.bloccato, 'Aggiungi');
   else nascondiAzione();
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();
