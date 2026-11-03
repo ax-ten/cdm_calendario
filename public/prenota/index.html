@@ -29,6 +29,9 @@
 
 * { box-sizing: border-box; }
 
+/* La pagina non scorre mai di lato. */
+html, body { overflow-x: hidden; }
+
 body {
   margin: 0;
   /* Lo spazio in fondo tiene conto della barra dell'esito, che e' fissa. */
@@ -654,7 +657,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .bene.scelto { border-color: var(--accento);
   background: color-mix(in srgb, var(--accento) 10%, var(--scheda)); }
 .bene:not(.scelto) .solo-scelto { display: none; }
-.tipi { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; }
+/* I tipi vanno a capo invece di scorrere: una riga che scorre di lato porta
+   con se' una barra, che il Chrome di Telegram non sa nascondere. */
+.tipi { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .tipi button {
   flex: 0 0 auto; padding: 7px 13px; border-radius: 999px; white-space: nowrap;
   border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
@@ -685,9 +690,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .riga .ritardo { color: var(--pieno); }
 .nessuna-mia p { color: var(--tenue); text-align: center; margin: 34px 0 0; }
 /* La freccia sta ferma in basso a destra e finisce appena sopra il +. */
-.freccia-curva { position: fixed; right: -14px;
-  bottom: calc(var(--ingombro-menu) + var(--azione) + 12px);
-  width: 120px; height: 120px; color: var(--tenue); pointer-events: none; }
+.freccia-curva { position: fixed; right: 42px;
+  bottom: calc(var(--ingombro-menu) + 5px);
+  width: 120px; height: 120px; color: var(--testo); opacity: .9; pointer-events: none; }
 .mio-prestito { padding: 2px 0 16px; margin-bottom: 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
 .mio-prestito .scadenza { font-size: .88rem; margin-top: 6px; }
@@ -1731,19 +1736,18 @@ async function prenota() {
 const NESSUNA_MIA = `
   <div class="nessuna-mia">
     <p>Non hai attività in arrivo.</p>
-    <svg class="freccia-curva" viewBox="0 0 360 360" aria-hidden="true">
+    <svg class="freccia-curva" viewBox="0 0 460 460" aria-hidden="true">
       <defs>
         <filter id="pennarello" x="-10%" y="-10%" width="120%" height="120%">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4"/>
           <feDisplacementMap in="SourceGraphic" scale="5"/>
         </filter>
       </defs>
-      <g transform="rotate(115 180 180)" filter="url(#pennarello)" fill="currentColor"
-         stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <path stroke-width="3" d="M28 208 C 92 312, 236 310, 312 124 C 220 280, 100 278, 28 208 Z"/>
-        <path fill="none" stroke-width="17" d="M258 132 L 326 90 L 316 166"/>
+      <g filter="url(#pennarello)" fill="currentColor" stroke="currentColor"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path stroke-width="3" d="M152 92 C 96 160, 100 250, 190 300 C 236 326, 290 336, 330 338 C 290 326, 236 312, 196 288 C 122 244, 110 168, 152 92 Z"/>
+        <path fill="none" stroke-width="13" d="M300 302 L 370 344 L 296 368"/>
       </g>
-    </svg>
   </div>`;
 
 async function caricaMie() {
