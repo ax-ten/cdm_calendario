@@ -720,9 +720,9 @@ app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) 
 }, { soloSoci: false }));
 
 // ---------- registrazione ----------
-// Nome e cognome li dice la persona, che e' socio lo conferma lo staff dal
-// suo gruppo. La richiesta va in tutti i gruppi staff: alla prima apertura
-// dell'app non si sa ancora di che sede sia.
+// Nome e cognome li dice la persona, che e' sociə lo conferma il direttivo
+// dal suo gruppo: chi entra nel corpo associativo e' una decisione sua, non
+// dello staff di una sede.
 const PAROLA_MAX = 60;
 
 function nomeTelegram(utente) {
@@ -751,13 +751,13 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   }
   if (soci.richiestaDi(utente.id)) return res.json({ ok: true, inAttesa: true });
   // Chi lo staff ha sospeso con /blocca non manda richieste: e' lo stesso
-  // comando, e il suo id e' scritto nel messaggio della richiesta.
+  // comando delle prenotazioni.
   if (prenotazioni.eBloccato(utente.id)) {
     return res.status(403).json({ errore: 'sei statə sospesə dallo staff: parlane in sede' });
   }
   // Un account Telegram fa una richiesta per volta, ma cento account finti
-  // ne fanno cento, e finiscono tutte nei gruppi staff. Oltre il tetto si
-  // aspetta che lo staff smaltisca.
+  // ne fanno cento, e finiscono tutte nel gruppo direttivo. Oltre il tetto
+  // si aspetta che il direttivo smaltisca.
   if (soci.quanteInAttesa() >= soci.MAX_IN_ATTESA) {
     console.error('registrazione: troppe richieste in attesa, nuove respinte');
     return res.status(503).json({ errore: 'troppe richieste in attesa: riprova fra qualche ora' });
@@ -765,15 +765,16 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   const fino = soci.rifiutatoFinoA(utente.id);
   if (fino) {
     return res.status(403).json({
-      errore: `lo staff non ti ha riconosciutə come sociə: puoi riprovare dal ` +
+      errore: `il direttivo non ti ha riconosciutə come sociə: puoi riprovare dal ` +
               `${fino.setLocale('it').toFormat('d MMMM')}, o parlarne in sede`,
     });
   }
-  if (!STAFF.size) return res.status(500).json({ errore: 'nessun gruppo staff configurato' });
+  const chatDirettivo = GRUPPI.get('direttivo');
+  if (!chatDirettivo) return res.status(500).json({ errore: 'nessun gruppo direttivo configurato' });
 
   // L'esito arriva in chat privata, e i promemoria dei prestiti pure: se il
   // bot non puo' scrivere a questa persona, lo si dice adesso e non quando
-  // lo staff ha gia' risposto.
+  // il direttivo ha gia' risposto.
   try {
     await telegram('sendChatAction', { chat_id: utente.id, action: 'typing' });
   } catch {
@@ -806,22 +807,17 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
     ],
   ];
 
-  const messaggi = [];
-  for (const chatId of STAFF.values()) {
-    try {
-      const m = await telegram('sendMessage', {
-        chat_id: chatId, text: testo, reply_markup: { inline_keyboard: tastiera },
-      });
-      messaggi.push({ chat: chatId, id: m.message_id });
-    } catch (err) {
-      console.error(`registrazione: gruppo staff ${chatId}:`, err.message);
-    }
-  }
-  if (!messaggi.length) {
+  let messaggio;
+  try {
+    messaggio = await telegram('sendMessage', {
+      chat_id: chatDirettivo, text: testo, reply_markup: { inline_keyboard: tastiera },
+    });
+  } catch (err) {
+    console.error('registrazione: gruppo direttivo:', err.message);
     soci.chiudi(id);
-    return res.status(500).json({ errore: 'non sono riuscito ad avvisare lo staff' });
+    return res.status(500).json({ errore: 'non sono riuscito ad avvisare il direttivo' });
   }
-  soci.aggiorna(id, { messaggi });
+  soci.aggiorna(id, { messaggi: [{ chat: chatDirettivo, id: messaggio.message_id }] });
   res.json({ ok: true, inAttesa: true });
 }, { soloSoci: false }));
 
@@ -1315,10 +1311,10 @@ app.post('/prenota/api/interno/rifiuta', (req, res) => {
   res.json({ ok: true, richiesta });
 });
 
-// Lo staff ha risposto a una registrazione. `scelta` e' l'id della scheda
-// socio ("e' lui"), "nuovo" o "no". Il bot poi aggiorna i messaggi negli
-// altri gruppi staff e scrive alla persona: per questo la risposta riporta
-// la richiesta intera.
+// Il direttivo ha risposto a una registrazione. `scelta` e' l'id della
+// scheda ("stessa persona"), "nuovo" o "no". Il bot poi aggiorna il
+// messaggio e scrive alla persona: per questo la risposta riporta la
+// richiesta intera.
 app.post('/prenota/api/interno/socio', async (req, res) => {
   if (!soloBot(req, res)) return;
   const { id, scelta, daChi } = req.body || {};

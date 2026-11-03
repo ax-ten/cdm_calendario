@@ -599,7 +599,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 </section>
 
 <!-- ------------------------------------------------------ registrazione -->
-<!-- L'app e' dei soci: finche' lo staff non conferma, c'e' solo questa. -->
+<!-- L'app e' dei soci: finche' il direttivo non conferma, c'e' solo questa. -->
 <section class="pannello" id="pannello-registrazione" hidden>
   <div id="modulo-registrazione">
     <h1>Registrati</h1>
@@ -1292,9 +1292,9 @@ function mostraRegistrazione(info) {
   el('pannello-registrazione').hidden = false;
 
   if (info.inAttesa) return esitoRegistrazione(
-    'Richiesta inviata allo staff. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
+    'Richiesta inviata al direttivo. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
   if (info.rifiutatoFinoA) return esitoRegistrazione(
-    `Lo staff non ti ha riconosciutə come sociə. Se è un errore parlane in sede, ` +
+    `Il direttivo non ti ha riconosciutə come sociə. Se è un errore parlane in sede, ` +
     `oppure riprova dal ${info.rifiutatoFinoA}.`);
 
   if (info.informativa) {
@@ -1355,7 +1355,7 @@ async function registrati() {
       privacy: reg('privacy').checked,
     });
     esitoRegistrazione(
-      'Richiesta inviata allo staff. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
+      'Richiesta inviata al direttivo. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
   } catch (err) {
     lamenta(err.message);
   } finally {
