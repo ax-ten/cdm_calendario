@@ -601,6 +601,9 @@ async function conUtente(req, res, azione, { soloSoci = true } = {}) {
   } catch (err) {
     return res.status(401).json({ errore: `identita non verificata: ${err.message}` });
   }
+  if (troppeChiamate(utente.id)) {
+    return res.status(429).json({ errore: 'troppe richieste in poco tempo: riprova fra un minuto' });
+  }
   try {
     if (soloSoci) {
       utente.socio = await socioDi(utente.id);
@@ -618,19 +621,48 @@ async function conUtente(req, res, azione, { soloSoci = true } = {}) {
   }
 }
 
+// Un initData vale un giorno: chi lo copia da' l'app puo' usarlo in uno
+// script e chiamare l'API a raffica, e molte rotte arrivano fino a Odoo o a
+// Google. Uso normale e' qualche decina di chiamate al minuto, trascinando
+// la fascia oraria; il tetto sta ben sopra.
+const CHIAMATE_AL_MINUTO = 120;
+const chiamate = new Map();
+
+function troppeChiamate(userId) {
+  const ora = Date.now();
+  // Le finestre scadute si buttano ogni tanto, se no la mappa cresce con
+  // ogni persona che abbia mai aperto l'app.
+  if (chiamate.size > 5000) {
+    for (const [id, c] of chiamate) if (ora - c.inizio > 60_000) chiamate.delete(id);
+  }
+  const c = chiamate.get(String(userId));
+  if (!c || ora - c.inizio > 60_000) {
+    chiamate.set(String(userId), { inizio: ora, n: 1 });
+    return false;
+  }
+  c.n += 1;
+  return c.n > CHIAMATE_AL_MINUTO;
+}
+
 // Chi e' socio lo dice Odoo, ma chiederlo a ogni tocco dell'app vorrebbe
 // dire un giro su Odoo per ogni giorno del calendario che si apre. Si tiene
 // la risposta per qualche minuto, e se Odoo non risponde si usa l'ultima:
 // un Odoo giu' non deve chiudere le stanze a chi le prenotava ieri.
 // Senza odoo.json il controllo non c'e', e l'app resta aperta come prima:
 // cosi' si puo' aggiornare il server prima di mettere in piedi Odoo.
+// "fresco" (all'apertura dell'app e alla registrazione) vuol dire al
+// massimo mezzo minuto: abbastanza per vedere subito la conferma dello
+// staff, non abbastanza perche' chi riapre l'app a raffica arrivi a Odoo
+// ogni volta.
 const SOCI_VALIDI_PER_MS = 10 * 60 * 1000;
+const SOCI_FRESCHI_PER_MS = 30 * 1000;
 const sociVisti = new Map();
 
 async function socioDi(userId, { fresco = false } = {}) {
   if (!odoo.attivo()) return { id: null, nome: null, numero_socio: null, senzaOdoo: true };
   const visto = sociVisti.get(String(userId));
-  if (!fresco && visto && Date.now() - visto.quando < SOCI_VALIDI_PER_MS) return visto.socio;
+  const validita = fresco ? SOCI_FRESCHI_PER_MS : SOCI_VALIDI_PER_MS;
+  if (visto && Date.now() - visto.quando < validita) return visto.socio;
   try {
     const socio = await odoo.miniapp('socio_da_telegram', String(userId));
     sociVisti.set(String(userId), { socio, quando: Date.now() });
@@ -718,6 +750,18 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
     return res.status(409).json({ errore: 'sei già registratə' });
   }
   if (soci.richiestaDi(utente.id)) return res.json({ ok: true, inAttesa: true });
+  // Chi lo staff ha sospeso con /blocca non manda richieste: e' lo stesso
+  // comando, e il suo id e' scritto nel messaggio della richiesta.
+  if (prenotazioni.eBloccato(utente.id)) {
+    return res.status(403).json({ errore: 'sei statə sospesə dallo staff: parlane in sede' });
+  }
+  // Un account Telegram fa una richiesta per volta, ma cento account finti
+  // ne fanno cento, e finiscono tutte nei gruppi staff. Oltre il tetto si
+  // aspetta che lo staff smaltisca.
+  if (soci.quanteInAttesa() >= soci.MAX_IN_ATTESA) {
+    console.error('registrazione: troppe richieste in attesa, nuove respinte');
+    return res.status(503).json({ errore: 'troppe richieste in attesa: riprova fra qualche ora' });
+  }
   const fino = soci.rifiutatoFinoA(utente.id);
   if (fino) {
     return res.status(403).json({

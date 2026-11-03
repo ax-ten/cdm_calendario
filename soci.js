@@ -38,6 +38,14 @@ function scrivi(dati) {
   fs.renameSync(provvisorio, FILE);
 }
 
+// Oltre questo numero di richieste ancora senza risposta non se ne
+// accettano altre: non e' un numero che si raggiunge per caso.
+export const MAX_IN_ATTESA = 20;
+
+export function quanteInAttesa() {
+  return Object.keys(leggi().richieste).length;
+}
+
 export function richiestaDi(userId) {
   const trovata = Object.entries(leggi().richieste)
     .find(([, r]) => r.utente.id === String(userId));
