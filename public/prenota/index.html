@@ -1329,9 +1329,20 @@ function registrazioneCompleta() {
                  reg('privacy').checked);
 }
 
+// disable() di Telegram rende il pulsante inattivo ma lo lascia del colore
+// di sempre: sembra premibile e non succede niente. Finche' manca qualcosa
+// lo si fa grigio, con i colori del tema.
 function aggiornaRegistrazione() {
   if (!tg?.MainButton) return;
-  registrazioneCompleta() ? tg.MainButton.enable() : tg.MainButton.disable();
+  const tema = tg.themeParams || {};
+  const pronto = registrazioneCompleta();
+  tg.MainButton.setParams(pronto
+    ? { is_active: true,
+        color: tema.button_color || '#4a9ee0',
+        text_color: tema.button_text_color || '#ffffff' }
+    : { is_active: false,
+        color: tema.secondary_bg_color || '#3a4553',
+        text_color: tema.hint_color || '#8a9aa9' });
 }
 
 async function registrati() {
