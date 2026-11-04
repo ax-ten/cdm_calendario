@@ -104,6 +104,9 @@ body {
    recenti (quello di Telegram su Android, per esempio) misurano la capsula
    sul testo delle voci e non sul flex-basis, e la seconda voce ne usciva. */
 .tab button { flex: none; width: 92px; height: 100%; padding: 0; -webkit-tap-highlight-color: transparent; }
+/* display: flex delle voci vince sull'attributo hidden: senza questa riga la
+   Tessera, ancora in prova, si vedeva anche senza il link debug. */
+.tab button[hidden] { display: none; }
 
 /* ----------------------------------------------------------------- passi */
 .testa-passi { display: flex; justify-content: space-between; align-items: center; min-height: 34px; }
