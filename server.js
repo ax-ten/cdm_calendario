@@ -799,11 +799,6 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   if (req.body?.socio !== true) {
     return res.status(400).json({ errore: 'L’app è riservata al corpo associativo.' });
   }
-  // Registrarsi all'app non e' tesserarsi: lo si fa dire in chiaro, se no
-  // qualcunə pensa di aver rinnovato la tessera premendo un bottone.
-  if (req.body?.tesseramento !== true) {
-    return res.status(400).json({ errore: 'Serve confermare che la registrazione non sostituisce il tesseramento.' });
-  }
   if (req.body?.privacy !== true) {
     return res.status(400).json({ errore: 'Serve accettare l’informativa.' });
   }
@@ -1928,7 +1923,7 @@ app.post('/prenota/api/interno/riapri', async (req, res) => {
   }
 });
 
-// /imieidati: quello che l'app sa di chi scrive al bot.
+// /mydata: quello che l'app sa di chi scrive al bot.
 app.post('/prenota/api/interno/dati', async (req, res) => {
   if (!soloBot(req, res)) return;
   const userId = String(req.body?.userId || '');

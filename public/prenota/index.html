@@ -831,7 +831,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .mensilita span.adesso { outline: 1.5px solid var(--accento); outline-offset: -1.5px; }
 .riga.ricevuta { display: flex; align-items: center; gap: 10px; }
 .riga.ricevuta > div:first-child { flex: 1; min-width: 0; }
-.vai-iscrizione { margin: -10px 0 22px; color: var(--tenue); }
+.vai-iscrizione { margin: 10px 0 0 4px; color: var(--tenue); }
 button.link { appearance: none; border: 0; background: none; padding: 0; font: inherit;
   color: var(--accento); font-weight: 600; cursor: pointer; }
 
@@ -1251,9 +1251,6 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <h1>Registrati</h1>
     <p class="intro">L’app è riservata al corpo associativo del Crocevia dei Mondi:
       registrati e usala da subito, il direttivo poi conferma che tu sia sociə.</p>
-    <p class="vai-iscrizione" id="vai-iscrizione" hidden>Non sei ancora sociə?
-      <button type="button" class="link" id="apri-iscrizione">Tesserati</button></p>
-
     <div class="campo">
       <label for="reg-nome">Nome</label>
       <input type="text" id="reg-nome" maxlength="60" autocomplete="given-name">
@@ -1270,15 +1267,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
           <label for="reg-socio">Sono sociə del Crocevia dei Mondi</label>
         </div>
       </div>
-    </div>
-
-    <div class="campo">
-      <div class="interruttore">
-        <input type="checkbox" id="reg-tesseramento">
-        <div>
-          <label for="reg-tesseramento">So che registrarmi qui non sostituisce il tesseramento</label>
-        </div>
-      </div>
+      <p class="vai-iscrizione" id="vai-iscrizione" hidden>Non sei ancora sociə?
+        <button type="button" class="link" id="apri-iscrizione">Tesserati</button></p>
     </div>
 
     <div class="campo">
@@ -2189,7 +2179,7 @@ function mostraRegistrazione(info) {
   }
 
   for (const id of ['nome', 'cognome']) reg(id).addEventListener('input', aggiornaRegistrazione);
-  for (const id of ['socio', 'tesseramento', 'privacy']) reg(id).addEventListener('change', aggiornaRegistrazione);
+  for (const id of ['socio', 'privacy']) reg(id).addEventListener('change', aggiornaRegistrazione);
   document.body.classList.add('senza-menu');
   azionePrincipale = registrati;
   aggiornaRegistrazione();
@@ -2197,7 +2187,7 @@ function mostraRegistrazione(info) {
 
 function registrazioneCompleta() {
   return Boolean(reg('nome').value.trim() && reg('cognome').value.trim() &&
-                 reg('socio').checked && reg('tesseramento').checked &&
+                 reg('socio').checked &&
                  reg('privacy').checked);
 }
 
@@ -2214,7 +2204,6 @@ async function registrati() {
       nome: reg('nome').value.trim(),
       cognome: reg('cognome').value.trim(),
       socio: reg('socio').checked,
-      tesseramento: reg('tesseramento').checked,
       privacy: reg('privacy').checked,
     });
     // Si entra subito: la pagina riparte, e stavolta sei sociə (per ora).
