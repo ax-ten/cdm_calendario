@@ -829,8 +829,26 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   background: var(--scheda); color: var(--tenue); }
 .mensilita span.pagato { background: var(--accento); color: var(--su-accento); }
 .mensilita span.adesso { outline: 1.5px solid var(--accento); outline-offset: -1.5px; }
-.riga.ricevuta { display: flex; align-items: center; gap: 10px; }
-.riga.ricevuta > div:first-child { flex: 1; min-width: 0; }
+.ricevute-anno { margin-bottom: 14px; }
+.anno-ricevute { display: flex; align-items: center; gap: 12px; padding: 4px 13px 10px;
+  font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none; }
+.riga.ricevuta { display: flex; align-items: center; gap: 12px; cursor: pointer;
+  -webkit-user-select: none; user-select: none; border: 1.5px solid transparent;
+  transition: border-color .15s ease, background-color .15s ease; }
+.riga.ricevuta[aria-checked="true"] { border-color: var(--accento);
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda)); }
+.ricevuta-testo { flex: 1; min-width: 0; }
+/* Il cerchietto a sinistra: vuoto, con la spunta, o con un trattino quando
+   di un anno ne sono scelte solo alcune. */
+.spunta { flex: 0 0 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; border: 2px solid color-mix(in srgb, var(--tenue) 70%, transparent);
+  transition: background-color .15s ease, border-color .15s ease; }
+[aria-checked="true"] > .spunta { background: var(--accento); border-color: var(--accento); }
+[aria-checked="true"] > .spunta::after { content: ""; width: 6px; height: 11px;
+  border: solid var(--su-accento); border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+[aria-checked="mixed"] > .spunta { border-color: var(--accento); }
+[aria-checked="mixed"] > .spunta::after { content: ""; width: 10px; height: 2.5px;
+  border-radius: 2px; background: var(--accento); }
 .vai-iscrizione { margin: 10px 0 0 4px; color: var(--tenue); }
 button.link { appearance: none; border: 0; background: none; padding: 0; font: inherit;
   color: var(--accento); font-weight: 600; cursor: pointer; }
@@ -3131,9 +3149,7 @@ async function caricaTessera() {
     const { tessera } = await chiama('tessera');
     dove.className = '';
     dove.innerHTML = disegnaTessera(tessera);
-    dove.querySelectorAll('[data-ricevuta]').forEach(b => {
-      b.onclick = () => mandaRicevuta(Number(b.dataset.ricevuta), b);
-    });
+    collegaRicevute(dove);
   } catch (err) {
     dove.textContent = err.message;
   }
@@ -3142,13 +3158,25 @@ async function caricaTessera() {
 function disegnaTessera(t) {
   const pagati = new Set(t.mensilita.map(m => Number(m.slice(5))));
   const adesso = new Date().getMonth() + 1;
-  const ricevute = t.ricevute.length ? t.ricevute.map(r => `
-    <div class="riga ricevuta">
-      <div>
-        <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
-        <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · mese ' + meseTesto(r.mese) : ''}</div>
+  // Per anno, dal piu' recente. Le ricevute arrivano gia' in ordine di data.
+  const perAnno = new Map();
+  for (const r of t.ricevute) {
+    const anno = r.data.slice(0, 4);
+    perAnno.set(anno, [...(perAnno.get(anno) || []), r]);
+  }
+  const ricevute = perAnno.size ? [...perAnno].map(([anno, lista]) => `
+    <div class="ricevute-anno">
+      <div class="anno-ricevute" role="checkbox" aria-checked="false" tabindex="0" data-anno-tutte="${anno}">
+        <span class="spunta" aria-hidden="true"></span><span>${anno}</span>
       </div>
-      <button type="button" data-ricevuta="${r.id}">In chat</button>
+      ${lista.map(r => `
+      <div class="riga ricevuta" role="checkbox" aria-checked="false" tabindex="0" data-ricevuta="${r.id}" data-anno="${anno}">
+        <span class="spunta" aria-hidden="true"></span>
+        <div class="ricevuta-testo">
+          <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
+          <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · mese ' + meseTesto(r.mese) : ''}</div>
+        </div>
+      </div>`).join('')}
     </div>`).join('') : '<p class="vuoto">Ancora nessuna ricevuta.</p>';
   return `
     <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
@@ -3166,15 +3194,56 @@ function disegnaTessera(t) {
     ${ricevute}`;
 }
 
-async function mandaRicevuta(id, bottone) {
-  bottone.disabled = true;
+// Le ricevute si scelgono toccandole, anche un anno intero dalla sua
+// intestazione; scelte, il pulsante in basso le manda tutte in chat.
+const ricevuteScelte = new Set();
+
+function collegaRicevute(dove) {
+  ricevuteScelte.clear();
+  const tocco = (nodo, fai) => {
+    nodo.onclick = fai;
+    nodo.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fai(); } };
+  };
+  dove.querySelectorAll('[data-ricevuta]').forEach(riga => tocco(riga, () => {
+    const id = Number(riga.dataset.ricevuta);
+    ricevuteScelte.has(id) ? ricevuteScelte.delete(id) : ricevuteScelte.add(id);
+    aggiornaRicevute(dove);
+  }));
+  dove.querySelectorAll('[data-anno-tutte]').forEach(testa => tocco(testa, () => {
+    const ids = [...dove.querySelectorAll(`[data-ricevuta][data-anno="${testa.dataset.annoTutte}"]`)]
+      .map(r => Number(r.dataset.ricevuta));
+    const tutte = ids.every(id => ricevuteScelte.has(id));
+    ids.forEach(id => tutte ? ricevuteScelte.delete(id) : ricevuteScelte.add(id));
+    aggiornaRicevute(dove);
+  }));
+  aggiornaRicevute(dove);
+}
+
+function aggiornaRicevute(dove) {
+  dove.querySelectorAll('[data-ricevuta]').forEach(r =>
+    r.setAttribute('aria-checked', String(ricevuteScelte.has(Number(r.dataset.ricevuta)))));
+  dove.querySelectorAll('[data-anno-tutte]').forEach(testa => {
+    const righe = [...dove.querySelectorAll(`[data-ricevuta][data-anno="${testa.dataset.annoTutte}"]`)];
+    const scelte = righe.filter(r => ricevuteScelte.has(Number(r.dataset.ricevuta))).length;
+    testa.setAttribute('aria-checked', !scelte ? 'false' : scelte === righe.length ? 'true' : 'mixed');
+  });
+  if (!ricevuteScelte.size) return nascondiAzione();
+  azionePrincipale = mandaRicevute;
+  pulsantePrincipale(`Mostra in chat (${ricevuteScelte.size})`, true);
+}
+
+async function mandaRicevute() {
+  const ids = [...ricevuteScelte];
+  attesaAzione(true);
   try {
-    await chiama('tessera/ricevuta', { ricevutaId: id });
-    toast('Te l’ho mandata in chat.');
+    await chiama('tessera/ricevuta', { ricevutaIds: ids });
+    toast(ids.length === 1 ? 'Te l’ho mandata in chat.' : `Te le ho mandate in chat: ${ids.length}.`);
+    ricevuteScelte.clear();
+    aggiornaRicevute(el('tessera'));
   } catch (err) {
     lamenta(err.message);
   } finally {
-    bottone.disabled = false;
+    attesaAzione(false);
   }
 }
 

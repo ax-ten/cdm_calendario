@@ -1636,21 +1636,33 @@ app.post('/prenota/api/tessera', (req, res) => conUtente(req, res, async (utente
   res.json({ tessera: await odoo.miniapp('tessera', utente.id) });
 }));
 
+// Se ne possono chiedere tante insieme (un anno intero): arrivano una per
+// messaggio, nell'ordine scelto. Il tetto evita di inondare la chat.
+const RICEVUTE_PER_VOLTA = 30;
 app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, async (utente) => {
-  const ricevutaId = Number(req.body?.ricevutaId);
-  if (!ricevutaId) return res.status(400).json({ errore: 'Quale ricevuta?' });
-  const r = await odoo.miniapp('ricevuta_pdf', utente.id, ricevutaId);
-  const form = new FormData();
-  form.append('chat_id', String(utente.id));
-  form.append('caption', `Ricevuta ${r.numero}`);
-  form.append('document', new Blob([Buffer.from(r.pdf, 'base64')], { type: 'application/pdf' }), r.nome_file);
-  const esito = await (await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
-    { method: 'POST', body: form })).json();
-  if (!esito.ok) {
-    console.error('ricevuta: sendDocument:', esito.description);
-    return res.status(502).json({ errore: 'Non riesco a mandartela in chat: apri la chat con il bot e premi Avvia.' });
+  const ids = [...new Set((req.body?.ricevutaIds || [req.body?.ricevutaId]).map(Number).filter(Boolean))];
+  if (!ids.length) return res.status(400).json({ errore: 'Quali ricevute?' });
+  if (ids.length > RICEVUTE_PER_VOLTA) {
+    return res.status(400).json({ errore: `Al massimo ${RICEVUTE_PER_VOLTA} ricevute per volta.` });
   }
-  res.json({ ok: true });
+  let mandate = 0;
+  for (const id of ids) {
+    const r = await odoo.miniapp('ricevuta_pdf', utente.id, id);
+    const form = new FormData();
+    form.append('chat_id', String(utente.id));
+    form.append('caption', `Ricevuta ${r.numero}`);
+    form.append('document', new Blob([Buffer.from(r.pdf, 'base64')], { type: 'application/pdf' }), r.nome_file);
+    const esito = await (await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
+      { method: 'POST', body: form })).json();
+    if (!esito.ok) {
+      console.error('ricevuta: sendDocument:', esito.description);
+      return res.status(502).json({ errore: mandate
+        ? `Te ne ho mandate ${mandate}, poi Telegram si è fermato: riprova con le altre.`
+        : 'Non riesco a mandartele in chat: apri la chat con il bot e premi Avvia.' });
+    }
+    mandate += 1;
+  }
+  res.json({ ok: true, mandate });
 }));
 
 // Chi non e' sociə chiede il tesseramento dall'app. La quota si paga in
