@@ -70,6 +70,9 @@ export function verificaInitData(initData, botToken) {
     id: String(utente.id),
     nome: [utente.first_name, utente.last_name].filter(Boolean).join(' ') || 'senza nome',
     username: utente.username || '',
+    // Aperta dal link ...?startapp=debug: le cose ancora in prova. Lo
+    // start_param sta dentro la firma, quindi non si inventa.
+    debug: parametri.get('start_param') === 'debug',
   };
 }
 

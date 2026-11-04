@@ -267,7 +267,7 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
 }
 .categoria[aria-pressed="true"] .tinta { opacity: 1; }
 
-input[type="text"], textarea {
+input[type="text"], input[type="email"], input[type="tel"], input[type="date"], textarea {
   width: 100%;
   padding: 12px;
   border: 0;
@@ -277,6 +277,8 @@ input[type="text"], textarea {
   font: inherit;
 }
 textarea { resize: vertical; min-height: 62px; }
+/* La data ha l'altezza degli altri campi e il calendarietto nel colore del tema. */
+input[type="date"] { min-height: 46px; color-scheme: dark light; }
 input:focus-visible, textarea:focus-visible, button:focus-visible {
   outline: 2px solid var(--accento);
   outline-offset: 1px;
@@ -801,6 +803,30 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 }
 .informativa > div > :first-child { margin-top: 0; }
 .informativa > div > :last-child { margin-bottom: 0; }
+/* ---------------------------------------------------------------- tessera */
+.tessera-carta { position: relative; overflow: hidden; border-radius: 18px; padding: 18px 18px 16px;
+  margin-bottom: 22px; color: var(--su-accento);
+  background: linear-gradient(135deg, var(--accento), color-mix(in srgb, var(--accento) 55%, #000));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+.tessera-carta::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px;
+  border-radius: 50%; background: rgba(255, 255, 255, .08); }
+.tessera-carta.da-rinnovare { background: linear-gradient(135deg, #5b6673, #3a434d); color: #fff; }
+.tessera-testa { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.tessera-nome { font-size: 1.35rem; font-weight: 700; margin: 26px 0 2px; }
+.tessera-dati { font-size: .9rem; opacity: .9; }
+.tessera-stato { margin-top: 14px; font-size: .86rem; font-weight: 600; }
+.mensilita { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-bottom: 22px; }
+.mensilita span { text-align: center; padding: 8px 0; border-radius: 8px; font-size: .8rem; font-weight: 600;
+  background: var(--scheda); color: var(--tenue); }
+.mensilita span.pagato { background: var(--accento); color: var(--su-accento); }
+.mensilita span.adesso { outline: 1.5px solid var(--accento); outline-offset: -1.5px; }
+.riga.ricevuta { display: flex; align-items: center; gap: 10px; }
+.riga.ricevuta > div:first-child { flex: 1; min-width: 0; }
+.vai-iscrizione { margin: -10px 0 22px; color: var(--tenue); }
+button.link { appearance: none; border: 0; background: none; padding: 0; font: inherit;
+  color: var(--accento); font-weight: 600; cursor: pointer; }
+
 /* ---- piccole animazioni ----
    Brevi, e solo su quello che compare: niente che faccia aspettare. I
    pannelli sfumano soltanto: un transform li renderebbe il riferimento dei
@@ -811,7 +837,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 @keyframes sale { from { transform: translateY(100%); } }
 .pannello:not([hidden]) { animation: entra .2s ease-out; }
 .passo:not([hidden]) { animation: entra-su .22s ease-out; }
-.bene, .riga, .mio-prestito { animation: entra-su .24s ease-out backwards; }
+.bene, .riga, .mio-prestito, .tessera-carta { animation: entra-su .24s ease-out backwards; }
 .bene:nth-child(2), .riga:nth-child(2) { animation-delay: .03s; }
 .bene:nth-child(3), .riga:nth-child(3) { animation-delay: .06s; }
 .bene:nth-child(4), .riga:nth-child(4) { animation-delay: .09s; }
@@ -826,7 +852,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #foglio-a-nome:not([hidden]) { animation: entra .18s ease-out; }
 #foglio-a-nome:not([hidden]) .foglio { animation: sale .24s cubic-bezier(.2, .8, .3, 1); }
 @media (prefers-reduced-motion: reduce) {
-  .pannello, .passo, .bene, .riga, .mio-prestito, .tondo, #azione, #azione-a-nome,
+  .pannello, .passo, .bene, .riga, .mio-prestito, .tondo, #azione, #azione-a-nome, .tessera-carta,
   .etichetta-tondo, .tab button svg, #foglio-a-nome, #foglio-a-nome .foglio { animation: none !important; }
 }
 </style>
@@ -836,6 +862,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 <nav class="tab" role="tablist">
   <button role="tab" id="tab-inventario" aria-selected="false" aria-controls="pannello-inventario"><!-- phosphor: books --><svg class="ico-vuota" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M231.65,194.55,198.46,36.75a16,16,0,0,0-19-12.39L132.65,34.42a16.08,16.08,0,0,0-12.3,19l33.19,157.8A16,16,0,0,0,169.16,224a16.25,16.25,0,0,0,3.38-.36l46.81-10.06A16.09,16.09,0,0,0,231.65,194.55ZM136,50.15c0-.06,0-.09,0-.09l46.8-10,3.33,15.87L139.33,66Zm6.62,31.47,46.82-10.05,3.34,15.9L146,97.53Zm6.64,31.57,46.82-10.06,13.3,63.24-46.82,10.06ZM216,197.94l-46.8,10-3.33-15.87L212.67,182,216,197.85C216,197.91,216,197.94,216,197.94ZM104,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V48A16,16,0,0,0,104,32ZM56,48h48V64H56Zm0,32h48v96H56Zm48,128H56V192h48v16Z"/></svg><svg class="ico-piena" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M231.65,194.55,198.46,36.75a16,16,0,0,0-19-12.39L132.65,34.42a16.08,16.08,0,0,0-12.3,19l33.19,157.8A16,16,0,0,0,169.16,224a16.25,16.25,0,0,0,3.38-.36l46.81-10.06A16.09,16.09,0,0,0,231.65,194.55ZM136,50.15c0-.06,0-.09,0-.09l46.8-10,3.33,15.87L139.33,66Zm10,47.38-3.35-15.9,46.82-10.06,3.34,15.9Zm70,100.41-46.8,10-3.33-15.87L212.67,182,216,197.85C216,197.91,216,197.94,216,197.94ZM104,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V48A16,16,0,0,0,104,32ZM56,48h48V64H56Zm48,160H56V192h48v16Z"/></svg><span>Biblioteca</span></button>
   <button role="tab" id="tab-prenota" aria-selected="true" aria-controls="pannello-prenota"><!-- phosphor: door-open --><svg class="ico-vuota" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M232,216H208V40a16,16,0,0,0-16-16H64A16,16,0,0,0,48,40V216H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16Zm-40,0H176V40h16ZM64,40h96V216H64Zm80,92a12,12,0,1,1-12-12A12,12,0,0,1,144,132Z"/></svg><svg class="ico-piena" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M232,216H208V40a16,16,0,0,0-16-16H64A16,16,0,0,0,48,40V216H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16Zm-64,0H64V40H168Zm-40-84a12,12,0,1,1,12,12A12,12,0,0,1,128,132Z"/></svg><span>Attività</span></button>
+  <!-- Ancora in prova: si vede solo aprendo l'app dal link ...?startapp=debug. -->
+  <button role="tab" id="tab-tessera" aria-selected="false" aria-controls="pannello-tessera" hidden><!-- phosphor: identification-card --><svg class="ico-vuota" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M200,112a8,8,0,0,1-8,8H152a8,8,0,0,1,0-16h40A8,8,0,0,1,200,112Zm-8,24H152a8,8,0,0,0,0,16h40a8,8,0,0,0,0-16Zm40-80V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56ZM216,200V56H40V200H216Zm-80.26-34a8,8,0,1,1-15.5,4c-2.63-10.26-13.06-18-24.25-18s-21.61,7.74-24.25,18a8,8,0,1,1-15.5-4,39.84,39.84,0,0,1,17.19-23.34,32,32,0,1,1,45.12,0A39.76,39.76,0,0,1,135.75,166ZM96,136a16,16,0,1,0-16-16A16,16,0,0,0,96,136Z"/></svg><svg class="ico-piena" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M112,120a16,16,0,1,1-16-16A16,16,0,0,1,112,120ZM232,56V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56ZM135.75,166a39.76,39.76,0,0,0-17.19-23.34,32,32,0,1,0-45.12,0A39.84,39.84,0,0,0,56.25,166a8,8,0,0,0,15.5,4c2.64-10.25,13.06-18,24.25-18s21.62,7.73,24.25,18a8,8,0,1,0,15.5-4ZM200,144a8,8,0,0,0-8-8H152a8,8,0,0,0,0,16h40A8,8,0,0,0,200,144Zm0-32a8,8,0,0,0-8-8H152a8,8,0,0,0,0,16h40A8,8,0,0,0,200,112Z"/></svg><span>Tessera</span></button>
 </nav>
 
 <!-- ------------------------------------------------------------ prenota -->
@@ -1152,6 +1180,62 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   <button type="button" class="bottone secondario" id="chiudi-scanner">Annulla</button>
 </div>
 
+<!-- ------------------------------------------------------------ tessera -->
+<section class="pannello" id="pannello-tessera" role="tabpanel" aria-labelledby="tab-tessera" hidden>
+  <h1>La tua tessera</h1>
+  <div id="tessera" class="vuoto">…</div>
+</section>
+
+<!-- Chi non e' ancora sociə chiede qui il tesseramento: la quota si paga in
+     sede, e il direttivo registra il pagamento dal suo gruppo. -->
+<section class="pannello" id="pannello-iscrizione" hidden>
+  <button type="button" class="indietro" id="chiudi-iscrizione">‹ Indietro</button>
+  <h1>Tesserati</h1>
+  <p class="intro">Compila i tuoi dati: servono per il libro soci. La quota di
+    <span id="quota-iscrizione">10 €</span> si paga in sede, alla prossima apertura.</p>
+  <div class="campo riga-campi">
+    <div><label for="isc-nome">Nome</label><input type="text" id="isc-nome" maxlength="60" autocomplete="given-name"></div>
+    <div><label for="isc-cognome">Cognome</label><input type="text" id="isc-cognome" maxlength="60" autocomplete="family-name"></div>
+  </div>
+  <div class="campo riga-campi">
+    <div><label for="isc-data_nascita">Data di nascita</label><input type="date" id="isc-data_nascita" autocomplete="bday"></div>
+    <div><label for="isc-luogo_nascita">Luogo di nascita</label><input type="text" id="isc-luogo_nascita" maxlength="80"></div>
+  </div>
+  <div class="campo">
+    <label for="isc-codice_fiscale">Codice fiscale</label>
+    <input type="text" id="isc-codice_fiscale" maxlength="16" autocapitalize="characters" autocomplete="off">
+  </div>
+  <div class="campo riga-campi">
+    <div><label for="isc-email">Email</label><input type="email" id="isc-email" maxlength="120" autocomplete="email"></div>
+    <div><label for="isc-telefono">Telefono <small>(facoltativo)</small></label><input type="tel" id="isc-telefono" maxlength="30" autocomplete="tel"></div>
+  </div>
+  <div class="campo">
+    <label for="isc-indirizzo">Indirizzo</label>
+    <input type="text" id="isc-indirizzo" maxlength="120" autocomplete="street-address">
+  </div>
+  <div class="campo riga-campi">
+    <div style="flex: 0 0 84px"><label for="isc-cap">CAP</label><input type="text" id="isc-cap" maxlength="5" inputmode="numeric" autocomplete="postal-code"></div>
+    <div><label for="isc-citta">Città</label><input type="text" id="isc-citta" maxlength="80" autocomplete="address-level2"></div>
+    <div style="flex: 0 0 64px"><label for="isc-provincia">Prov.</label><input type="text" id="isc-provincia" maxlength="2" autocapitalize="characters"></div>
+  </div>
+  <div class="campo">
+    <label for="isc-messaggio">Messaggio <small>(facoltativo)</small></label>
+    <textarea id="isc-messaggio" maxlength="1000"></textarea>
+  </div>
+  <div class="campo">
+    <div class="interruttore">
+      <input type="checkbox" id="isc-privacy">
+      <div>
+        <label for="isc-privacy">Ho letto l’informativa privacy</label>
+        <details class="informativa">
+          <summary>Leggi l’informativa</summary>
+          <div id="informativa-iscrizione"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ------------------------------------------------------ registrazione -->
 <!-- L'app e' dei soci: finche' il direttivo non conferma, c'e' solo questa. -->
 <section class="pannello" id="pannello-registrazione" hidden>
@@ -1159,6 +1243,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
     <h1>Registrati</h1>
     <p class="intro">L’app è riservata al corpo associativo del Crocevia dei Mondi:
       registrati e usala da subito, il direttivo poi conferma che tu sia sociə.</p>
+    <p class="vai-iscrizione" id="vai-iscrizione" hidden>Non sei ancora sociə?
+      <button type="button" class="link" id="apri-iscrizione">Tesserati</button></p>
 
     <div class="campo">
       <label for="reg-nome">Nome</label>
@@ -1233,6 +1319,11 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
+
+// Le cose ancora in prova (la tessera, il tesseramento dall'app) si vedono
+// solo aprendo l'app dal link t.me/<bot>/<app>?startapp=debug. Il server
+// lo controlla da se', sull'initData firmato.
+const DEBUG = String(tg?.initDataUnsafe?.start_param || '').toLowerCase() === 'debug';
 
 const MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
               'luglio','agosto','settembre','ottobre','novembre','dicembre'];
@@ -2064,6 +2155,11 @@ function mostraRegistrazione(info) {
   el('pannello-inventario').hidden = true;
   el('pannello-registrazione').hidden = false;
 
+  if (DEBUG && info.iscrizione?.richiesta) return attesaTesseramento(info.iscrizione);
+  if (DEBUG && info.iscrizione) {
+    el('vai-iscrizione').hidden = false;
+    el('apri-iscrizione').onclick = () => mostraIscrizione(info);
+  }
   if (info.inAttesa) return esitoRegistrazione(
     'Richiesta inviata al direttivo. Quando risponde ti scrivo qui in chat, poi riapri l’app.');
   if (info.rifiutatoFinoA) return esitoRegistrazione(
@@ -3021,8 +3117,141 @@ async function salvaBene() {
   }
 }
 
+// ---------------------------------------------------------------- tessera
+// La propria tessera: l'anno, le mensilita' pagate e le ricevute. I mesi
+// senza ricevuta sono solo spenti: non si paga nei mesi in cui non si
+// partecipa, quindi non c'e' un "in ritardo".
+const INIZIALI_MESI = ['G', 'F', 'M', 'A', 'M', 'G', 'L', 'A', 'S', 'O', 'N', 'D'];
+const euro = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 })} €`;
+const meseTesto = (m) => `${MESI[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
+
+async function caricaTessera() {
+  const dove = el('tessera');
+  dove.className = 'vuoto';
+  dove.textContent = 'Carico…';
+  try {
+    const { tessera } = await chiama('tessera');
+    dove.className = '';
+    dove.innerHTML = disegnaTessera(tessera);
+    dove.querySelectorAll('[data-ricevuta]').forEach(b => {
+      b.onclick = () => mandaRicevuta(Number(b.dataset.ricevuta), b);
+    });
+  } catch (err) {
+    dove.textContent = err.message;
+  }
+}
+
+function disegnaTessera(t) {
+  const pagati = new Set(t.mensilita.map(m => Number(m.slice(5))));
+  const adesso = new Date().getMonth() + 1;
+  const ricevute = t.ricevute.length ? t.ricevute.map(r => `
+    <div class="riga ricevuta">
+      <div>
+        <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
+        <div class="quando">${esc(r.numero)} · ${dataTesto(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}</div>
+      </div>
+      <button type="button" data-ricevuta="${r.id}">In chat</button>
+    </div>`).join('') : '<p class="vuoto">Ancora nessuna ricevuta.</p>';
+  return `
+    <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
+      <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${t.anno}</span></div>
+      <div class="tessera-nome">${esc(t.nome)}</div>
+      <div class="tessera-dati">${t.numero_socio ? `Sociə n. ${esc(t.numero_socio)}` : 'Sociə'}${t.categoria ? ' · ' + esc(t.categoria) : ''}</div>
+      <div class="tessera-stato">${t.tesserato ? `Tesseramento ${t.anno} registrato`
+        : `Tesseramento ${t.anno} da rinnovare: ${euro(t.quota)} in sede`}</div>
+    </div>
+    <h2>Mensilità ${t.anno}</h2>
+    <div class="mensilita">${INIZIALI_MESI.map((m, i) =>
+      `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
+    <h2>Ricevute</h2>
+    ${ricevute}`;
+}
+
+async function mandaRicevuta(id, bottone) {
+  bottone.disabled = true;
+  try {
+    await chiama('tessera/ricevuta', { ricevutaId: id });
+    toast('Te l’ho mandata in chat.');
+  } catch (err) {
+    lamenta(err.message);
+  } finally {
+    bottone.disabled = false;
+  }
+}
+
+// ------------------------------------------------------------ tesseramento
+// Chi non e' sociə: i dati per il libro soci, poi la quota in sede.
+const CAMPI_ISCRIZIONE = ['nome', 'cognome', 'data_nascita', 'luogo_nascita', 'codice_fiscale',
+                          'email', 'telefono', 'indirizzo', 'cap', 'citta', 'provincia', 'messaggio'];
+const FACOLTATIVI = new Set(['telefono', 'provincia', 'messaggio']);
+const isc = (id) => el(`isc-${id}`);
+let quotaIscrizione = 0;
+
+function mostraIscrizione(info) {
+  el('pannello-registrazione').hidden = true;
+  el('pannello-iscrizione').hidden = false;
+  quotaIscrizione = info.iscrizione.quota;
+  el('quota-iscrizione').textContent = euro(quotaIscrizione);
+  el('informativa-iscrizione').replaceChildren(...el('informativa').cloneNode(true).childNodes);
+  el('chiudi-iscrizione').onclick = () => {
+    el('pannello-iscrizione').hidden = true;
+    el('pannello-registrazione').hidden = false;
+    azionePrincipale = registrati;
+    aggiornaRegistrazione();
+  };
+  for (const k of CAMPI_ISCRIZIONE) isc(k).addEventListener('input', aggiornaIscrizione);
+  isc('privacy').addEventListener('change', aggiornaIscrizione);
+  azionePrincipale = inviaIscrizione;
+  aggiornaIscrizione();
+  window.scrollTo(0, 0);
+}
+
+function iscrizioneCompleta() {
+  return CAMPI_ISCRIZIONE.every(k => FACOLTATIVI.has(k) || isc(k).value.trim()) &&
+    /^[A-Za-z0-9]{16}$/.test(isc('codice_fiscale').value.trim()) && isc('privacy').checked;
+}
+
+function aggiornaIscrizione() {
+  pulsantePrincipale('Invia la richiesta', iscrizioneCompleta());
+}
+
+async function inviaIscrizione() {
+  if (!iscrizioneCompleta()) return;
+  const valori = Object.fromEntries(CAMPI_ISCRIZIONE.map(k => [k, isc(k).value.trim()]));
+  attesaAzione(true);
+  try {
+    const { richiesta } = await chiama('iscrizione', { valori, privacy: true });
+    el('pannello-iscrizione').hidden = true;
+    attesaTesseramento({ richiesta, quota: quotaIscrizione });
+  } catch (err) {
+    lamenta(err.message);
+  } finally {
+    attesaAzione(false);
+  }
+}
+
+// In attesa del direttivo si vede solo questo: la tessera che sta per
+// nascere, e come pagare.
+function attesaTesseramento(iscrizione) {
+  for (const p of ['registrazione', 'iscrizione']) el(`pannello-${p}`).hidden = true;
+  el('pannello-tessera').hidden = false;
+  document.body.classList.add('senza-menu');
+  nascondiAzione();
+  const r = iscrizione.richiesta;
+  el('tessera').className = '';
+  el('tessera').innerHTML = `
+    <div class="tessera-carta da-rinnovare">
+      <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${new Date().getFullYear()}</span></div>
+      <div class="tessera-nome">${esc(`${r.nome} ${r.cognome}`)}</div>
+      <div class="tessera-dati">Tesseramento in attesa</div>
+      <div class="tessera-stato">Quota: ${euro(iscrizione.quota)}, da pagare in sede</div>
+    </div>
+    <p>Richiesta inviata al direttivo. Paga la quota alla prossima apertura in sede:
+      quando il direttivo la registra la tessera si attiva, e te lo scrivo in chat.</p>`;
+}
+
 // ------------------------------------------------------------------ avvio
-const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti'];
+const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera'];
 
 function mostra(quale) {
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
@@ -3032,7 +3261,7 @@ function mostra(quale) {
   document.body.classList.remove('due-azioni');
   const scheda = quale === 'aggiungi' || quale === 'prestiti' ? 'inventario'
     : quale === 'mie' ? 'prenota' : quale;
-  for (const t of ['prenota', 'inventario']) {
+  for (const t of ['prenota', 'inventario', 'tessera']) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
@@ -3052,6 +3281,7 @@ function mostra(quale) {
   else nascondiAzione();
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();
+  if (quale === 'tessera') caricaTessera();
 }
 
 async function avvia() {
@@ -3148,6 +3378,8 @@ async function avvia() {
   el('tab-prenota').onclick = () => mostra('mie');
   el('passo-indietro').onclick = indietro;
   el('tab-inventario').onclick = () => mostra('inventario');
+  el('tab-tessera').hidden = !DEBUG;
+  el('tab-tessera').onclick = () => mostra('tessera');
   tg?.BackButton?.onClick(indietro);
 
   stato.bloccato = Boolean(info.bloccato);
@@ -3166,6 +3398,7 @@ async function avvia() {
 // "biblioteca_libri", "biblioteca_gdt", "biblioteca_gdr", "biblioteca_altro"
 // e "biblioteca_tutto" aprono anche gia' su quella categoria.
 function paginaIniziale() {
+  if (DEBUG) return 'tessera';
   const chiesta = String(tg?.initDataUnsafe?.start_param ||
     new URLSearchParams(location.search).get('pagina') || '').toLowerCase();
   const [pagina, ...resto] = chiesta.split(/[_-]/);
@@ -3193,7 +3426,8 @@ function cambiaMese(passo) {
 // La tastiera si apre quando si scrive in un campo di testo, e solo sul
 // telefono: al computer il menu resta dov'e'. Passando da un campo all'altro
 // la tastiera non si chiude, quindi si aspetta un attimo prima di dirlo.
-const CAMPI_TESTO = 'input[type="text"], input[type="search"], input[type="number"], input:not([type]), textarea';
+const CAMPI_TESTO = 'input[type="text"], input[type="search"], input[type="number"], input[type="email"], ' +
+  'input[type="tel"], input[type="date"], input:not([type]), textarea';
 if (window.matchMedia?.('(pointer: coarse)').matches) {
   let chiusa;
   document.addEventListener('focusin', (e) => {

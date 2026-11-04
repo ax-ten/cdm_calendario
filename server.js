@@ -709,6 +709,8 @@ app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) 
         inAttesa: Boolean(soci.richiestaDi(utente.id)),
         rifiutatoFinoA: fino ? fino.setLocale('it').toFormat('d MMMM') : null,
         informativa: await odoo.miniapp('informativa'),
+        // Il tesseramento dall'app e' ancora in prova: solo col link debug.
+        iscrizione: utente.debug ? await odoo.miniapp('stato_iscrizione', utente.id) : null,
       },
     });
   }
@@ -1631,6 +1633,83 @@ function erroriDaDire() {
   return fuori;
 }
 
+// ---------- tessera ----------
+// La propria tessera: mensilita' dell'anno e ricevute. Una ricevuta si
+// chiede e arriva in chat come PDF: dentro Telegram una pagina non sa
+// scaricare file.
+app.post('/prenota/api/tessera', (req, res) => conUtente(req, res, async (utente) => {
+  res.json({ tessera: await odoo.miniapp('tessera', utente.id) });
+}));
+
+app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, async (utente) => {
+  const ricevutaId = Number(req.body?.ricevutaId);
+  if (!ricevutaId) return res.status(400).json({ errore: 'Quale ricevuta?' });
+  const r = await odoo.miniapp('ricevuta_pdf', utente.id, ricevutaId);
+  const form = new FormData();
+  form.append('chat_id', String(utente.id));
+  form.append('caption', `Ricevuta ${r.numero}`);
+  form.append('document', new Blob([Buffer.from(r.pdf, 'base64')], { type: 'application/pdf' }), r.nome_file);
+  const esito = await (await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
+    { method: 'POST', body: form })).json();
+  if (!esito.ok) {
+    console.error('ricevuta: sendDocument:', esito.description);
+    return res.status(502).json({ errore: 'Non riesco a mandartela in chat: apri la chat con il bot e premi Avvia.' });
+  }
+  res.json({ ok: true });
+}));
+
+// Chi non e' sociə chiede il tesseramento dall'app. La quota si paga in
+// sede; il direttivo, quando l'ha vista, sceglie con che metodo e la
+// scheda nasce con la sua ricevuta. Finche' e' in prova, solo col link debug.
+const TESTO_MAX = 120;
+app.post('/prenota/api/iscrizione', (req, res) => conUtente(req, res, async (utente) => {
+  if (!utente.debug) return res.status(404).json({ errore: 'Non c’è.' });
+  if (await socioDi(utente.id, { fresco: true })) {
+    return res.status(409).json({ errore: 'Sei già sociə.' });
+  }
+  if (prenotazioni.eBloccato(utente.id)) {
+    return res.status(403).json({ errore: 'Sei statə sospesə dallo staff: parlane in sede.' });
+  }
+  const chatDirettivo = GRUPPI.get('direttivo');
+  if (!chatDirettivo) return res.status(500).json({ errore: 'Manca il gruppo del direttivo nella configurazione.' });
+  if (req.body?.privacy !== true) return res.status(400).json({ errore: 'Serve accettare l’informativa.' });
+  const v = req.body?.valori || {};
+  const valori = Object.fromEntries(
+    ['nome', 'cognome', 'data_nascita', 'luogo_nascita', 'codice_fiscale', 'email', 'telefono',
+     'indirizzo', 'cap', 'citta', 'provincia'].map(k => [k, String(v[k] || '').trim().slice(0, TESTO_MAX)]));
+  valori.messaggio = String(v.messaggio || '').trim().slice(0, 1000);
+  // L'esito arriva in chat: se il bot non puo' scrivere, lo si dice adesso.
+  try {
+    await telegram('sendChatAction', { chat_id: utente.id, action: 'typing' });
+  } catch {
+    return res.status(409).json({ errore: 'Apri la chat privata con il bot, premi Avvia, poi riapri l’app da lì.' });
+  }
+  const gia = (await odoo.miniapp('stato_iscrizione', utente.id)).richiesta;
+  const richiesta = await odoo.miniapp('richiedi_iscrizione', utente.id, valori);
+  if (gia) return res.json({ richiesta });
+  const nascita = DateTime.fromISO(valori.data_nascita).setLocale('it').toFormat('d MMMM yyyy');
+  try {
+    await telegram('sendMessage', {
+      chat_id: chatDirettivo,
+      parse_mode: 'HTML',
+      text: `<code>${escHtml(`${nomeTelegram(utente)}, id ${utente.id}`)}</code> chiede di tesserarsi,\n` +
+            `dice di essere ${escHtml(`${valori.nome} ${valori.cognome}`)}, ` +
+            `natə a ${escHtml(valori.luogo_nascita)} il ${nascita}.\n` +
+            'I dati completi sono nella richiesta di iscrizione in Odoo.\n\n' +
+            'Quando ha pagato la quota in sede, segna come:',
+      reply_markup: { inline_keyboard: [
+        [{ text: 'Contanti', callback_data: `iscr:${richiesta.id}:contanti` },
+         { text: 'Satispay', callback_data: `iscr:${richiesta.id}:satispay` },
+         { text: 'Bonifico', callback_data: `iscr:${richiesta.id}:bonifico` }],
+        [{ text: 'Rifiuta', callback_data: `iscr:${richiesta.id}:no` }],
+      ] },
+    });
+  } catch (err) {
+    console.error('iscrizione: direttivo non avvisato:', err.message);
+  }
+  res.json({ richiesta });
+}, { soloSoci: false }));
+
 // ---------- rotte interne, per il bot ----------
 // Il bot non e' una pagina dentro Telegram, quindi non ha un initData da
 // firmare: si autentica con un segreto condiviso. Non riusiamo il token del
@@ -1978,6 +2057,62 @@ app.post('/prenota/api/interno/promemoria-scadenza', async (req, res) => {
     }
   }
   res.json({ ok: true, prestiti: prestiti.length, mandati });
+});
+
+// Il direttivo ha risposto a una richiesta di tesseramento: `scelta` e' il
+// metodo con cui e' stata pagata la quota, o "no".
+app.post('/prenota/api/interno/iscrizione', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const id = Number(req.body?.id);
+  const scelta = String(req.body?.scelta || '');
+  const chi = String(req.body?.daChi || 'direttivo');
+  if (!id) return res.status(400).json({ errore: 'Quale richiesta?' });
+  try {
+    if (scelta === 'no') {
+      const r = await odoo.miniapp('rifiuta_iscrizione', id, chi);
+      if (r.telegram_id) {
+        telegram('sendMessage', {
+          chat_id: r.telegram_id,
+          text: 'Il direttivo non ha approvato la tua richiesta di tesseramento. Se è un errore, parlane in sede.',
+        }).catch(err => console.error('iscrizione: esito non mandato:', err.message));
+      }
+      return res.json({ ok: true, esito: 'no' });
+    }
+    const socio = await odoo.miniapp('approva_iscrizione', id, scelta, chi);
+    if (socio.telegram_id) sociVisti.delete(String(socio.telegram_id));
+    res.json({ ok: true, esito: 'approvata', socio });
+  } catch (err) {
+    console.error('iscrizione:', err.message);
+    res.status(err.perUtente ? 409 : 500).json({ errore: err.message });
+  }
+});
+
+// A gennaio, una volta: chi ha Telegram collegato e non ha ancora la
+// ricevuta di tesseramento dell'anno.
+app.post('/prenota/api/interno/promemoria-tesseramento', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  let soci;
+  try {
+    soci = await odoo.miniapp('da_rinnovare');
+  } catch (err) {
+    console.error('promemoria tesseramento:', err.message);
+    return res.status(500).json({ errore: err.message });
+  }
+  const anno = DateTime.now().setZone('Europe/Rome').year;
+  let mandati = 0;
+  for (const s of soci) {
+    try {
+      await telegram('sendMessage', {
+        chat_id: s.telegram_id,
+        text: `È cominciato il ${anno}: ricordati di rinnovare il tesseramento al Crocevia dei Mondi. ` +
+              'La quota si paga in sede, alla prossima apertura.',
+      });
+      mandati += 1;
+    } catch (err) {
+      console.error('promemoria tesseramento: non mandato:', err.message);
+    }
+  }
+  res.json({ ok: true, soci: soci.length, mandati });
 });
 
 // Il lunedi': a chi ha un prestito scaduto un messaggio in privato, e allo
