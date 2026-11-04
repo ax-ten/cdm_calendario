@@ -4143,7 +4143,7 @@ async function controllaChiavi() {
 }
 
 async function aggiornaPallinoChiavi() {
-  if (!gestione.dati) return;
+  if (!Array.isArray(gestione.dati?.prenotazioni)) return;
   const scoperte = gestione.dati.prenotazioni.filter(senzaChiApre);
   const viste = await chiaviGiaViste();
   const nuove = scoperte.some(p => !viste.has(p.id));
@@ -4157,6 +4157,7 @@ async function aggiornaPallinoChiavi() {
 // Aperto il filtro, tutte quelle di adesso sono viste. Si tengono solo le
 // date ancora scoperte: le altre non servono, e la memoria resta piccola.
 async function segnaChiaviViste() {
+  if (!Array.isArray(gestione.dati?.prenotazioni)) return;
   const ids = gestione.dati.prenotazioni.filter(senzaChiApre).map(p => p.id);
   chiaviViste = Promise.resolve(new Set(ids));
   scriviNotaUtente(CHIAVI_VISTE, JSON.stringify(ids));
