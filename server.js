@@ -724,6 +724,8 @@ app.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utente) 
     // Decide se l'app mostra "In vetrina". Il controllo vero si rifa' alla
     // prenotazione: chi esce dal gruppo con l'app aperta non ci mette niente.
     direttivo,
+    // Il tasto delle quote dellɜ sociɜ, nella Tessera.
+    tessere: direttivo || Boolean(utente.socio.admin_tessere),
     sedi: CALENDARI.map(c => ({
       slug: c.sede,
       nome: SEDI_NOMI.get(c.sede) || c.sede,
@@ -1665,6 +1667,182 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
     mandate += 1;
   }
   res.json({ ok: true, mandate });
+}));
+
+// ---------- quote dellɜ sociɜ, per il direttivo ----------
+// Non tutte le quote passano dall'app: molte si pagano in sede, in contanti
+// o con Satispay, e qualcuno le deve segnare. Da qui il direttivo vede chi
+// ha rinnovato il tesseramento e quali mensilita' ha pagato ciascunə,
+// registra un pagamento fatto fuori dall'app (la ricevuta nasce in Odoo come
+// le altre), annulla una ricevuta segnata per sbaglio e manda un promemoria
+// in chat a chi ha Telegram collegato.
+//
+// In Odoo (crocevia.miniapp) servono:
+//   quote_soci(anno) -> [{ id, nome, numero_socio, categoria, tesserato,
+//                          mensilita: ['2026-01', ...], telegram_id }]
+//   tessera_socio(partner_id, anno) -> come tessera(), piu' id, telegram_id
+//                          e importi.tesseramento
+//   registra_pagamento(partner_id, { codice, metodo, data, mesi, importo }, da_chi)
+//                       -> { nome, telegram_id, ricevute: [{ id, numero, tipo, importo, data, mese }] }
+//   annulla_ricevuta(ricevuta_id, da_chi)
+//                       -> { numero, tipo, importo, socio, telegram_id }
+// e, facoltativa, la spunta admin_tessere nella risposta di socio_da_telegram.
+
+// Le quote le gestisce il direttivo, o chi ha la spunta "Gestisce le quote"
+// sulla scheda in Odoo: non lo staff di una sede, e non chi amministra la
+// biblioteca.
+async function adminTessere(utente) {
+  if (utente.socio?.admin_tessere) return true;
+  return eDirettivo(utente.id);
+}
+
+async function soloAdminTessere(utente, res) {
+  if (await adminTessere(utente)) return true;
+  res.status(403).json({ errore: 'Lo può fare solo il direttivo.' });
+  return false;
+}
+
+const VOCI_QUOTA = {
+  tesseramento: 'Tesseramento',
+  contributo_mensile: 'Mensilità',
+  obolo_giornaliero: 'Obolo',
+  contributo_evento: 'Contributo evento',
+};
+const METODI_QUOTA = { contanti: 'in contanti', satispay: 'con Satispay', bonifico: 'con bonifico' };
+const IMPORTO_EVENTO_MAX = 50;
+const euroTesto = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 })} €`;
+const nomeMese = (k) => DateTime.fromISO(`${k}-01`).setLocale('it').toFormat('LLLL yyyy');
+
+// L'anno chiesto, o quello in corso. Piu' indietro di cosi' non serve.
+function annoQuote(valore) {
+  const adesso = DateTime.now().setZone('Europe/Rome').year;
+  const anno = Number(valore) || adesso;
+  return anno >= 2000 && anno <= adesso + 1 ? anno : adesso;
+}
+
+app.post('/prenota/api/tessere/elenco', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const anno = annoQuote(req.body?.anno);
+  const soci = await odoo.miniapp('quote_soci', anno);
+  // Il numero di Telegram resta qui: alla pagina basta sapere se c'e'.
+  res.json({
+    anno,
+    soci: soci.map(({ telegram_id: tg, ...s }) => ({ ...s, telegram: Boolean(tg) })),
+  });
+}));
+
+app.post('/prenota/api/tessere/socio', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const partnerId = Number(req.body?.partnerId);
+  if (!partnerId) return res.status(400).json({ errore: 'Quale sociə?' });
+  const { telegram_id: tg, ...tessera } =
+    await odoo.miniapp('tessera_socio', partnerId, annoQuote(req.body?.anno));
+  res.json({ tessera: { ...tessera, telegram: Boolean(tg) } });
+}));
+
+// Un pagamento fatto in sede: la voce, come, quando e, per le mensilita',
+// quali mesi. Al direttivo arriva una riga nel gruppo, cosi' se due persone
+// segnano la stessa cosa se ne accorge qualcuno; a chi ha pagato, se ha
+// Telegram collegato, un messaggio.
+app.post('/prenota/api/tessere/registra', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const b = req.body || {};
+  const partnerId = Number(b.partnerId);
+  if (!partnerId) return res.status(400).json({ errore: 'Quale sociə?' });
+  const codice = String(b.codice || '');
+  if (!VOCI_QUOTA[codice]) return res.status(400).json({ errore: 'Cosa ha pagato?' });
+  const metodo = String(b.metodo || '');
+  if (!METODI_QUOTA[metodo]) return res.status(400).json({ errore: 'Come ha pagato?' });
+  const oggi = DateTime.now().setZone('Europe/Rome').startOf('day');
+  const data = DateTime.fromISO(String(b.data || ''), { zone: 'Europe/Rome' });
+  if (!data.isValid || data > oggi.endOf('day')) return res.status(400).json({ errore: 'Quando ha pagato?' });
+  const valori = { codice, metodo, data: data.toISODate(), mesi: [], importo: false };
+  if (codice === 'contributo_mensile') {
+    valori.mesi = [...new Set((Array.isArray(b.mesi) ? b.mesi : []).map(String))]
+      .filter(m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m)).sort();
+    if (!valori.mesi.length || valori.mesi.length > 12) return res.status(400).json({ errore: 'Quali mesi?' });
+  }
+  if (codice === 'contributo_evento') {
+    const importo = Number(b.importo);
+    if (!(importo > 0 && importo <= IMPORTO_EVENTO_MAX)) return res.status(400).json({ errore: 'Quanto ha dato?' });
+    valori.importo = Math.round(importo * 100) / 100;
+  }
+  const esito = await odoo.miniapp('registra_pagamento', partnerId, valori, nomeTelegram(utente));
+  const ricevute = esito.ricevute || [];
+  const totale = ricevute.reduce((n, r) => n + Number(r.importo || 0), 0);
+  const cosa = codice === 'contributo_mensile'
+    ? `${VOCI_QUOTA[codice]} di ${valori.mesi.map(nomeMese).join(', ')}`
+    : `${VOCI_QUOTA[codice]} del ${data.setLocale('it').toFormat('d MMMM yyyy')}`;
+
+  const chatDirettivo = GRUPPI.get('direttivo');
+  if (chatDirettivo) {
+    telegram('sendMessage', {
+      chat_id: chatDirettivo,
+      text: `${nomeTelegram(utente)} ha registrato per ${esito.nome}: ${cosa}, ` +
+            `${euroTesto(totale)} ${METODI_QUOTA[metodo]}.`,
+    }).catch(err => console.error('quote: direttivo non avvisato:', err.message));
+  }
+  if (esito.telegram_id) {
+    sociVisti.delete(String(esito.telegram_id));
+    telegram('sendMessage', {
+      chat_id: esito.telegram_id,
+      text: `Il direttivo ha registrato il tuo pagamento: ${cosa}, ${euroTesto(totale)}. ` +
+            'Trovi la ricevuta nella Tessera, dentro l’app.',
+    }).catch(err => console.error('quote: socio non avvisato:', err.message));
+  }
+  res.json({ ricevute, totale });
+}));
+
+// Una ricevuta segnata per sbaglio (socio sbagliato, mese sbagliato): si
+// annulla, e si rifa' giusta. In Odoo resta, annullata: il numero non torna.
+app.post('/prenota/api/tessere/annulla', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const ricevutaId = Number(req.body?.ricevutaId);
+  if (!ricevutaId) return res.status(400).json({ errore: 'Quale ricevuta?' });
+  const r = await odoo.miniapp('annulla_ricevuta', ricevutaId, nomeTelegram(utente));
+  if (r.telegram_id) sociVisti.delete(String(r.telegram_id));
+  const chatDirettivo = GRUPPI.get('direttivo');
+  if (chatDirettivo) {
+    telegram('sendMessage', {
+      chat_id: chatDirettivo,
+      text: `${nomeTelegram(utente)} ha annullato la ricevuta ${r.numero} di ${r.socio} ` +
+            `(${r.tipo}, ${euroTesto(r.importo)}).`,
+    }).catch(err => console.error('quote: direttivo non avvisato:', err.message));
+  }
+  res.json({ ok: true });
+}));
+
+// Un promemoria in chat a chi ha Telegram collegato: cosa risulta da pagare
+// lo dice il server, dalla scheda, non chi preme. Uno al giorno per sociə,
+// anche se lo premono in due.
+const promemoriaQuote = new Map();
+app.post('/prenota/api/tessere/ricorda', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const partnerId = Number(req.body?.partnerId);
+  if (!partnerId) return res.status(400).json({ errore: 'Quale sociə?' });
+  const oggi = DateTime.now().setZone('Europe/Rome');
+  if (promemoriaQuote.get(partnerId) === oggi.toISODate()) {
+    return res.status(409).json({ errore: 'Un promemoria è già partito oggi.' });
+  }
+  const t = await odoo.miniapp('tessera_socio', partnerId, oggi.year);
+  if (!t.telegram_id) return res.status(409).json({ errore: 'Non ha Telegram collegato.' });
+  const manca = [];
+  if (!t.tesserato) manca.push(`il tesseramento ${oggi.year}`);
+  const questoMese = oggi.toFormat('yyyy-MM');
+  if (!(t.mensilita || []).includes(questoMese)) manca.push(`la mensilità di ${oggi.setLocale('it').toFormat('LLLL')}`);
+  if (!manca.length) return res.status(409).json({ errore: 'È in regola: non c’è niente da ricordare.' });
+  try {
+    await telegram('sendMessage', {
+      chat_id: t.telegram_id,
+      text: `Ciao! Un promemoria dal direttivo del Crocevia dei Mondi: risulta ancora da pagare ` +
+            `${manca.join(' e ')}. Puoi pagare in sede, alla prossima apertura.`,
+    });
+  } catch (err) {
+    console.error('quote: promemoria non mandato:', err.message);
+    return res.status(502).json({ errore: 'Telegram non l’ha consegnato: forse ha bloccato il bot.' });
+  }
+  promemoriaQuote.set(partnerId, oggi.toISODate());
+  res.json({ ok: true, manca });
 }));
 
 // Chi non e' sociə chiede il tesseramento dall'app. La quota si paga in
