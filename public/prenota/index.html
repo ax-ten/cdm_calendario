@@ -848,8 +848,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .voce[aria-pressed="true"] .voce-icona { color: var(--accento); opacity: .45; }
 .voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
 #dettaglio-pagamento:not(:empty) { margin-bottom: 18px; }
-/* Lo spazio sotto la tessera lascia posto al pulsante Paga quando compare. */
-#tessera:not(.vuoto) { padding-bottom: calc(var(--azione) + 24px); }
+/* Lo spazio sotto lascia posto al pulsante Paga, solo quando c'e': senza
+   una voce scelta la pagina resta corta e non scorre. */
+#tessera.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .domanda { margin: 4px 0 0; font-weight: 600; }
 .scelte { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
 .scelte button, .scelta-data { position: relative; padding: 10px 16px; border-radius: 999px; background: none;
@@ -3378,6 +3379,7 @@ function disegnaPagamento() {
   el('tessera').querySelectorAll('[data-voce]').forEach(b =>
     b.setAttribute('aria-pressed', String(b.dataset.voce === v)));
   const d = el('dettaglio-pagamento');
+  el('tessera').classList.toggle('con-pagamento', Boolean(v));
   if (!v) { d.innerHTML = ''; nascondiAzione(); return; }
   let html = '';
   if (v === 'obolo_giornaliero') {
