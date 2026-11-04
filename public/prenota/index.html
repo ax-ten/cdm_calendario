@@ -847,7 +847,7 @@ button.vai-ricevute { width: 100%; display: flex; justify-content: space-between
 .voce[aria-pressed="true"] .voce-icona { color: var(--accento); opacity: .45; }
 .voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
 #dettaglio-pagamento:not(:empty) { margin-bottom: 18px; }
-/* "Le mie ricevute" e' l'ultima cosa della tessera: lo spazio sotto lascia
+/* "Ricevute" e' l'ultima cosa della tessera: lo spazio sotto lascia
    posto al pulsante Paga quando compare. */
 button.vai-ricevute { margin: 8px 0 calc(var(--azione) + 24px); }
 .domanda { margin: 4px 0 0; font-weight: 600; }
@@ -3203,7 +3203,7 @@ async function caricaTessera() {
   }
 }
 
-// Le ricevute stanno in una pagina loro, "Le mie ricevute": nella tessera
+// Le ricevute stanno in una pagina loro, "Ricevute": nella tessera
 // resta solo quanto si e' speso quest'anno.
 function disegnaRicevute(t) {
   // Per anno, dal piu' recente. Le ricevute arrivano gia' in ordine di data.
