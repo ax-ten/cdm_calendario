@@ -912,6 +912,11 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #scheda-quota.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .giorno-gestione { margin-top: 22px; }
 #filtro-gestione { margin: 2px 0 18px; }
+/* Il pallino rosso sul tasto Prenotazioni: date senza chiavi non ancora viste. */
+.tondo .pallino { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: 999px; background: var(--pieno); color: #fff; font-size: .72rem; font-weight: 700;
+  line-height: 20px; text-align: center; box-shadow: 0 0 0 2px var(--sfondo, #17202a); pointer-events: none; }
+.tondo .pallino[hidden] { display: none; }
 #filtro-gestione[hidden] { display: none; }
 #filtro-gestione .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
 #azione.grave { background: var(--pieno); color: #fff; }
@@ -1146,7 +1151,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <div id="elenco-mie" class="vuoto">…</div>
   <!-- phosphor: calendar-dots. Per lo staff: le prenotazioni di tutti. Sta
        sopra il +, come Prestiti in biblioteca. -->
-  <button type="button" class="tondo chiaro secondo" id="apri-gestione" aria-label="Prenotazioni" hidden><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-68-76a12,12,0,1,1-12-12A12,12,0,0,1,140,132Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,132ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,140,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"/></svg><span class="etichetta-tondo" aria-hidden="true">Prenotazioni</span></button>
+  <button type="button" class="tondo chiaro secondo" id="apri-gestione" aria-label="Prenotazioni" hidden><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-68-76a12,12,0,1,1-12-12A12,12,0,0,1,140,132Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,132ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,140,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"/></svg><span class="etichetta-tondo" aria-hidden="true">Prenotazioni</span><span class="pallino" id="pallino-chiavi" aria-hidden="true" hidden></span></button>
 </section>
 
 <section class="pannello" id="pannello-gestione" hidden>
@@ -4094,12 +4099,68 @@ async function caricaGestione() {
   dove.textContent = 'Carico…';
   try {
     gestione.dati = await chiama('staff/prenotazioni');
+    chiaviControllate = Date.now();
   } catch (err) {
     el('filtro-gestione').hidden = true;
     dove.textContent = err.message;
     return;
   }
   disegnaGestione();
+}
+
+// ---- il pallino rosso sul tasto Prenotazioni
+// Dice allo staff, gia' da Attivita', quante date dei prossimi quattordici
+// giorni sono senza chiavi. Se ne va quando la persona apre il filtro
+// "Senza chiavi" (le ha viste), e torna se se ne scopre una nuova. Quali ha
+// visto lo ricorda la memoria per persona: ogni membro dello staff ha il
+// suo pallino.
+const CHIAVI_VISTE = 'chiavi_viste';
+const CHIAVI_OGNI_MS = 2 * 60 * 1000;
+let chiaviControllate = 0;
+let chiaviViste = null;
+
+async function chiaviGiaViste() {
+  if (!chiaviViste) {
+    chiaviViste = leggiNotaUtente(CHIAVI_VISTE).then(v => {
+      try { return new Set(JSON.parse(v || '[]')); } catch { return new Set(); }
+    });
+  }
+  return chiaviViste;
+}
+
+// All'apertura di Attivita', per lo staff: le prenotazioni si chiedono al
+// massimo ogni due minuti, e servono anche all'elenco se lo si apre subito.
+async function controllaChiavi() {
+  if (el('apri-gestione').hidden || Date.now() - chiaviControllate < CHIAVI_OGNI_MS) return;
+  chiaviControllate = Date.now();
+  try {
+    gestione.dati = await chiama('staff/prenotazioni');
+  } catch {
+    chiaviControllate = 0;
+    return;
+  }
+  aggiornaPallinoChiavi();
+}
+
+async function aggiornaPallinoChiavi() {
+  if (!gestione.dati) return;
+  const scoperte = gestione.dati.prenotazioni.filter(senzaChiApre);
+  const viste = await chiaviGiaViste();
+  const nuove = scoperte.some(p => !viste.has(p.id));
+  const pallino = el('pallino-chiavi');
+  pallino.hidden = !nuove;
+  pallino.textContent = scoperte.length > 9 ? '9+' : String(scoperte.length);
+  el('apri-gestione').setAttribute('aria-label', nuove
+    ? `Prenotazioni, ${scoperte.length} senza chiavi` : 'Prenotazioni');
+}
+
+// Aperto il filtro, tutte quelle di adesso sono viste. Si tengono solo le
+// date ancora scoperte: le altre non servono, e la memoria resta piccola.
+async function segnaChiaviViste() {
+  const ids = gestione.dati.prenotazioni.filter(senzaChiApre).map(p => p.id);
+  chiaviViste = Promise.resolve(new Set(ids));
+  scriviNotaUtente(CHIAVI_VISTE, JSON.stringify(ids));
+  aggiornaPallinoChiavi();
 }
 
 function disegnaGestione() {
@@ -4114,6 +4175,7 @@ function disegnaGestione() {
     b.onclick = () => { gestione.filtro = b.dataset.filtroGestione; disegnaGestione(); };
   });
   const soloSenza = gestione.filtro === 'senza-apre';
+  if (soloSenza) segnaChiaviViste(); else aggiornaPallinoChiavi();
   // Con il filtro le richieste da approvare restano fuori: non hanno date.
   const dati = { richieste: soloSenza ? [] : tutti.richieste, prenotazioni: soloSenza ? senza : tutti.prenotazioni };
   dove.className = '';
@@ -4387,20 +4449,36 @@ const SCORRI_A_CASO = 0.2;
 let scorriNota = null;
 let scorriSuggerito = false;
 
+// Una piccola memoria per persona: il CloudStorage di Telegram, che la
+// segue da un telefono all'altro; dove non c'e', il browser. Se Telegram non
+// risponde si va avanti senza: meglio un suggerimento o un pallino in piu'
+// che un'app ferma.
+const cloudOk = () => Boolean(tg?.CloudStorage && tg.isVersionAtLeast?.('6.9'));
+const chiaveLocale = (k) => `${k}:${tg?.initDataUnsafe?.user?.id || ''}`;
+
+function leggiNotaUtente(chiave) {
+  return new Promise(ok => {
+    try {
+      if (cloudOk()) {
+        const via = setTimeout(() => ok(null), 1500);
+        tg.CloudStorage.getItem(chiave, (err, v) => { clearTimeout(via); ok(err ? null : v || null); });
+      } else ok(localStorage.getItem(chiaveLocale(chiave)));
+    } catch { ok(null); }
+  });
+}
+
+function scriviNotaUtente(chiave, testo) {
+  try {
+    if (cloudOk()) tg.CloudStorage.setItem(chiave, testo, () => {});
+    else localStorage.setItem(chiaveLocale(chiave), testo);
+  } catch { /* senza memoria si ricomincia: pazienza */ }
+}
+
 function leggiNotaScorri() {
   if (scorriNota) return scorriNota;
-  scorriNota = new Promise(ok => {
-    const vuota = { fatto: false, viste: 0 };
-    const leggi = (v) => { try { ok({ ...vuota, ...JSON.parse(v || '{}') }); } catch { ok(vuota); } };
-    try {
-      if (tg?.CloudStorage && tg.isVersionAtLeast?.('6.9')) {
-        // Se Telegram non risponde, meglio un suggerimento in piu' che una riga ferma.
-        const via = setTimeout(() => ok(vuota), 1500);
-        tg.CloudStorage.getItem(SCORRI_CHIAVE, (err, v) => { clearTimeout(via); err ? ok(vuota) : leggi(v); });
-      } else {
-        leggi(localStorage.getItem(`${SCORRI_CHIAVE}:${tg?.initDataUnsafe?.user?.id || ''}`));
-      }
-    } catch { ok(vuota); }
+  const vuota = { fatto: false, viste: 0 };
+  scorriNota = leggiNotaUtente(SCORRI_CHIAVE).then(v => {
+    try { return { ...vuota, ...JSON.parse(v || '{}') }; } catch { return vuota; }
   });
   return scorriNota;
 }
@@ -4408,11 +4486,7 @@ function leggiNotaScorri() {
 async function scriviNotaScorri(campi) {
   const nota = { ...(await leggiNotaScorri()), ...campi };
   scorriNota = Promise.resolve(nota);
-  const testo = JSON.stringify(nota);
-  try {
-    if (tg?.CloudStorage && tg.isVersionAtLeast?.('6.9')) tg.CloudStorage.setItem(SCORRI_CHIAVE, testo, () => {});
-    else localStorage.setItem(`${SCORRI_CHIAVE}:${tg?.initDataUnsafe?.user?.id || ''}`, testo);
-  } catch { /* senza memoria il suggerimento torna: pazienza */ }
+  scriviNotaUtente(SCORRI_CHIAVE, JSON.stringify(nota));
 }
 
 function scorriImparato() {
@@ -4467,7 +4541,7 @@ function mostra(quale) {
     el('azione').classList.add('con-etichetta');
   }
   else nascondiAzione();
-  if (quale === 'mie') caricaMie();
+  if (quale === 'mie') { caricaMie(); controllaChiavi(); }
   if (quale === 'inventario') apriInventario();
   if (quale === 'tessera') caricaTessera();
   if (quale === 'gestione') caricaGestione();
