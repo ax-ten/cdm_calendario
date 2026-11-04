@@ -31,10 +31,12 @@
 
 /* La pagina non scorre mai di lato. */
 html, body { overflow-x: hidden; }
-/* Dove la barra di scorrimento occupa spazio (Telegram Desktop), il suo posto
-   resta sempre riservato: se no menu e pulsanti tondi saltano di lato appena
-   l'elenco diventa piu' lungo dello schermo. */
-html { scrollbar-gutter: stable; }
+/* Dove la barra di scorrimento occupa spazio (Telegram Desktop), c'e'
+   sempre: se no menu e pulsanti tondi saltano di lato appena l'elenco
+   diventa piu' lungo dello schermo. scrollbar-gutter fa lo stesso senza
+   mostrarla, ma la webview di Telegram Desktop non lo conosce. Sui telefoni
+   la barra si sovrappone alla pagina e non cambia niente. */
+html { overflow-y: scroll; scrollbar-gutter: stable; }
 
 body {
   margin: 0;
@@ -804,8 +806,11 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .informativa > div > :first-child { margin-top: 0; }
 .informativa > div > :last-child { margin-bottom: 0; }
 /* ---------------------------------------------------------------- tessera */
-.tessera-carta { position: relative; overflow: hidden; border-radius: 18px; padding: 18px 18px 16px;
-  margin-bottom: 22px; color: var(--su-accento);
+/* Le proporzioni di una carta di credito (85,6 x 54 mm): intestazione in
+   alto, nome e numero in basso. */
+.tessera-carta { position: relative; overflow: hidden; border-radius: 16px; padding: 18px 20px;
+  aspect-ratio: 85.6 / 54; max-width: 420px; display: flex; flex-direction: column;
+  justify-content: space-between; margin-bottom: 14px; color: var(--su-accento);
   background: linear-gradient(135deg, var(--accento), color-mix(in srgb, var(--accento) 55%, #000));
   box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
 .tessera-carta::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px;
@@ -813,11 +818,11 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .tessera-carta.da-rinnovare { background: linear-gradient(135deg, #5b6673, #3a434d); color: #fff; }
 .tessera-testa { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600;
   letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
-.tessera-nome { font-size: 1.35rem; font-weight: 700; margin: 26px 0 2px; }
+.tessera-nome { font-size: 1.35rem; font-weight: 700; margin-bottom: 2px; }
 .tessera-dati { font-size: .9rem; opacity: .9; }
-.tessera-stato { margin-top: 14px; font-size: .86rem; font-weight: 600; }
-.mensilita { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-bottom: 22px; }
-.mensilita span { text-align: center; padding: 8px 0; border-radius: 8px; font-size: .8rem; font-weight: 600;
+.tessera-avviso { margin: 0 0 18px; color: var(--occupato); font-weight: 600; }
+.mensilita { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 0 0 22px; }
+.mensilita span { text-align: center; padding: 9px 0; border-radius: 9px; font-size: .86rem; font-weight: 600;
   background: var(--scheda); color: var(--tenue); }
 .mensilita span.pagato { background: var(--accento); color: var(--su-accento); }
 .mensilita span.adesso { outline: 1.5px solid var(--accento); outline-offset: -1.5px; }
@@ -3121,7 +3126,7 @@ async function salvaBene() {
 // La propria tessera: l'anno, le mensilita' pagate e le ricevute. I mesi
 // senza ricevuta sono solo spenti: non si paga nei mesi in cui non si
 // partecipa, quindi non c'e' un "in ritardo".
-const INIZIALI_MESI = ['G', 'F', 'M', 'A', 'M', 'G', 'L', 'A', 'S', 'O', 'N', 'D'];
+const MESI_BREVI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 const euro = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 })} €`;
 const meseTesto = (m) => `${MESI[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
 
@@ -3155,13 +3160,14 @@ function disegnaTessera(t) {
   return `
     <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
       <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${t.anno}</span></div>
-      <div class="tessera-nome">${esc(t.nome)}</div>
-      <div class="tessera-dati">${t.numero_socio ? `Sociə n. ${esc(t.numero_socio)}` : 'Sociə'}${t.categoria ? ' · ' + esc(t.categoria) : ''}</div>
-      <div class="tessera-stato">${t.tesserato ? `Tesseramento ${t.anno} registrato`
-        : `Tesseramento ${t.anno} da rinnovare: ${euro(t.quota)} in sede`}</div>
+      <div class="tessera-piede">
+        <div class="tessera-nome">${esc(t.nome)}</div>
+        <div class="tessera-dati">${t.numero_socio ? `Sociə n. ${esc(t.numero_socio)}` : 'Sociə'}${t.categoria ? ' · ' + esc(t.categoria) : ''}</div>
+      </div>
     </div>
+    ${t.tesserato ? '' : '<p class="tessera-avviso">Tesseramento da rinnovare</p>'}
     <h2>Mensilità ${t.anno}</h2>
-    <div class="mensilita">${INIZIALI_MESI.map((m, i) =>
+    <div class="mensilita">${MESI_BREVI.map((m, i) =>
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
     <h2>Ricevute</h2>
     ${ricevute}`;
@@ -3242,9 +3248,10 @@ function attesaTesseramento(iscrizione) {
   el('tessera').innerHTML = `
     <div class="tessera-carta da-rinnovare">
       <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${new Date().getFullYear()}</span></div>
-      <div class="tessera-nome">${esc(`${r.nome} ${r.cognome}`)}</div>
-      <div class="tessera-dati">Tesseramento in attesa</div>
-      <div class="tessera-stato">Quota: ${euro(iscrizione.quota)}, da pagare in sede</div>
+      <div class="tessera-piede">
+        <div class="tessera-nome">${esc(`${r.nome} ${r.cognome}`)}</div>
+        <div class="tessera-dati">Tesseramento in attesa · quota ${euro(iscrizione.quota)} in sede</div>
+      </div>
     </div>
     <p>Richiesta inviata al direttivo. Paga la quota alla prossima apertura in sede:
       quando il direttivo la registra la tessera si attiva, e te lo scrivo in chat.</p>`;
