@@ -872,7 +872,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .voce[aria-pressed="true"] .voce-icona { color: var(--accento); opacity: .45; }
 .voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
 #dettaglio-pagamento:not(:empty) { margin-bottom: 18px; }
-/* Lo spazio sotto lascia posto al pulsante Paga, solo quando c'e': senza
+/* Lo spazio sotto lascia posto al pulsante Procedi, solo quando c'e': senza
    una voce scelta la pagina resta corta e non scorre. */
 #tessera.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .domanda { margin: 4px 0 0; font-weight: 600; }
@@ -1359,7 +1359,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-tessera" role="tabpanel" aria-labelledby="tab-tessera" hidden>
   <div id="tessera" class="vuoto">…</div>
   <!-- lucide: users. Per il direttivo: le quote di tuttɜ. Sale sopra il
-       pulsante Paga quando c'e' anche quello. -->
+       pulsante Procedi quando c'e' anche quello. -->
   <button type="button" class="tondo chiaro" id="apri-quote" aria-label="Quote dei soci" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="etichetta-tondo" aria-hidden="true">Soci</span></button>
 </section>
 
@@ -3510,11 +3510,11 @@ function collegaTessera(dove) {
 }
 
 // Aperte le scelte di una voce, la pagina scende fin dove si vedono tutte,
-// sopra il pulsante Paga e il menu. Ease in-out fatto a mano: lo scroll
+// sopra il pulsante Procedi e il menu. Ease in-out fatto a mano: lo scroll
 // "smooth" del browser ha una sua curva, diversa da telefono a telefono.
 function mostraDettaglio() {
   const d = el('dettaglio-pagamento');
-  // Il bordo utile e' il pulsante Paga, che sta sopra il menu.
+  // Il bordo utile e' il pulsante Procedi, che sta sopra il menu.
   const azione = el('azione');
   const fine = azione.hidden ? innerHeight - 100 : azione.getBoundingClientRect().top - 16;
   const manca = d.getBoundingClientRect().bottom - fine;
@@ -3672,7 +3672,8 @@ function disegnaPagamento() {
 
   const totale = totalePagamento();
   azionePrincipale = null;
-  pulsantePrincipale(totale ? `Paga ${euro(totale)}` : 'Paga', PAGAMENTO_ATTIVO && totale > 0);
+  // "Procedi": il pagamento vero comincia dopo, non a questo tocco.
+  pulsantePrincipale(totale ? `Procedi · ${euro(totale)}` : 'Procedi', PAGAMENTO_ATTIVO && totale > 0);
 }
 
 // Le ricevute si scelgono toccandole, anche un anno intero dalla sua
