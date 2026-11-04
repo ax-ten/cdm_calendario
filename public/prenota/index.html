@@ -858,9 +858,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #tessera.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .domanda { margin: 4px 0 0; font-weight: 600; }
 .scelte { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
-.scelte button, .scelta-data { position: relative; padding: 10px 16px; border-radius: 999px; background: none;
+.scelte button, .scelta-data { position: relative; padding: 10px 13px; border-radius: 999px; background: none;
   border: 1.5px solid color-mix(in srgb, var(--tenue) 45%, transparent); color: var(--testo);
-  font: inherit; font-size: .95rem; cursor: pointer; }
+  font: inherit; font-size: .9rem; white-space: nowrap; cursor: pointer; }
 .scelte [aria-pressed="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
 .scelte button:disabled { opacity: .45; cursor: default; }
 /* Il calendario del telefono si apre toccando "Altro giorno": il campo data
@@ -3358,6 +3358,19 @@ function meseCorrente() {
   return isoLocale(new Date()).slice(0, 7);
 }
 
+// Tutti i mesi dell'anno ancora senza ricevuta, anche quelli passati: chi
+// non ha pagato un mese in cui c'era lo puo' saldare. Dalla griglia se ne
+// toglie uno toccandolo.
+function mesiNonPagati() {
+  const anno = tess.dati.anno;
+  const mesi = [];
+  for (let m = 1; m <= 12; m++) {
+    const k = `${anno}-${String(m).padStart(2, '0')}`;
+    if (!tess.dati.mensilita.includes(k)) mesi.push(k);
+  }
+  return mesi;
+}
+
 // I giorni con l'obolo gia' pagato: non si ripropongono.
 function oboliPagati() {
   return new Set(tess.dati.ricevute.filter(r => r.codice === 'obolo_giornaliero').map(r => r.data));
@@ -3425,10 +3438,13 @@ function disegnaPagamento() {
     const giaQuesto = t.mensilita.includes(questo);
     html += `<p class="domanda">Quali mesi?</p>
       <div class="scelte">
-        <button type="button" data-mesi="questo" aria-pressed="${tess.modoMesi === 'questo'}" ${giaQuesto ? 'disabled' : ''}>${giaQuesto ? 'Questo mese è pagato' : 'Questo mese'}</button>
-        <button type="button" data-mesi="scegli" aria-pressed="${tess.modoMesi === 'scegli'}">Scegli i mesi</button>
+        <button type="button" data-mesi="questo" aria-pressed="${tess.modoMesi === 'questo'}" ${giaQuesto ? 'disabled' : ''}>${giaQuesto ? 'Mese pagato' : 'Questo mese'}</button>
+        <button type="button" data-mesi="anno" aria-pressed="${tess.modoMesi === 'anno'}">Tutto l’anno</button>
+        <button type="button" data-mesi="scegli" aria-pressed="${tess.modoMesi === 'scegli'}">Scegli</button>
       </div>`;
-    if (tess.modoMesi === 'scegli') {
+    // Con "Tutto l'anno" la griglia si vede gia' compilata: si capisce
+    // cosa si sta pagando, e si puo' togliere un mese.
+    if (tess.modoMesi === 'scegli' || tess.modoMesi === 'anno') {
       html += `<div class="mensilita scegli">${MESI_BREVI.map((m, i) => {
         const k = `${t.anno}-${String(i + 1).padStart(2, '0')}`;
         const pagato = t.mensilita.includes(k);
@@ -3457,13 +3473,19 @@ function disegnaPagamento() {
   d.querySelectorAll('[data-mesi]').forEach(b => {
     b.onclick = () => {
       tess.modoMesi = b.dataset.mesi;
-      tess.mesi = new Set(tess.modoMesi === 'questo' ? [meseCorrente()] : []);
+      tess.mesi = new Set(tess.modoMesi === 'questo' ? [meseCorrente()]
+        : tess.modoMesi === 'anno' ? mesiNonPagati() : []);
       disegnaPagamento();
-      if (tess.modoMesi === 'scegli') mostraDettaglio();
+      if (tess.modoMesi !== 'questo') mostraDettaglio();
     };
   });
   d.querySelectorAll('[data-mese]').forEach(b => {
-    b.onclick = () => { tess.mesi.has(b.dataset.mese) ? tess.mesi.delete(b.dataset.mese) : tess.mesi.add(b.dataset.mese); disegnaPagamento(); };
+    b.onclick = () => {
+      tess.mesi.has(b.dataset.mese) ? tess.mesi.delete(b.dataset.mese) : tess.mesi.add(b.dataset.mese);
+      // Toccato un mese, la scelta e' a mano.
+      tess.modoMesi = 'scegli';
+      disegnaPagamento();
+    };
   });
 
   const totale = totalePagamento();
