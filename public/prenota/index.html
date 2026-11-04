@@ -4226,7 +4226,8 @@ async function annullaSerie() {
 // Le azioni di una riga (annulla, salta, apro io…) stanno dietro la riga:
 // la si trascina verso sinistra e vengono fuori, come nelle app di posta.
 // Anche un tocco sulla riga le apre: chi il gesto non lo conosce non resta
-// senza pulsanti, e lo stesso vale per la tastiera.
+// senza pulsanti, e lo stesso vale per la tastiera. Col mouse si trascina
+// tenendo premuto il tasto sinistro, o si apre tutto col destro.
 // I pulsanti si spostano, non si rifanno: i loro onclick restano quelli
 // messi da chi ha disegnato l'elenco, quindi questa si chiama dopo.
 const SCORRI_SOGLIA = 8;
@@ -4318,6 +4319,18 @@ function collegaScorri(scatola, riga, dietro) {
     if (trascinato) { trascinato = false; return; }
     if (e.target.closest('button, input, a, label, select, textarea')) return;
     apriScorri(scatola, scorriAperta !== scatola);
+  });
+  // Da computer: il tasto destro apre del tutto le azioni (o le richiude),
+  // al posto del menu del browser. Sul telefono lo stesso evento arriva
+  // con la pressione lunga, e fa la stessa cosa.
+  riga.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('input, textarea, select, a')) return;
+    e.preventDefault();
+    if (trascinato) return;
+    inizio = null;
+    const apri = scorriAperta !== scatola;
+    apriScorri(scatola, apri);
+    if (apri) scorriImparato();
   });
   riga.addEventListener('keydown', (e) => {
     if (e.target !== riga || (e.key !== 'Enter' && e.key !== ' ')) return;
