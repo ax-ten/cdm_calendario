@@ -818,10 +818,12 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
      dell'immagine, per i primi istanti prima che arrivi. */
   background: #29608c url(sfondo-tessera.jpg) center / cover;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
-/* Da rinnovare: lo stesso disegno, spento sotto un velo grigio. */
-.tessera-carta.da-rinnovare {
-  background: linear-gradient(135deg, rgba(91, 102, 115, .88), rgba(58, 67, 77, .92)),
-    #3a434d url(sfondo-tessera.jpg) center / cover; }
+/* Da rinnovare: lo stesso disegno in bianco e nero. Il filtro sta su un
+   livello sotto, se no spegnerebbe anche le scritte. */
+.tessera-carta.da-rinnovare { background: #4a525b; }
+.tessera-carta.da-rinnovare::before { content: ""; position: absolute; inset: 0;
+  background: url(sfondo-tessera.jpg) center / cover; filter: grayscale(1) brightness(.85); }
+.tessera-carta > * { position: relative; }
 .tessera-testa { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600;
   letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
 .tessera-nome { font-size: 1.35rem; font-weight: 700; margin-bottom: 2px; }
