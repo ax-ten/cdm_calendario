@@ -835,14 +835,21 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .spesa b { color: var(--testo); font-weight: 600; }
 button.vai-ricevute { width: 100%; display: flex; justify-content: space-between; align-items: center;
   border: 0; color: var(--testo); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
-.voci { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
-.voce { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px;
+.voci { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.voce { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 2px; padding: 14px 12px;
   border-radius: 14px; background: var(--scheda); border: 1.5px solid transparent; color: var(--testo);
   font: inherit; cursor: pointer; text-align: left; transition: border-color .15s ease, background-color .15s ease; }
+.voce b, .voce span { position: relative; z-index: 1; }
 .voce span { color: var(--tenue); font-size: .88rem; }
+.voce-icona { position: absolute; right: -6px; bottom: -6px; width: 46px; height: 46px;
+  color: var(--testo); opacity: .14; }
+.voce[aria-pressed="true"] .voce-icona { color: var(--accento); opacity: .45; }
 .voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
-#dettaglio-pagamento { padding-bottom: calc(var(--azione) + 24px); }
-#dettaglio-pagamento:empty { padding-bottom: 0; }
+#dettaglio-pagamento:not(:empty) { margin-bottom: 18px; }
+/* "Le mie ricevute" e' l'ultima cosa della tessera: lo spazio sotto lascia
+   posto al pulsante Paga quando compare. */
+button.vai-ricevute { margin: 8px 0 calc(var(--azione) + 24px); }
 .domanda { margin: 4px 0 0; font-weight: 600; }
 .scelte { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
 .scelte button, .scelta-data { position: relative; padding: 10px 16px; border-radius: 999px; background: none;
@@ -1241,7 +1248,6 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 
 <!-- ------------------------------------------------------------ tessera -->
 <section class="pannello" id="pannello-tessera" role="tabpanel" aria-labelledby="tab-tessera" hidden>
-  <h1>La tua tessera</h1>
   <div id="tessera" class="vuoto">…</div>
 </section>
 
@@ -3244,7 +3250,6 @@ function disegnaTessera(t) {
     ['obolo_giornaliero', 'Obolo', euro(t.importi.obolo_giornaliero)],
     ['contributo_mensile', 'Mensilità', euro(t.importi.contributo_mensile)],
     ['contributo_evento', 'Evento', '3–5 €'],
-    ...(t.tesserato ? [] : [['tesseramento', 'Tesseramento', euro(t.importi.tesseramento)]]),
   ];
   return `
     <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
@@ -3260,19 +3265,28 @@ function disegnaTessera(t) {
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
     <h2>Le tue spese ${t.anno}</h2>
     ${spese}
-    <button type="button" class="riga vai-ricevute" id="vai-ricevute">
-      <span>Le mie ricevute</span><span class="quando">${t.ricevute.length} ›</span>
-    </button>
     <h2>Paga</h2>
     <div class="voci">${voci.map(([k, nome, prezzo]) =>
-      `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"><b>${nome}</b><span>${prezzo}</span></button>`).join('')}</div>
-    <div id="dettaglio-pagamento"></div>`;
+      `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"><b>${nome}</b><span>${prezzo}</span>${ICONE_VOCI[k]}</button>`).join('')}</div>
+    <div id="dettaglio-pagamento"></div>
+    <button type="button" class="riga vai-ricevute" id="vai-ricevute">
+      <span>Le mie ricevute</span><span class="quando">${t.ricevute.length} ›</span>
+    </button>`;
 }
 
 // ---------------------------------------------------------------- pagare
 // Si sceglie cosa pagare con pochi tocchi: la voce, poi il giorno (oggi,
 // ieri, o un altro dal calendario) o i mesi. Il pagamento vero arrivera'
 // con Stripe o Satispay: per ora il pulsante resta spento e si paga in sede.
+// Phosphor (MIT): coin, calendar-check, ticket. Stanno in un angolo del
+// riquadro, sopra lo sfondo, per riconoscere la voce a colpo d'occhio.
+const icona = (d) => `<svg class="voce-icona" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="${d}"/></svg>`;
+const ICONE_VOCI = {
+  obolo_giornaliero: icona('M207.58,63.84C186.85,53.48,159.33,48,128,48S69.15,53.48,48.42,63.84,16,88.78,16,104v48c0,15.22,11.82,29.85,32.42,40.16S96.67,208,128,208s58.85-5.48,79.58-15.84S240,167.22,240,152V104C240,88.78,228.18,74.15,207.58,63.84ZM128,64c62.64,0,96,23.23,96,40s-33.36,40-96,40-96-23.23-96-40S65.36,64,128,64Zm-8,95.86v32c-19-.62-35-3.42-48-7.49V153.05A203.43,203.43,0,0,0,120,159.86Zm16,0a203.43,203.43,0,0,0,48-6.81v31.31c-13,4.07-29,6.87-48,7.49ZM32,152V133.53a82.88,82.88,0,0,0,16.42,10.63c2.43,1.21,5,2.35,7.58,3.43V178C40.17,170.16,32,160.29,32,152Zm168,26V147.59c2.61-1.08,5.15-2.22,7.58-3.43A82.88,82.88,0,0,0,224,133.53V152C224,160.29,215.83,170.16,200,178Z'),
+  contributo_mensile: icona('M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-38.34-85.66a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L116,164.69l42.34-42.35A8,8,0,0,1,169.66,122.34Z'),
+  contributo_evento: icona('M232,104a8,8,0,0,0,8-8V64a16,16,0,0,0-16-16H32A16,16,0,0,0,16,64V96a8,8,0,0,0,8,8,24,24,0,0,1,0,48,8,8,0,0,0-8,8v32a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V160a8,8,0,0,0-8-8,24,24,0,0,1,0-48ZM32,167.2a40,40,0,0,0,0-78.4V64H88V192H32Zm192,0V192H104V64H224V88.8a40,40,0,0,0,0,78.4Z'),
+};
+
 const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: 3 };
 const PAGAMENTO_ATTIVO = false;
 const isoLocale = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -3301,7 +3315,6 @@ function totalePagamento() {
     case 'obolo_giornaliero': return tess.giorno ? i.obolo_giornaliero : 0;
     case 'contributo_evento': return tess.giorno ? tess.evento : 0;
     case 'contributo_mensile': return tess.mesi.size * i.contributo_mensile;
-    case 'tesseramento': return i.tesseramento;
     default: return 0;
   }
 }
@@ -3344,9 +3357,6 @@ function disegnaPagamento() {
         return `<button type="button" data-mese="${k}" aria-pressed="${tess.mesi.has(k)}" ${pagato ? 'disabled class="pagato"' : ''} title="${MESI[i]}">${m}</button>`;
       }).join('')}</div>`;
     }
-  }
-  if (v === 'tesseramento') {
-    html += `<p class="domanda">Tesseramento ${t.anno}, ${euro(t.importi.tesseramento)}: copre anche la mensilità del mese in cui lo paghi.</p>`;
   }
   if (!PAGAMENTO_ATTIVO) html += '<p class="nota-pagamento">Il pagamento dall’app arriva presto: per ora si paga in sede.</p>';
   d.innerHTML = html;
