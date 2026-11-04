@@ -801,6 +801,34 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 }
 .informativa > div > :first-child { margin-top: 0; }
 .informativa > div > :last-child { margin-bottom: 0; }
+/* ---- piccole animazioni ----
+   Brevi, e solo su quello che compare: niente che faccia aspettare. I
+   pannelli sfumano soltanto: un transform li renderebbe il riferimento dei
+   pulsanti fissi che hanno dentro, che salterebbero per un attimo. */
+@keyframes entra { from { opacity: 0; } }
+@keyframes entra-su { from { opacity: 0; transform: translateY(8px); } }
+@keyframes spunta { from { opacity: 0; transform: scale(.6); } }
+@keyframes sale { from { transform: translateY(100%); } }
+.pannello:not([hidden]) { animation: entra .2s ease-out; }
+.passo:not([hidden]) { animation: entra-su .22s ease-out; }
+.bene, .riga, .mio-prestito { animation: entra-su .24s ease-out backwards; }
+.bene:nth-child(2), .riga:nth-child(2) { animation-delay: .03s; }
+.bene:nth-child(3), .riga:nth-child(3) { animation-delay: .06s; }
+.bene:nth-child(4), .riga:nth-child(4) { animation-delay: .09s; }
+.bene:nth-child(5), .riga:nth-child(5) { animation-delay: .12s; }
+.bene:nth-child(n+6), .riga:nth-child(n+6) { animation-delay: .15s; }
+.bene { transition: border-color .15s ease, background-color .15s ease, transform .12s ease; }
+.tondo:not([hidden]), #azione.freccia:not([hidden]) {
+  animation: spunta .22s cubic-bezier(.3, 1.4, .6, 1); }
+#azione:not(.freccia):not([hidden]), #azione-a-nome:not([hidden]) { animation: entra .18s ease-out; }
+.tondo.con-etichetta .etichetta-tondo, #azione.con-etichetta .etichetta-tondo { animation: entra .25s ease-out; }
+.tab button[aria-selected="true"] svg.ico-piena { animation: spunta .25s cubic-bezier(.3, 1.4, .6, 1); }
+#foglio-a-nome:not([hidden]) { animation: entra .18s ease-out; }
+#foglio-a-nome:not([hidden]) .foglio { animation: sale .24s cubic-bezier(.2, .8, .3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .pannello, .passo, .bene, .riga, .mio-prestito, .tondo, #azione, #azione-a-nome,
+  .etichetta-tondo, .tab button svg, #foglio-a-nome, #foglio-a-nome .foglio { animation: none !important; }
+}
 </style>
 </head>
 <body>
@@ -2998,6 +3026,10 @@ const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti'];
 
 function mostra(quale) {
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
+  // "Segna come prestato" e' del bene scelto in biblioteca: cambiando scheda
+  // se ne va, e il pulsante grande torna da solo a tutta larghezza.
+  el('azione-a-nome').hidden = true;
+  document.body.classList.remove('due-azioni');
   const scheda = quale === 'aggiungi' || quale === 'prestiti' ? 'inventario'
     : quale === 'mie' ? 'prenota' : quale;
   for (const t of ['prenota', 'inventario']) {
