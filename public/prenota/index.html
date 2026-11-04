@@ -813,12 +813,15 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
    alto, nome e numero in basso. */
 .tessera-carta { position: relative; overflow: hidden; border-radius: 16px; padding: 18px 20px;
   aspect-ratio: 85.6 / 54; max-width: 420px; display: flex; flex-direction: column;
-  justify-content: space-between; margin-bottom: 14px; color: var(--su-accento);
-  background: linear-gradient(135deg, var(--accento), color-mix(in srgb, var(--accento) 55%, #000));
+  justify-content: space-between; margin-bottom: 14px; color: #fff;
+  /* Lo sfondo blu con i cartelli: il colore sotto e' quello medio
+     dell'immagine, per i primi istanti prima che arrivi. */
+  background: #29608c url(sfondo-tessera.jpg) center / cover;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
-.tessera-carta::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px;
-  border-radius: 50%; background: rgba(255, 255, 255, .08); }
-.tessera-carta.da-rinnovare { background: linear-gradient(135deg, #5b6673, #3a434d); color: #fff; }
+/* Da rinnovare: lo stesso disegno, spento sotto un velo grigio. */
+.tessera-carta.da-rinnovare {
+  background: linear-gradient(135deg, rgba(91, 102, 115, .88), rgba(58, 67, 77, .92)),
+    #3a434d url(sfondo-tessera.jpg) center / cover; }
 .tessera-testa { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600;
   letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
 .tessera-nome { font-size: 1.35rem; font-weight: 700; margin-bottom: 2px; }
