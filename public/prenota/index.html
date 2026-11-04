@@ -785,6 +785,17 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #foglio-a-nome h2 { margin: 0 0 4px; }
 #foglio-a-nome .spiega { margin: 0 0 12px; }
 .aiuto-foglio { font-size: .82rem; color: var(--tenue); margin: 8px 0 14px; }
+.suggerimenti-soci { margin-top: 6px; max-height: 34vh; overflow-y: auto; border-radius: 12px;
+  background: var(--scheda); animation: entra .14s ease-out; }
+.suggerimenti-soci[hidden] { display: none; }
+.suggerimenti-soci button { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  width: 100%; padding: 12px 14px; border: 0; background: none; color: var(--testo); font: inherit;
+  text-align: left; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--tenue) 18%, transparent); }
+.suggerimenti-soci button:last-child { border-bottom: 0; }
+.suggerimenti-soci button b { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggerimenti-soci button span { flex: 0 0 auto; color: var(--tenue); font-size: .82rem; }
+.suggerimenti-soci button[aria-selected="true"], .suggerimenti-soci button:active {
+  background: color-mix(in srgb, var(--accento) 14%, transparent); }
 #anteprima-foto { position: fixed; inset: 0; background: var(--sfondo); z-index: 20;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; padding: 16px; }
@@ -1316,8 +1327,11 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <div class="foglio">
     <h2>Chi l’ha preso?</h2>
     <p class="spiega" id="a-nome-titolo"></p>
-    <input type="text" id="a-nome" list="a-nome-soci" maxlength="120" placeholder="Nome e cognome" autocomplete="off">
-    <datalist id="a-nome-soci"></datalist>
+    <!-- I suggerimenti si aprono da soli mentre si scrive: il menu del
+         browser (datalist) dentro Telegram si apre solo toccando la freccia. -->
+    <input type="text" id="a-nome" maxlength="120" placeholder="Nome e cognome" autocomplete="off"
+           role="combobox" aria-autocomplete="list" aria-controls="a-nome-soci" aria-expanded="false">
+    <div id="a-nome-soci" class="suggerimenti-soci" role="listbox" aria-label="Soci" hidden></div>
     <p class="aiuto-foglio">Se è unə sociə sceglilə dai suggerimenti: il prestito va sulla sua scheda.</p>
     <div class="azioni-form">
       <button type="button" class="bottone secondario" id="a-nome-annulla">Annulla</button>
@@ -2738,16 +2752,16 @@ function tieniPremuto(scheda, azione) {
 // Chi amministra segna che un bene l'ha preso qualcun altro: si scrive il
 // nome, e se e' unə sociə la si sceglie dai suggerimenti, cosi' il prestito
 // va sulla sua scheda. Altrimenti resta solo il nome.
-const aNome = { bene: null, soci: new Map(), attesa: null };
+const aNome = { bene: null, scelto: null, attesa: null, giro: 0, evidenziato: -1, lista: [] };
 
 function apriPrestatoA(beneId) {
   const b = inv.beni?.get(beneId);
   if (!b) return;
   aNome.bene = b;
-  aNome.soci = new Map();
+  aNome.scelto = null;
   el('a-nome-titolo').textContent = `“${b.titolo}”, a ${b.sede}.`;
   el('a-nome').value = '';
-  el('a-nome-soci').innerHTML = '';
+  mostraSuggerimentiSoci([]);
   el('a-nome-conferma').disabled = false;
   el('foglio-a-nome').hidden = false;
   setTimeout(() => el('a-nome').focus(), 50);
@@ -2758,18 +2772,69 @@ function chiudiPrestatoA() {
   el('a-nome').blur();
 }
 
+// L'elenco sotto il campo: si apre appena arrivano nomi, si chiude quando
+// se ne sceglie uno o non ce ne sono. Toccare un nome lo mette nel campo e
+// collega il prestito alla sua scheda; riscrivere il nome lo scollega.
+function mostraSuggerimentiSoci(soci) {
+  aNome.lista = soci;
+  aNome.evidenziato = -1;
+  const dove = el('a-nome-soci');
+  dove.innerHTML = soci.map((s, i) => `
+    <button type="button" role="option" id="a-nome-soci-${i}" data-indice="${i}" aria-selected="false">
+      <b>${esc(s.nome)}</b><span>${s.numero_socio ? 'Sociə n. ' + esc(s.numero_socio) : 'Sociə'}</span>
+    </button>`).join('');
+  dove.hidden = !soci.length;
+  el('a-nome').setAttribute('aria-expanded', String(Boolean(soci.length)));
+  el('a-nome').removeAttribute('aria-activedescendant');
+  dove.querySelectorAll('[data-indice]').forEach(b => {
+    // pointerdown: senza, il campo perde il fuoco e la tastiera si chiude
+    // e riapre a ogni tocco.
+    b.addEventListener('pointerdown', (e) => e.preventDefault());
+    b.onclick = () => scegliSocio(Number(b.dataset.indice));
+  });
+}
+
+function scegliSocio(i) {
+  const s = aNome.lista[i];
+  if (!s) return;
+  el('a-nome').value = s.nome;
+  aNome.scelto = { id: s.id, nome: s.nome };
+  clearTimeout(aNome.attesa);
+  aNome.giro += 1;
+  mostraSuggerimentiSoci([]);
+}
+
+function evidenziaSocio(i) {
+  const bottoni = [...el('a-nome-soci').querySelectorAll('[data-indice]')];
+  if (!bottoni.length) return;
+  aNome.evidenziato = (i + bottoni.length) % bottoni.length;
+  bottoni.forEach((b, j) => b.setAttribute('aria-selected', String(j === aNome.evidenziato)));
+  bottoni[aNome.evidenziato].scrollIntoView({ block: 'nearest' });
+  el('a-nome').setAttribute('aria-activedescendant', bottoni[aNome.evidenziato].id);
+}
+
 el('a-nome').addEventListener('input', () => {
   clearTimeout(aNome.attesa);
   const testo = el('a-nome').value.trim();
-  if (testo.length < 2) return;
+  if (aNome.scelto && aNome.scelto.nome !== testo) aNome.scelto = null;
+  // Le risposte che arrivano dopo una lettera nuova non valgono piu'.
+  const giro = ++aNome.giro;
+  if (testo.length < 2) return mostraSuggerimentiSoci([]);
   aNome.attesa = setTimeout(async () => {
     try {
       const { soci } = await chiama('inventario/admin/soci', { testo });
-      for (const s of soci) aNome.soci.set(s.nome, s.id);
-      el('a-nome-soci').innerHTML = soci.map(s =>
-        `<option value="${esc(s.nome)}">${s.numero_socio ? 'Socio n. ' + esc(s.numero_socio) : 'Socio'}</option>`).join('');
+      if (giro !== aNome.giro) return;
+      // Gia' scelto e uguale: non c'e' niente da riproporre.
+      mostraSuggerimentiSoci(aNome.scelto ? [] : soci);
     } catch { /* i suggerimenti sono un aiuto: se non arrivano si scrive */ }
   }, 250);
+});
+el('a-nome').addEventListener('keydown', (e) => {
+  if (el('a-nome-soci').hidden) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); evidenziaSocio(aNome.evidenziato + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); evidenziaSocio(aNome.evidenziato - 1); }
+  else if (e.key === 'Enter' && aNome.evidenziato >= 0) { e.preventDefault(); scegliSocio(aNome.evidenziato); }
+  else if (e.key === 'Escape') { e.preventDefault(); mostraSuggerimentiSoci([]); }
 });
 el('a-nome-annulla').onclick = chiudiPrestatoA;
 el('azione-a-nome').onclick = () => inv.scelto && apriPrestatoA(inv.scelto);
@@ -2780,7 +2845,7 @@ el('a-nome-conferma').onclick = async () => {
   el('a-nome-conferma').disabled = true;
   try {
     const { prestito } = await chiama('inventario/admin/presta',
-      { beneId: aNome.bene.id, nome, partnerId: aNome.soci.get(nome) || null });
+      { beneId: aNome.bene.id, nome, partnerId: aNome.scelto?.nome === nome ? aNome.scelto.id : null });
     chiudiPrestatoA();
     toast(`Segnato: “${prestito.titolo}” l’ha preso ${prestito.socio}.`);
     cercaBeni(true);
