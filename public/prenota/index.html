@@ -830,10 +830,18 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .tessera-dati { font-size: .9rem; opacity: .9; }
 .tessera-avviso { margin: 0 0 18px; color: var(--occupato); font-weight: 600; }
 .mensilita { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 0 0 22px; }
-.mensilita span { text-align: center; padding: 9px 0; border-radius: 9px; font-size: .86rem; font-weight: 600;
-  background: var(--scheda); color: var(--tenue); }
-.mensilita span.pagato { background: var(--accento); color: var(--su-accento); }
-.mensilita span.adesso { outline: 1.5px solid var(--accento); outline-offset: -1.5px; }
+/* I mesi: una spunta vuol dire "pagato", in tutte e due le griglie; il blu
+   pieno vuol dire solo "lo sto scegliendo per pagarlo". Il mese corrente
+   ha un puntino sotto, non un bordo, che sembrerebbe una selezione. */
+.etichetta-mesi { margin: 0 0 8px; color: var(--tenue); font-size: .86rem; }
+.mensilita span, .mensilita button { position: relative; text-align: center; padding: 9px 0; border-radius: 9px;
+  font: inherit; font-size: .86rem; font-weight: 600; background: var(--scheda); color: var(--tenue);
+  border: 1.5px solid transparent; }
+.mensilita .pagato { background: color-mix(in srgb, var(--libero) 18%, var(--scheda)); color: var(--testo); }
+.mensilita .pagato::after { content: "✓"; position: absolute; top: 1px; right: 5px; font-size: .7rem;
+  color: var(--libero); }
+.mensilita .adesso::before { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px;
+  margin-left: -2px; border-radius: 50%; background: var(--accento); }
 .spese { background: var(--scheda); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
 .spese-totale { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
 .spesa { display: flex; justify-content: space-between; color: var(--tenue); font-size: .92rem; padding: 3px 0; }
@@ -871,10 +879,10 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .contatore button { width: 40px; height: 40px; border-radius: 50%; border: 0; font-size: 1.2rem; cursor: pointer;
   background: color-mix(in srgb, var(--tenue) 18%, transparent); color: var(--testo); }
 .nota-pagamento { color: var(--tenue); font-size: .88rem; margin: 4px 0 0; }
-.mensilita button { text-align: center; padding: 9px 0; border-radius: 9px; font: inherit; font-size: .86rem;
-  font-weight: 600; background: var(--scheda); color: var(--testo); border: 1.5px solid transparent; cursor: pointer; }
-.mensilita button.pagato { opacity: .35; cursor: default; }
+.mensilita button { color: var(--testo); cursor: pointer; }
+.mensilita button.pagato { cursor: default; }
 .mensilita button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
+.mensilita button[aria-pressed="true"].adesso::before { background: var(--su-accento); }
 .ricevute-anno { margin-bottom: 14px; }
 .giorno-gestione { margin-top: 22px; }
 .giorno-gestione::first-letter { text-transform: uppercase; }
@@ -3250,11 +3258,13 @@ function disegnaRicevute(t) {
 
 // In cima alla pagina delle ricevute, quanto si e' speso quest'anno.
 function disegnaSpese(t) {
-  const totale = t.spese.reduce((n, s) => n + s.totale, 0);
-  return `<h2>Spese ${t.anno}</h2>` + (t.spese.length ? `
+  // La quota annuale non e' una spesa dell'anno come le altre: resta fuori.
+  const spese = t.spese.filter(s => s.codice !== 'tesseramento');
+  const totale = spese.reduce((n, s) => n + s.totale, 0);
+  return `<h2>Spese ${t.anno}</h2>` + (spese.length ? `
     <div class="spese">
       <div class="spese-totale">${euro(totale)}</div>
-      ${t.spese.map(s => `<div class="spesa"><span>${esc(s.tipo)}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
+      ${spese.map(s => `<div class="spesa"><span>${esc(s.tipo)}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
     </div>` : '<p class="nota-pagamento">Ancora niente quest’anno.</p>');
 }
 
@@ -3283,8 +3293,9 @@ function disegnaTessera(t) {
       </div>
     </div>
     ${t.tesserato ? '' : '<p class="tessera-avviso">Tesseramento da rinnovare</p>'}
+    <p class="etichetta-mesi">Mensilità pagate nel ${t.anno}</p>
     <div class="mensilita">${MESI_BREVI.map((m, i) =>
-      `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
+      `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}${pagati.has(i + 1) ? ': pagato' : ''}">${m}</span>`).join('')}</div>
     <div class="titolo-con-link">
       <h2>Paga</h2>
       <button type="button" class="link" id="vai-ricevute">Le mie ricevute ›</button>
@@ -3448,7 +3459,8 @@ function disegnaPagamento() {
       html += `<div class="mensilita scegli">${MESI_BREVI.map((m, i) => {
         const k = `${t.anno}-${String(i + 1).padStart(2, '0')}`;
         const pagato = t.mensilita.includes(k);
-        return `<button type="button" data-mese="${k}" aria-pressed="${tess.mesi.has(k)}" ${pagato ? 'disabled class="pagato"' : ''} title="${MESI[i]}">${m}</button>`;
+        const classi = [pagato ? 'pagato' : '', k === meseCorrente() ? 'adesso' : ''].join(' ').trim();
+        return `<button type="button" data-mese="${k}" aria-pressed="${tess.mesi.has(k)}" ${pagato ? 'disabled' : ''} class="${classi}" title="${MESI[i]}${pagato ? ': già pagato' : ''}">${m}</button>`;
       }).join('')}</div>`;
     }
   }
