@@ -829,6 +829,39 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   background: var(--scheda); color: var(--tenue); }
 .mensilita span.pagato { background: var(--accento); color: var(--su-accento); }
 .mensilita span.adesso { outline: 1.5px solid var(--accento); outline-offset: -1.5px; }
+.spese { background: var(--scheda); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.spese-totale { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+.spesa { display: flex; justify-content: space-between; color: var(--tenue); font-size: .92rem; padding: 3px 0; }
+.spesa b { color: var(--testo); font-weight: 600; }
+button.vai-ricevute { width: 100%; display: flex; justify-content: space-between; align-items: center;
+  border: 0; color: var(--testo); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.voci { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+.voce { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px;
+  border-radius: 14px; background: var(--scheda); border: 1.5px solid transparent; color: var(--testo);
+  font: inherit; cursor: pointer; text-align: left; transition: border-color .15s ease, background-color .15s ease; }
+.voce span { color: var(--tenue); font-size: .88rem; }
+.voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
+#dettaglio-pagamento { padding-bottom: calc(var(--azione) + 24px); }
+#dettaglio-pagamento:empty { padding-bottom: 0; }
+.domanda { margin: 4px 0 0; font-weight: 600; }
+.scelte { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
+.scelte button, .scelta-data { position: relative; padding: 10px 16px; border-radius: 999px; background: none;
+  border: 1.5px solid color-mix(in srgb, var(--tenue) 45%, transparent); color: var(--testo);
+  font: inherit; font-size: .95rem; cursor: pointer; }
+.scelte [aria-pressed="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+.scelte button:disabled { opacity: .45; cursor: default; }
+/* Il calendario del telefono si apre toccando "Altro giorno": il campo data
+   e' invisibile sopra la scritta. */
+.scelta-data input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.contatore { display: inline-flex; align-items: center; gap: 14px; background: var(--scheda);
+  border-radius: 999px; padding: 4px; margin: 8px 0 16px; }
+.contatore button { width: 40px; height: 40px; border-radius: 50%; border: 0; font-size: 1.2rem; cursor: pointer;
+  background: color-mix(in srgb, var(--tenue) 18%, transparent); color: var(--testo); }
+.nota-pagamento { color: var(--tenue); font-size: .88rem; margin: 4px 0 0; }
+.mensilita button { text-align: center; padding: 9px 0; border-radius: 9px; font: inherit; font-size: .86rem;
+  font-weight: 600; background: var(--scheda); color: var(--testo); border: 1.5px solid transparent; cursor: pointer; }
+.mensilita button.pagato { opacity: .35; cursor: default; }
+.mensilita button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
 .ricevute-anno { margin-bottom: 14px; }
 .anno-ricevute { display: flex; align-items: center; gap: 12px; padding: 4px 13px 10px;
   font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none; }
@@ -1210,6 +1243,12 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-tessera" role="tabpanel" aria-labelledby="tab-tessera" hidden>
   <h1>La tua tessera</h1>
   <div id="tessera" class="vuoto">…</div>
+</section>
+
+<section class="pannello" id="pannello-ricevute" hidden>
+  <button type="button" class="indietro" id="chiudi-ricevute">‹ Tessera</button>
+  <h1>Le mie ricevute</h1>
+  <div id="lista-ricevute"></div>
 </section>
 
 <!-- Chi non e' ancora sociə chiede qui il tesseramento: la quota si paga in
@@ -1699,6 +1738,7 @@ function azionePrenota() {
 // tue prenotazioni.
 function indietro() {
   if (!el('pannello-aggiungi').hidden || !el('pannello-prestiti').hidden) return mostra('inventario');
+  if (!el('pannello-ricevute').hidden) return mostra('tessera');
   if (!el('pannello-prenota').hidden) {
     if (stato.passo > 1) vaiAPasso(stato.passo - 1); else mostra('mie');
   }
@@ -3147,17 +3187,19 @@ async function caricaTessera() {
   dove.textContent = 'Carico…';
   try {
     const { tessera } = await chiama('tessera');
+    tess.dati = tessera;
+    tess.voce = null;
     dove.className = '';
     dove.innerHTML = disegnaTessera(tessera);
-    collegaRicevute(dove);
+    collegaTessera(dove);
   } catch (err) {
     dove.textContent = err.message;
   }
 }
 
-function disegnaTessera(t) {
-  const pagati = new Set(t.mensilita.map(m => Number(m.slice(5))));
-  const adesso = new Date().getMonth() + 1;
+// Le ricevute stanno in una pagina loro, "Le mie ricevute": nella tessera
+// resta solo quanto si e' speso quest'anno.
+function disegnaRicevute(t) {
   // Per anno, dal piu' recente. Le ricevute arrivano gia' in ordine di data.
   const perAnno = new Map();
   for (const r of t.ricevute) {
@@ -3178,6 +3220,32 @@ function disegnaTessera(t) {
         </div>
       </div>`).join('')}
     </div>`).join('') : '<p class="vuoto">Ancora nessuna ricevuta.</p>';
+  return ricevute;
+}
+
+function apriRicevute() {
+  mostra('ricevute');
+  const dove = el('lista-ricevute');
+  dove.innerHTML = disegnaRicevute(tess.dati);
+  collegaRicevute(dove);
+  window.scrollTo(0, 0);
+}
+
+function disegnaTessera(t) {
+  const pagati = new Set(t.mensilita.map(m => Number(m.slice(5))));
+  const adesso = new Date().getMonth() + 1;
+  const totale = t.spese.reduce((n, s) => n + s.totale, 0);
+  const spese = t.spese.length ? `
+    <div class="spese">
+      <div class="spese-totale">${euro(totale)}</div>
+      ${t.spese.map(s => `<div class="spesa"><span>${esc(s.tipo)}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
+    </div>` : '<p class="nota-pagamento">Ancora niente quest’anno.</p>';
+  const voci = [
+    ['obolo_giornaliero', 'Obolo', euro(t.importi.obolo_giornaliero)],
+    ['contributo_mensile', 'Mensilità', euro(t.importi.contributo_mensile)],
+    ['contributo_evento', 'Evento', '3–5 €'],
+    ...(t.tesserato ? [] : [['tesseramento', 'Tesseramento', euro(t.importi.tesseramento)]]),
+  ];
   return `
     <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
       <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${t.anno}</span></div>
@@ -3190,8 +3258,124 @@ function disegnaTessera(t) {
     <h2>Mensilità ${t.anno}</h2>
     <div class="mensilita">${MESI_BREVI.map((m, i) =>
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
-    <h2>Ricevute</h2>
-    ${ricevute}`;
+    <h2>Le tue spese ${t.anno}</h2>
+    ${spese}
+    <button type="button" class="riga vai-ricevute" id="vai-ricevute">
+      <span>Le mie ricevute</span><span class="quando">${t.ricevute.length} ›</span>
+    </button>
+    <h2>Paga</h2>
+    <div class="voci">${voci.map(([k, nome, prezzo]) =>
+      `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"><b>${nome}</b><span>${prezzo}</span></button>`).join('')}</div>
+    <div id="dettaglio-pagamento"></div>`;
+}
+
+// ---------------------------------------------------------------- pagare
+// Si sceglie cosa pagare con pochi tocchi: la voce, poi il giorno (oggi,
+// ieri, o un altro dal calendario) o i mesi. Il pagamento vero arrivera'
+// con Stripe o Satispay: per ora il pulsante resta spento e si paga in sede.
+const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: 3 };
+const PAGAMENTO_ATTIVO = false;
+const isoLocale = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+function collegaTessera(dove) {
+  el('vai-ricevute').onclick = apriRicevute;
+  el('chiudi-ricevute').onclick = () => mostra('tessera');
+  dove.querySelectorAll('[data-voce]').forEach(b => {
+    b.onclick = () => {
+      const v = b.dataset.voce;
+      Object.assign(tess, { voce: tess.voce === v ? null : v, giorno: null, data: '',
+                            modoMesi: null, mesi: new Set(), evento: tess.dati.importi.contributo_evento });
+      disegnaPagamento();
+    };
+  });
+  disegnaPagamento();
+}
+
+function meseCorrente() {
+  return isoLocale(new Date()).slice(0, 7);
+}
+
+function totalePagamento() {
+  const i = tess.dati.importi;
+  switch (tess.voce) {
+    case 'obolo_giornaliero': return tess.giorno ? i.obolo_giornaliero : 0;
+    case 'contributo_evento': return tess.giorno ? tess.evento : 0;
+    case 'contributo_mensile': return tess.mesi.size * i.contributo_mensile;
+    case 'tesseramento': return i.tesseramento;
+    default: return 0;
+  }
+}
+
+function disegnaPagamento() {
+  const t = tess.dati;
+  const v = tess.voce;
+  el('tessera').querySelectorAll('[data-voce]').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.voce === v)));
+  const d = el('dettaglio-pagamento');
+  if (!v) { d.innerHTML = ''; nascondiAzione(); return; }
+  let html = '';
+  if (v === 'obolo_giornaliero' || v === 'contributo_evento') {
+    const oggi = new Date();
+    const ieri = new Date(oggi); ieri.setDate(oggi.getDate() - 1);
+    html += `<p class="domanda">Per che giorno?</p>
+      <div class="scelte">
+        <button type="button" data-giorno="${isoLocale(oggi)}" aria-pressed="${tess.giorno === 'oggi'}" data-nome="oggi">Oggi</button>
+        <button type="button" data-giorno="${isoLocale(ieri)}" aria-pressed="${tess.giorno === 'ieri'}" data-nome="ieri">Ieri</button>
+        <label class="scelta-data" aria-pressed="${tess.giorno === 'data'}">${tess.giorno === 'data' ? dataNumerica(tess.data) : 'Altro giorno'}
+          <input type="date" id="data-pagamento" max="${isoLocale(oggi)}" value="${tess.data}"></label>
+      </div>`;
+    if (v === 'contributo_evento') {
+      html += `<p class="domanda">Quanto?</p>
+        <div class="contatore"><button type="button" data-evento="-1" aria-label="Meno">−</button><b>${euro(tess.evento)}</b><button type="button" data-evento="1" aria-label="Più">+</button></div>`;
+    }
+  }
+  if (v === 'contributo_mensile') {
+    const questo = meseCorrente();
+    const giaQuesto = t.mensilita.includes(questo);
+    html += `<p class="domanda">Quali mesi?</p>
+      <div class="scelte">
+        <button type="button" data-mesi="questo" aria-pressed="${tess.modoMesi === 'questo'}" ${giaQuesto ? 'disabled' : ''}>${giaQuesto ? 'Questo mese è pagato' : 'Questo mese'}</button>
+        <button type="button" data-mesi="scegli" aria-pressed="${tess.modoMesi === 'scegli'}">Scegli i mesi</button>
+      </div>`;
+    if (tess.modoMesi === 'scegli') {
+      html += `<div class="mensilita scegli">${MESI_BREVI.map((m, i) => {
+        const k = `${t.anno}-${String(i + 1).padStart(2, '0')}`;
+        const pagato = t.mensilita.includes(k);
+        return `<button type="button" data-mese="${k}" aria-pressed="${tess.mesi.has(k)}" ${pagato ? 'disabled class="pagato"' : ''} title="${MESI[i]}">${m}</button>`;
+      }).join('')}</div>`;
+    }
+  }
+  if (v === 'tesseramento') {
+    html += `<p class="domanda">Tesseramento ${t.anno}, ${euro(t.importi.tesseramento)}: copre anche la mensilità del mese in cui lo paghi.</p>`;
+  }
+  if (!PAGAMENTO_ATTIVO) html += '<p class="nota-pagamento">Il pagamento dall’app arriva presto: per ora si paga in sede.</p>';
+  d.innerHTML = html;
+
+  d.querySelectorAll('[data-giorno]').forEach(b => {
+    b.onclick = () => { tess.giorno = b.dataset.nome; tess.data = b.dataset.giorno; disegnaPagamento(); };
+  });
+  const campoData = d.querySelector('#data-pagamento');
+  if (campoData) campoData.onchange = () => {
+    if (!campoData.value) return;
+    tess.giorno = 'data'; tess.data = campoData.value; disegnaPagamento();
+  };
+  d.querySelectorAll('[data-evento]').forEach(b => {
+    b.onclick = () => { tess.evento = Math.min(5, Math.max(3, tess.evento + Number(b.dataset.evento))); disegnaPagamento(); };
+  });
+  d.querySelectorAll('[data-mesi]').forEach(b => {
+    b.onclick = () => {
+      tess.modoMesi = b.dataset.mesi;
+      tess.mesi = new Set(tess.modoMesi === 'questo' ? [meseCorrente()] : []);
+      disegnaPagamento();
+    };
+  });
+  d.querySelectorAll('[data-mese]').forEach(b => {
+    b.onclick = () => { tess.mesi.has(b.dataset.mese) ? tess.mesi.delete(b.dataset.mese) : tess.mesi.add(b.dataset.mese); disegnaPagamento(); };
+  });
+
+  const totale = totalePagamento();
+  azionePrincipale = null;
+  pulsantePrincipale(totale ? `Paga ${euro(totale)}` : 'Paga', PAGAMENTO_ATTIVO && totale > 0);
 }
 
 // Le ricevute si scelgono toccandole, anche un anno intero dalla sua
@@ -3239,7 +3423,7 @@ async function mandaRicevute() {
     await chiama('tessera/ricevuta', { ricevutaIds: ids });
     toast(ids.length === 1 ? 'Te l’ho mandata in chat.' : `Te le ho mandate in chat: ${ids.length}.`);
     ricevuteScelte.clear();
-    aggiornaRicevute(el('tessera'));
+    aggiornaRicevute(el('lista-ricevute'));
   } catch (err) {
     lamenta(err.message);
   } finally {
@@ -3320,7 +3504,7 @@ function attesaTesseramento(iscrizione) {
 }
 
 // ------------------------------------------------------------------ avvio
-const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera'];
+const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute'];
 
 function mostra(quale) {
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
@@ -3329,12 +3513,12 @@ function mostra(quale) {
   el('azione-a-nome').hidden = true;
   document.body.classList.remove('due-azioni');
   const scheda = quale === 'aggiungi' || quale === 'prestiti' ? 'inventario'
-    : quale === 'mie' ? 'prenota' : quale;
+    : quale === 'mie' ? 'prenota' : quale === 'ricevute' ? 'tessera' : quale;
   for (const t of ['prenota', 'inventario', 'tessera']) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
-  const siTorna = quale === 'aggiungi' || quale === 'prestiti' || quale === 'prenota';
+  const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute'].includes(quale);
   if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
   document.body.classList.toggle('in-passi', quale === 'prenota');
   azionePrincipale = quale === 'prenota' ? azionePrenota
