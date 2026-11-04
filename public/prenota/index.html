@@ -3283,7 +3283,6 @@ function disegnaTessera(t) {
       </div>
     </div>
     ${t.tesserato ? '' : '<p class="tessera-avviso">Tesseramento da rinnovare</p>'}
-    <h2>Mensilità ${t.anno}</h2>
     <div class="mensilita">${MESI_BREVI.map((m, i) =>
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
     <div class="titolo-con-link">
