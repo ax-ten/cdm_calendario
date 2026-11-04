@@ -861,14 +861,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 /* Il calendario del telefono si apre toccando "Altro giorno": il campo data
    e' invisibile sopra la scritta. */
 .scelta-data input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.eventi-pagabili { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 16px; }
-.evento-pagabile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-  padding: 12px 14px; border-radius: 12px; background: var(--scheda); border: 1.5px solid transparent;
-  color: var(--testo); font: inherit; text-align: left; cursor: pointer; }
-.evento-pagabile b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.evento-pagabile span { color: var(--tenue); font-size: .86rem; white-space: nowrap; }
-.evento-pagabile[aria-pressed="true"] { border-color: var(--accento);
-  background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
 .contatore { display: inline-flex; align-items: center; gap: 14px; background: var(--scheda);
   border-radius: 999px; padding: 4px; margin: 8px 0 16px; }
 .contatore button { width: 40px; height: 40px; border-radius: 50%; border: 0; font-size: 1.2rem; cursor: pointer;
@@ -879,6 +871,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .mensilita button.pagato { opacity: .35; cursor: default; }
 .mensilita button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
 .ricevute-anno { margin-bottom: 14px; }
+.giorno-gestione { margin-top: 22px; }
+.giorno-gestione::first-letter { text-transform: uppercase; }
 .anno-ricevute { display: flex; align-items: center; gap: 12px; padding: 4px 13px 10px;
   font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none; }
 .riga.ricevuta { display: flex; align-items: center; gap: 12px; cursor: pointer;
@@ -1080,6 +1074,15 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-mie">
   <h1>Le tue attività</h1>
   <div id="elenco-mie" class="vuoto">…</div>
+  <!-- phosphor: calendar-dots. Per lo staff: le prenotazioni di tutti. Sta
+       sopra il +, come Prestiti in biblioteca. -->
+  <button type="button" class="tondo chiaro secondo" id="apri-gestione" aria-label="Prenotazioni" hidden><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-68-76a12,12,0,1,1-12-12A12,12,0,0,1,140,132Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,132ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,140,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"/></svg><span class="etichetta-tondo" aria-hidden="true">Prenotazioni</span></button>
+</section>
+
+<section class="pannello" id="pannello-gestione" hidden>
+  <button type="button" class="indietro" id="chiudi-gestione">‹ Attività</button>
+  <h1>Prenotazioni</h1>
+  <div id="elenco-gestione" class="vuoto">…</div>
 </section>
 
 <!-- --------------------------------------------------------- inventario -->
@@ -1754,6 +1757,7 @@ function azionePrenota() {
 function indietro() {
   if (!el('pannello-aggiungi').hidden || !el('pannello-prestiti').hidden) return mostra('inventario');
   if (!el('pannello-ricevute').hidden) return mostra('tessera');
+  if (!el('pannello-gestione').hidden) return mostra('mie');
   if (!el('pannello-prenota').hidden) {
     if (stato.passo > 1) vaiAPasso(stato.passo - 1); else mostra('mie');
   }
@@ -2102,6 +2106,7 @@ async function caricaMie() {
   try {
     const { prenotazioni } = await chiama('mie');
     el('azione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
+    el('apri-gestione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
     if (!prenotazioni.length) {
       dove.className = '';
       dove.innerHTML = NESSUNA_MIA;
@@ -3298,8 +3303,9 @@ const ICONE_VOCI = {
   contributo_evento: icona('M232,104a8,8,0,0,0,8-8V64a16,16,0,0,0-16-16H32A16,16,0,0,0,16,64V96a8,8,0,0,0,8,8,24,24,0,0,1,0,48,8,8,0,0,0-8,8v32a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V160a8,8,0,0,0-8-8,24,24,0,0,1,0-48ZM32,167.2a40,40,0,0,0,0-78.4V64H88V192H32Zm192,0V192H104V64H224V88.8a40,40,0,0,0,0,78.4Z'),
 };
 
-const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: 3,
-               eventi: null, eventoScelto: null };
+// L'evento parte da 5 €: si puo' scendere fino a 3.
+const EVENTO_BASE = 5;
+const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: EVENTO_BASE };
 const PAGAMENTO_ATTIVO = false;
 const isoLocale = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -3310,8 +3316,7 @@ function collegaTessera(dove) {
     b.onclick = () => {
       const v = b.dataset.voce;
       Object.assign(tess, { voce: tess.voce === v ? null : v, giorno: null, data: '',
-                            modoMesi: null, mesi: new Set(), evento: tess.dati.importi.contributo_evento,
-                            eventoScelto: null });
+                            modoMesi: null, mesi: new Set(), evento: EVENTO_BASE });
       preseleziona();
       disegnaPagamento();
     };
@@ -3328,11 +3333,14 @@ function oboliPagati() {
   return new Set(tess.dati.ricevute.filter(r => r.codice === 'obolo_giornaliero').map(r => r.data));
 }
 
-// La scelta piu' probabile e' gia' fatta: l'obolo di oggi, la mensilita' di
-// questo mese, l'evento piu' recente. Nel caso normale bastano due tocchi.
+// La scelta piu' probabile e' gia' fatta: oggi per obolo ed evento, questo
+// mese per la mensilita'. Nel caso normale bastano due tocchi.
 function preseleziona() {
   const oggi = isoLocale(new Date());
   if (tess.voce === 'obolo_giornaliero' && !oboliPagati().has(oggi)) {
+    tess.giorno = 'oggi'; tess.data = oggi;
+  }
+  if (tess.voce === 'contributo_evento') {
     tess.giorno = 'oggi'; tess.data = oggi;
   }
   if (tess.voce === 'contributo_mensile') {
@@ -3340,34 +3348,13 @@ function preseleziona() {
     if (tess.dati.mensilita.includes(questo)) tess.modoMesi = 'scegli';
     else { tess.modoMesi = 'questo'; tess.mesi = new Set([questo]); }
   }
-  if (tess.voce === 'contributo_evento') caricaEventi();
 }
-
-async function caricaEventi() {
-  if (!tess.eventi) {
-    try {
-      tess.eventi = (await chiama('tessera/eventi')).eventi;
-    } catch {
-      tess.eventi = [];
-    }
-  }
-  if (tess.voce !== 'contributo_evento') return;
-  if (!tess.eventoScelto && tess.eventi[0]?.inizio.slice(0, 10) === isoLocale(new Date())) {
-    tess.eventoScelto = tess.eventi[0];
-  }
-  disegnaPagamento();
-}
-
-const giornoBreve = (iso) => {
-  const d = new Date(iso);
-  return `${['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][d.getDay()]} ${d.getDate()}`;
-};
 
 function totalePagamento() {
   const i = tess.dati.importi;
   switch (tess.voce) {
     case 'obolo_giornaliero': return tess.giorno ? i.obolo_giornaliero : 0;
-    case 'contributo_evento': return tess.eventoScelto ? tess.evento : 0;
+    case 'contributo_evento': return tess.giorno ? tess.evento : 0;
     case 'contributo_mensile': return tess.mesi.size * i.contributo_mensile;
     default: return 0;
   }
@@ -3382,10 +3369,11 @@ function disegnaPagamento() {
   el('tessera').classList.toggle('con-pagamento', Boolean(v));
   if (!v) { d.innerHTML = ''; nascondiAzione(); return; }
   let html = '';
-  if (v === 'obolo_giornaliero') {
+  if (v === 'obolo_giornaliero' || v === 'contributo_evento') {
     const oggi = new Date();
     const ieri = new Date(oggi); ieri.setDate(oggi.getDate() - 1);
-    const pagati = oboliPagati();
+    // "Gia' pagato" vale per l'obolo: di eventi in un giorno ce ne possono essere due.
+    const pagati = v === 'obolo_giornaliero' ? oboliPagati() : new Set();
     const giorno = (d, nome, etichetta) => {
       const pagato = pagati.has(isoLocale(d));
       return `<button type="button" data-giorno="${isoLocale(d)}" data-nome="${nome}" aria-pressed="${tess.giorno === nome}" ${pagato ? 'disabled' : ''}>${etichetta}${pagato ? ' · già pagato' : ''}</button>`;
@@ -3399,19 +3387,8 @@ function disegnaPagamento() {
       </div>`;
   }
   if (v === 'contributo_evento') {
-    html += '<p class="domanda">Quale evento?</p>';
-    if (!tess.eventi) html += '<p class="nota-pagamento">Carico gli eventi…</p>';
-    else if (!tess.eventi.length) html += '<p class="nota-pagamento">Nessun evento negli ultimi sette giorni.</p>';
-    else {
-      html += `<div class="eventi-pagabili">${tess.eventi.slice(0, 8).map(e => `
-        <button type="button" class="evento-pagabile" data-evento-id="${esc(e.id)}" aria-pressed="${tess.eventoScelto?.id === e.id}">
-          <b>${esc(e.titolo)}</b><span>${giornoBreve(e.inizio)} · ${esc(e.sede)}</span>
-        </button>`).join('')}</div>`;
-    }
-    if (tess.eventoScelto) {
-      html += `<p class="domanda">Quanto?</p>
-        <div class="contatore"><button type="button" data-evento="-1" aria-label="Meno">−</button><b>${euro(tess.evento)}</b><button type="button" data-evento="1" aria-label="Più">+</button></div>`;
-    }
+    html += `<p class="domanda">Quanto?</p>
+      <div class="contatore"><button type="button" data-evento="-1" aria-label="Meno">−</button><b>${euro(tess.evento)}</b><button type="button" data-evento="1" aria-label="Più">+</button></div>`;
   }
   if (v === 'contributo_mensile') {
     const questo = meseCorrente();
@@ -3438,18 +3415,14 @@ function disegnaPagamento() {
   const campoData = d.querySelector('#data-pagamento');
   if (campoData) campoData.onchange = () => {
     if (!campoData.value) return;
-    if (oboliPagati().has(campoData.value)) return toast(`L’obolo del ${dataNumerica(campoData.value)} è già pagato.`, false);
+    if (v === 'obolo_giornaliero' && oboliPagati().has(campoData.value)) {
+      return toast(`L’obolo del ${dataNumerica(campoData.value)} è già pagato.`, false);
+    }
     tess.giorno = 'data'; tess.data = campoData.value; disegnaPagamento();
   };
-  d.querySelectorAll('[data-evento-id]').forEach(b => {
-    b.onclick = () => {
-      const e = tess.eventi.find(x => x.id === b.dataset.eventoId);
-      tess.eventoScelto = tess.eventoScelto?.id === e.id ? null : e;
-      disegnaPagamento();
-    };
-  });
+
   d.querySelectorAll('[data-evento]').forEach(b => {
-    b.onclick = () => { tess.evento = Math.min(5, Math.max(3, tess.evento + Number(b.dataset.evento))); disegnaPagamento(); };
+    b.onclick = () => { tess.evento = Math.min(EVENTO_BASE, Math.max(3, tess.evento + Number(b.dataset.evento))); disegnaPagamento(); };
   });
   d.querySelectorAll('[data-mesi]').forEach(b => {
     b.onclick = () => {
@@ -3592,8 +3565,90 @@ function attesaTesseramento(iscrizione) {
       quando il direttivo la registra la tessera si attiva, e te lo scrivo in chat.</p>`;
 }
 
+// ------------------------------------------------------- prenotazioni staff
+// Le prenotazioni dei prossimi due settimane in tutte le sedi, per giorno,
+// e in cima le attivita' periodiche da approvare. Da qui lo staff dice
+// "apro io", annulla una data e decide le richieste, come dai gruppi.
+async function caricaGestione() {
+  const dove = el('elenco-gestione');
+  dove.className = 'vuoto';
+  dove.textContent = 'Carico…';
+  let dati;
+  try {
+    dati = await chiama('staff/prenotazioni');
+  } catch (err) {
+    dove.textContent = err.message;
+    return;
+  }
+  dove.className = '';
+  let html = '';
+  if (dati.richieste.length) {
+    html += '<h2>Da approvare</h2>' + dati.richieste.map(r => `
+      <div class="riga">
+        <div><b>${esc(r.titolo)}</b> · ${esc(r.sedeNome)}</div>
+        <div class="quando">${esc(r.cadenza)}</div>
+        <div class="quando">Chiede ${esc(r.chi)}${r.serveApertura ? ' · serve qualcuno che apra' : ''}</div>
+        <div class="azioni a-destra">
+          <button type="button" class="grave" data-richiesta="${esc(r.id)}" data-scelta="no">Rifiuta</button>
+          <button type="button" class="conferma" data-richiesta="${esc(r.id)}" data-scelta="si">Approva</button>
+        </div>
+      </div>`).join('');
+  }
+  const perGiorno = new Map();
+  for (const p of dati.prenotazioni) {
+    const g = p.inizio.slice(0, 10);
+    perGiorno.set(g, [...(perGiorno.get(g) || []), p]);
+  }
+  const oggi = isoLocale(new Date());
+  const domani = isoLocale(new Date(Date.now() + 864e5));
+  const nomeGiorno = (g) => g === oggi ? 'Oggi' : g === domani ? 'Domani'
+    : new Date(`${g}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const ora = (iso) => new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  html += perGiorno.size ? [...perGiorno].map(([g, lista]) => `
+    <h2 class="giorno-gestione">${nomeGiorno(g)}</h2>
+    ${lista.map(p => `
+      <div class="riga">
+        <div><b>${esc(p.titolo)}</b></div>
+        <div class="quando">${ora(p.inizio)}–${ora(p.fine)} · ${esc(p.sedeNome)}${p.fissa ? ' · si ripete' : ''}</div>
+        ${p.chi ? `<div class="quando">Prenotata da ${esc(p.chi)}</div>` : ''}
+        ${p.serveApertura ? (p.apre ? `<div class="quando">Apre ${esc(p.apre)}</div>`
+          : '<div class="quando ritardo">Nessuno ha ancora detto che apre</div>') : ''}
+        <div class="azioni a-destra">
+          <button type="button" class="grave" data-annulla="${esc(p.id)}" data-sede="${esc(p.sede)}" data-titolo="${esc(p.titolo)}">${p.fissa ? 'Annulla questa data' : 'Annulla'}</button>
+          ${p.serveApertura && !p.apre ? `<button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}">Apro io</button>` : ''}
+        </div>
+      </div>`).join('')}`).join('')
+    : '<p class="vuoto">Nessuna prenotazione nei prossimi quattordici giorni.</p>';
+  dove.innerHTML = html;
+
+  const agisci = async (bottone, percorso, dati, fatto) => {
+    bottone.disabled = true;
+    try {
+      await chiama(percorso, dati);
+      toast(fatto);
+      caricaGestione();
+    } catch (err) {
+      lamenta(err.message);
+      bottone.disabled = false;
+    }
+  };
+  dove.querySelectorAll('[data-richiesta]').forEach(b => {
+    b.onclick = () => agisci(b, 'staff/richiesta', { id: b.dataset.richiesta, scelta: b.dataset.scelta },
+      b.dataset.scelta === 'si' ? 'Approvata: è in calendario.' : 'Rifiutata.');
+  });
+  dove.querySelectorAll('[data-apro]').forEach(b => {
+    b.onclick = () => agisci(b, 'staff/apro', { sede: b.dataset.sede, eventId: b.dataset.apro }, 'Segnato: apri tu.');
+  });
+  dove.querySelectorAll('[data-annulla]').forEach(b => {
+    b.onclick = async () => {
+      if (!await conferma(`Annullare “${b.dataset.titolo}”? Chi l’ha prenotata riceve un messaggio.`)) return;
+      agisci(b, 'staff/annulla', { sede: b.dataset.sede, eventId: b.dataset.annulla }, 'Prenotazione annullata.');
+    };
+  });
+}
+
 // ------------------------------------------------------------------ avvio
-const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute'];
+const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute', 'gestione'];
 
 function mostra(quale) {
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
@@ -3602,12 +3657,12 @@ function mostra(quale) {
   el('azione-a-nome').hidden = true;
   document.body.classList.remove('due-azioni');
   const scheda = quale === 'aggiungi' || quale === 'prestiti' ? 'inventario'
-    : quale === 'mie' ? 'prenota' : quale === 'ricevute' ? 'tessera' : quale;
+    : quale === 'mie' || quale === 'gestione' ? 'prenota' : quale === 'ricevute' ? 'tessera' : quale;
   for (const t of ['prenota', 'inventario', 'tessera']) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
-  const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute'].includes(quale);
+  const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute', 'gestione'].includes(quale);
   if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
   document.body.classList.toggle('in-passi', quale === 'prenota');
   azionePrincipale = quale === 'prenota' ? azionePrenota
@@ -3624,6 +3679,7 @@ function mostra(quale) {
   if (quale === 'mie') caricaMie();
   if (quale === 'inventario') apriInventario();
   if (quale === 'tessera') caricaTessera();
+  if (quale === 'gestione') caricaGestione();
 }
 
 async function avvia() {
@@ -3725,6 +3781,10 @@ async function avvia() {
   tg?.BackButton?.onClick(indietro);
 
   stato.bloccato = Boolean(info.bloccato);
+  // Le prenotazioni di tutti le vede lo staff: gruppi staff o direttivo.
+  el('apri-gestione').hidden = !(info.staff || info.direttivo);
+  el('apri-gestione').onclick = () => mostra('gestione');
+  el('chiudi-gestione').onclick = () => mostra('mie');
   if (info.bloccato) {
     el('pannello-prenota').querySelectorAll('input, textarea, button')
       .forEach(n => n.disabled = true);

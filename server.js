@@ -961,7 +961,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
       return res.status(500).json({ errore: 'Manca il gruppo staff di questa sede nella configurazione.' });
     }
     try {
-      await telegram('sendMessage', {
+      const messaggio = await telegram('sendMessage', {
         chat_id: chatStaff,
         text:
           `Richiesta di attivita periodica a ${SEDI_NOMI.get(sede) || sede}.\n` +
@@ -979,6 +979,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
           ]],
         },
       });
+      prenotazioni.aggiornaRichiesta(idRichiesta, { messaggio: { chat: chatStaff, id: messaggio.message_id } });
     } catch (err) {
       prenotazioni.chiudiRichiesta(idRichiesta);
       console.error('attivita periodica: staff non avvisato:', err.message);
@@ -1194,7 +1195,7 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
   });
 
   try {
-    await telegram('sendMessage', {
+    const messaggio = await telegram('sendMessage', {
       chat_id: chatStaff,
       text:
         `Una prenotazione vuole diventare settimanale, a ${SEDI_NOMI.get(sede) || sede}.\n` +
@@ -1212,6 +1213,7 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
         ]],
       },
     });
+    prenotazioni.aggiornaRichiesta(idRichiesta, { messaggio: { chat: chatStaff, id: messaggio.message_id } });
   } catch (err) {
     prenotazioni.chiudiRichiesta(idRichiesta);
     console.error('attivita periodica: staff non avvisato:', err.message);
@@ -1665,31 +1667,6 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
   res.json({ ok: true, mandate });
 }));
 
-// Gli eventi da pagare: quelli in calendario da una settimana fa a stasera,
-// in tutte le sedi. Il contributo di un evento si paga dopo esserci stati,
-// quindi niente eventi futuri.
-const GIORNI_EVENTI = 7;
-app.post('/prenota/api/tessera/eventi', (req, res) => conUtente(req, res, async () => {
-  const adesso = DateTime.now().setZone('Europe/Rome');
-  const auth = await getAuth();
-  const perCalendario = await Promise.all(CALENDARI.map(async (c) => {
-    const { data } = await google.calendar({ version: 'v3', auth }).events.list({
-      calendarId: c.id,
-      singleEvents: true,
-      orderBy: 'startTime',
-      timeMin: adesso.minus({ days: GIORNI_EVENTI }).startOf('day').toISO(),
-      timeMax: adesso.endOf('day').toISO(),
-      maxResults: 100,
-    });
-    return (data.items || [])
-      .filter(ev => ev.start?.dateTime)
-      .map(ev => ({ id: ev.id, sede: SEDI_NOMI.get(c.sede) || c.sede,
-                    titolo: ev.summary || 'senza titolo', inizio: ev.start.dateTime }));
-  }));
-  // Dal piu' recente: di solito si paga l'evento di stasera.
-  res.json({ eventi: perCalendario.flat().sort((a, b) => b.inizio.localeCompare(a.inizio)) });
-}));
-
 // Chi non e' sociə chiede il tesseramento dall'app. La quota si paga in
 // sede; il direttivo, quando l'ha vista, sceglie con che metodo e la
 // scheda nasce con la sua ricevuta. Finche' e' in prova, solo col link debug.
@@ -1741,6 +1718,128 @@ app.post('/prenota/api/iscrizione', (req, res) => conUtente(req, res, async (ute
   }
   res.json({ richiesta });
 }, { soloSoci: false }));
+
+// ---------- prenotazioni, per lo staff ----------
+// Lo staff vede dall'app le prenotazioni dei prossimi giorni in tutte le
+// sedi, dice "apro io", annulla una data, e decide le attivita' periodiche
+// in attesa: le stesse cose che fa dai gruppi, senza aprire il calendario.
+const GIORNI_PRENOTAZIONI_STAFF = 14;
+
+app.post('/prenota/api/staff/prenotazioni', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const adesso = DateTime.now().setZone('Europe/Rome');
+  const auth = await getAuth();
+  const perCalendario = await Promise.all(CALENDARI.map(async (c) => {
+    const { data } = await google.calendar({ version: 'v3', auth }).events.list({
+      calendarId: c.id,
+      singleEvents: true,
+      orderBy: 'startTime',
+      timeMin: adesso.startOf('day').toISO(),
+      timeMax: adesso.plus({ days: GIORNI_PRENOTAZIONI_STAFF }).endOf('day').toISO(),
+      maxResults: 250,
+    });
+    return (data.items || []).filter(ev => ev.start?.dateTime).map(ev => {
+      const priv = ev.extendedProperties?.private || {};
+      return {
+        id: ev.id,
+        sede: c.sede,
+        sedeNome: SEDI_NOMI.get(c.sede) || c.sede,
+        titolo: ev.summary || 'senza titolo',
+        inizio: ev.start.dateTime,
+        fine: ev.end?.dateTime,
+        chi: priv.richiedente || '',
+        serveApertura: priv.serve_apertura === 'si',
+        apre: priv.apre || null,
+        fissa: priv.fissa === 'si' || Boolean(ev.recurringEventId),
+      };
+    });
+  }));
+  const richieste = prenotazioni.elencoRichieste().map(r => {
+    const { inizio, fine } = prenotazioni.estremi(r.data, r.oraInizio, r.oraFine);
+    return {
+      id: r.id,
+      sedeNome: SEDI_NOMI.get(r.sede) || r.sede,
+      titolo: r.titolo,
+      cadenza: `${prenotazioni.testoRicorrenza(r.ricorrenza || 'settimanale', inizio)}, ` +
+               `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}, dal ${inizio.setLocale('it').toFormat('d MMMM')}`,
+      chi: nomeTelegram(r.utente),
+      serveApertura: Boolean(r.serveApertura),
+    };
+  });
+  res.json({
+    richieste,
+    prenotazioni: perCalendario.flat().sort((a, b) => a.inizio.localeCompare(b.inizio)),
+  });
+}));
+
+app.post('/prenota/api/staff/apro', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const { sede, eventId } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId || !eventId) return res.status(400).json({ errore: 'Quale prenotazione?' });
+  const chi = nomeTelegram(utente);
+  const gia = await prenotazioni.segnaChiApre(await getAuthScrittura(), calendarId, eventId, chi);
+  if (gia) return res.status(409).json({ errore: `Apre già ${gia}.` });
+  res.json({ ok: true, apre: chi });
+}));
+
+// Annullare una data: chi l'aveva prenotata lo sa da un messaggio. Di
+// un'attivita' periodica si toglie solo quella volta.
+app.post('/prenota/api/staff/annulla', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const { sede, eventId } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId || !eventId) return res.status(400).json({ errore: 'Quale prenotazione?' });
+  const auth = await getAuthScrittura();
+  const evento = await prenotazioni.leggiPrenotazione(auth, calendarId, eventId);
+  await prenotazioni.annullaPrenotazione(auth, calendarId, eventId);
+  const telegramId = evento.extendedProperties?.private?.telegram_id;
+  if (telegramId) {
+    const quando = DateTime.fromISO(evento.start?.dateTime).setZone('Europe/Rome').setLocale('it');
+    telegram('sendMessage', {
+      chat_id: telegramId,
+      text: `Lo staff ha annullato “${evento.summary || 'la tua prenotazione'}” di ` +
+            `${quando.toFormat('cccc d MMMM')} alle ${quando.toFormat('HH:mm')} ` +
+            `a ${SEDI_NOMI.get(sede) || sede}. Per sapere perché, scrivi a ${nomeTelegram(utente)}.`,
+    }).catch(err => console.error('annulla staff: messaggio non mandato:', err.message));
+  }
+  res.json({ ok: true });
+}));
+
+// Approvare o rifiutare un'attivita' periodica dall'app. Il messaggio nel
+// gruppo staff perde i bottoni e riceve la risposta, cosi' nessuno ci
+// ripensa da li'.
+app.post('/prenota/api/staff/richiesta', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const { id, scelta } = req.body || {};
+  const richiesta = prenotazioni.leggiRichiesta(id);
+  if (!richiesta) return res.status(404).json({ errore: 'Qualcuno ha già deciso questa richiesta.' });
+  const chi = nomeTelegram(utente);
+  let riga, avviso;
+  if (scelta === 'si') {
+    const esito = await approvaFissa(id, chi);
+    riga = `Approvata dall’app da ${chi}. Da adesso è in calendario: ${esito.cadenza}.`;
+    avviso = `Lo staff ha approvato “${richiesta.titolo}”: da adesso è in calendario. ` +
+             `${esito.cadenza}. Il giorno prima ti chiedo se si fa, così puoi saltare una volta quando serve.`;
+  } else {
+    prenotazioni.chiudiRichiesta(id);
+    riga = `Rifiutata dall’app da ${chi}.`;
+    avviso = `Lo staff non ha approvato “${richiesta.titolo}” come attività periodica. ` +
+             'Puoi sempre prenotare una serata per volta.';
+  }
+  const m = richiesta.messaggio;
+  if (m) {
+    telegram('editMessageReplyMarkup', { chat_id: m.chat, message_id: m.id, reply_markup: { inline_keyboard: [] } })
+      .catch(() => {});
+    telegram('sendMessage', { chat_id: m.chat, text: riga, reply_parameters: { message_id: m.id } })
+      .catch(err => console.error('richiesta staff: gruppo non aggiornato:', err.message));
+  }
+  if (richiesta.utente?.id) {
+    telegram('sendMessage', { chat_id: richiesta.utente.id, text: avviso })
+      .catch(err => console.error('richiesta staff: esito non mandato:', err.message));
+  }
+  res.json({ ok: true });
+}));
 
 // ---------- rotte interne, per il bot ----------
 // Il bot non e' una pagina dentro Telegram, quindi non ha un initData da
@@ -1809,11 +1908,12 @@ app.post('/prenota/api/interno/bloccati', (req, res) => {
 
 // Lo staff ha detto si a un'attivita' periodica: adesso l'evento nasce, e si
 // ripete con la cadenza chiesta.
-app.post('/prenota/api/interno/approva', async (req, res) => {
-  if (!soloBot(req, res)) return;
-  const { id, daChi } = req.body || {};
+// Approvare un'attivita' periodica: l'evento nasce, e si ripete con la
+// cadenza chiesta. Lo fanno il bot (dal gruppo staff) e l'app (dalle
+// prenotazioni dello staff). Errore con perUtente: da mostrare cosi' com'e'.
+async function approvaFissa(id, daChi) {
   const richiesta = prenotazioni.leggiRichiesta(id);
-  if (!richiesta) return res.status(404).json({ errore: 'Richiesta non trovata.' });
+  if (!richiesta) throw Object.assign(new Error('Qualcuno ha già deciso questa richiesta.'), { perUtente: true });
 
   const calendarId = calendarioDi(richiesta.sede);
   const tipo = CATEGORIE.find(c => c.slug === richiesta.categoria);
@@ -1831,47 +1931,52 @@ app.post('/prenota/api/interno/approva', async (req, res) => {
            ` e approvata da ${daChi || 'staff'}.`,
   });
 
-  try {
-    const evento = await prenotazioni.creaPrenotazione(
-      await getAuthScrittura(), calendarId, {
-        titolo: richiesta.titolo,
-        descrizione,
-        inizio,
-        fine,
-        utente: richiesta.utente,
-        serveApertura: richiesta.serveApertura,
-        fissa: true,
-        ricorrenza,
-      });
-    prenotazioni.chiudiRichiesta(id);
-
-    // Se la richiesta nasce da una prenotazione gia' fatta, quella se ne va:
-    // la serie comincia dallo stesso giorno, e in due sullo stesso posto ci
-    // sarebbe la stessa attivita' scritta due volte. Se la cancellazione non
-    // riesce la serie resta buona lo stesso: si dice, non si annulla tutto.
-    if (richiesta.daEvento) {
-      try {
-        await prenotazioni.annullaPrenotazione(
-          await getAuthScrittura(), calendarId, richiesta.daEvento);
-      } catch (err) {
-        console.error('approva: la prenotazione singola e rimasta:', err.message);
-      }
-    }
-
-    res.json({
-      ok: true,
-      eventId: evento.id,
-      richiesta,
-      quando: `${inizio.setLocale('it').toFormat('cccc')} ` +
-              `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
-      // La frase intera, cadenza compresa: "quando" da solo il bot lo
-      // leggeva come settimanale.
-      cadenza: `${prenotazioni.testoRicorrenza(ricorrenza, inizio)}, ` +
-               `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
+  const evento = await prenotazioni.creaPrenotazione(
+    await getAuthScrittura(), calendarId, {
+      titolo: richiesta.titolo,
+      descrizione,
+      inizio,
+      fine,
+      utente: richiesta.utente,
+      serveApertura: richiesta.serveApertura,
+      fissa: true,
+      ricorrenza,
     });
+  prenotazioni.chiudiRichiesta(id);
+
+  // Se la richiesta nasce da una prenotazione gia' fatta, quella se ne va:
+  // la serie comincia dallo stesso giorno, e in due sullo stesso posto ci
+  // sarebbe la stessa attivita' scritta due volte. Se la cancellazione non
+  // riesce la serie resta buona lo stesso: si dice, non si annulla tutto.
+  if (richiesta.daEvento) {
+    try {
+      await prenotazioni.annullaPrenotazione(
+        await getAuthScrittura(), calendarId, richiesta.daEvento);
+    } catch (err) {
+      console.error('approva: la prenotazione singola e rimasta:', err.message);
+    }
+  }
+
+  return {
+    eventId: evento.id,
+    richiesta: { id, ...richiesta },
+    quando: `${inizio.setLocale('it').toFormat('cccc')} ` +
+            `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
+    // La frase intera, cadenza compresa: "quando" da solo il bot lo
+    // leggeva come settimanale.
+    cadenza: `${prenotazioni.testoRicorrenza(ricorrenza, inizio)}, ` +
+             `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
+  };
+}
+
+app.post('/prenota/api/interno/approva', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { id, daChi } = req.body || {};
+  try {
+    res.json({ ok: true, ...await approvaFissa(id, daChi) });
   } catch (err) {
     console.error('approva:', err.message);
-    res.status(500).json({ errore: err.message });
+    res.status(err.perUtente ? 404 : 500).json({ errore: err.message });
   }
 });
 

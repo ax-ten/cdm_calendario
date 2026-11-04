@@ -153,6 +153,18 @@ export function leggiRichiesta(id) {
   return leggiRichieste()[id] || null;
 }
 
+export function elencoRichieste() {
+  return Object.entries(leggiRichieste()).map(([id, r]) => ({ id, ...r }));
+}
+
+export function aggiornaRichiesta(id, campi) {
+  const dati = leggiRichieste();
+  if (!dati[id]) return false;
+  dati[id] = { ...dati[id], ...campi };
+  scriviRichieste(dati);
+  return true;
+}
+
 export function chiudiRichiesta(id) {
   const dati = leggiRichieste();
   if (!dati[id]) return false;
