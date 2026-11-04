@@ -1253,7 +1253,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 
 <section class="pannello" id="pannello-ricevute" hidden>
   <button type="button" class="indietro" id="chiudi-ricevute">‹ Tessera</button>
-  <h1>Le mie ricevute</h1>
+  <h1>Ricevute</h1>
   <div id="lista-ricevute"></div>
 </section>
 
@@ -3267,10 +3267,10 @@ function disegnaTessera(t) {
     <div class="voci">${voci.map(([k, nome, prezzo]) =>
       `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"><b>${nome}</b><span>${prezzo}</span>${ICONE_VOCI[k]}</button>`).join('')}</div>
     <div id="dettaglio-pagamento"></div>
-    <h2>Le tue spese ${t.anno}</h2>
+    <h2>Spese ${t.anno}</h2>
     ${spese}
     <button type="button" class="riga vai-ricevute" id="vai-ricevute">
-      <span>Le mie ricevute</span><span class="quando">${t.ricevute.length} ›</span>
+      <span>Ricevute</span><span class="quando">${t.ricevute.length} ›</span>
     </button>`;
 }
 
