@@ -911,6 +911,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .voce:disabled { opacity: .5; cursor: default; }
 #scheda-quota.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .giorno-gestione { margin-top: 22px; }
+#filtro-gestione { margin: 2px 0 18px; }
+#filtro-gestione[hidden] { display: none; }
+#filtro-gestione .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
 #azione.grave { background: var(--pieno); color: #fff; }
 #riepilogo-serie.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .riga.data-serie { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 11px 13px; margin-bottom: 6px; }
@@ -1149,6 +1152,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-gestione" hidden>
   <button type="button" class="indietro" id="chiudi-gestione">‹ Attività</button>
   <h1>Prenotazioni</h1>
+  <!-- Il filtro veloce: le date in cui nessuno ha ancora detto che apre. -->
+  <div class="tipi" id="filtro-gestione" role="tablist" aria-label="Quali prenotazioni" hidden></div>
   <div id="elenco-gestione" class="vuoto">…</div>
 </section>
 
@@ -4077,17 +4082,40 @@ async function ricordaQuota(bottone) {
 // Le prenotazioni dei prossimi due settimane in tutte le sedi, per giorno,
 // e in cima le attivita' periodiche da approvare. Da qui lo staff dice
 // "apro io", annulla una data e decide le richieste, come dai gruppi.
+// In cima, due filtri: tutte, o solo quelle che hanno bisogno di qualcuno
+// che apra e non ce l'hanno ancora. Il filtro resta scelto mentre l'app e'
+// aperta: dopo un "Apro io" l'elenco si rilegge e quella data esce.
+const gestione = { dati: null, filtro: 'tutte' };
+const senzaChiApre = (p) => p.serveApertura && !p.apre;
+
 async function caricaGestione() {
   const dove = el('elenco-gestione');
   dove.className = 'vuoto';
   dove.textContent = 'Carico…';
-  let dati;
   try {
-    dati = await chiama('staff/prenotazioni');
+    gestione.dati = await chiama('staff/prenotazioni');
   } catch (err) {
+    el('filtro-gestione').hidden = true;
     dove.textContent = err.message;
     return;
   }
+  disegnaGestione();
+}
+
+function disegnaGestione() {
+  const dove = el('elenco-gestione');
+  const tutti = gestione.dati;
+  const senza = tutti.prenotazioni.filter(senzaChiApre);
+  const filtri = [['tutte', 'Tutte', tutti.prenotazioni.length], ['senza-apre', 'Nessuno apre', senza.length]];
+  el('filtro-gestione').hidden = false;
+  el('filtro-gestione').innerHTML = filtri.map(([k, nome, n]) =>
+    `<button type="button" role="tab" data-filtro-gestione="${k}" aria-selected="${k === gestione.filtro}"${k === 'senza-apre' && n ? ' class="avviso"' : ''}>${nome} · ${n}</button>`).join('');
+  el('filtro-gestione').querySelectorAll('[data-filtro-gestione]').forEach(b => {
+    b.onclick = () => { gestione.filtro = b.dataset.filtroGestione; disegnaGestione(); };
+  });
+  const soloSenza = gestione.filtro === 'senza-apre';
+  // Con il filtro le richieste da approvare restano fuori: non hanno date.
+  const dati = { richieste: soloSenza ? [] : tutti.richieste, prenotazioni: soloSenza ? senza : tutti.prenotazioni };
   dove.className = '';
   let html = '';
   if (dati.richieste.length) {
@@ -4127,6 +4155,7 @@ async function caricaGestione() {
           ${p.serveApertura && !p.apre ? `<button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}">Apro io</button>` : ''}
         </div>
       </div>`).join('')}`).join('')
+    : soloSenza ? '<p class="vuoto">Ogni apertura dei prossimi quattordici giorni ha qualcuno che apre.</p>'
     : '<p class="vuoto">Nessuna prenotazione nei prossimi quattordici giorni.</p>';
   dove.innerHTML = html;
 
