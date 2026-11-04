@@ -3323,9 +3323,35 @@ function collegaTessera(dove) {
                             modoMesi: null, mesi: new Set(), evento: EVENTO_BASE });
       preseleziona();
       disegnaPagamento();
+      if (tess.voce) mostraDettaglio();
     };
   });
   disegnaPagamento();
+}
+
+// Aperte le scelte di una voce, la pagina scende fin dove si vedono tutte,
+// sopra il pulsante Paga e il menu. Ease in-out fatto a mano: lo scroll
+// "smooth" del browser ha una sua curva, diversa da telefono a telefono.
+function mostraDettaglio() {
+  const d = el('dettaglio-pagamento');
+  // Il bordo utile e' il pulsante Paga, che sta sopra il menu.
+  const azione = el('azione');
+  const fine = azione.hidden ? innerHeight - 100 : azione.getBoundingClientRect().top - 16;
+  const manca = d.getBoundingClientRect().bottom - fine;
+  if (manca > 0) scorriDi(manca);
+}
+
+function scorriDi(dy, durata = 450) {
+  const da = scrollY;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return scrollTo(0, da + dy);
+  const inizio = performance.now();
+  const curva = (t) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const passo = (ora) => {
+    const t = Math.min(1, (ora - inizio) / durata);
+    scrollTo(0, da + dy * curva(t));
+    if (t < 1) requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
 }
 
 function meseCorrente() {
@@ -3433,6 +3459,7 @@ function disegnaPagamento() {
       tess.modoMesi = b.dataset.mesi;
       tess.mesi = new Set(tess.modoMesi === 'questo' ? [meseCorrente()] : []);
       disegnaPagamento();
+      if (tess.modoMesi === 'scegli') mostraDettaglio();
     };
   });
   d.querySelectorAll('[data-mese]').forEach(b => {
