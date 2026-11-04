@@ -3131,7 +3131,10 @@ async function salvaBene() {
 // partecipa, quindi non c'e' un "in ritardo".
 const MESI_BREVI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 const euro = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 })} €`;
-const meseTesto = (m) => `${MESI[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
+// Nelle ricevute le date sono numeriche, come sulla ricevuta stampata:
+// 04/11/2026, e il mese di riferimento 10/2026.
+const dataNumerica = (iso) => iso ? iso.split('-').reverse().join('/') : '';
+const meseTesto = (m) => `${m.slice(5)}/${m.slice(0, 4)}`;
 
 async function caricaTessera() {
   const dove = el('tessera');
@@ -3156,7 +3159,7 @@ function disegnaTessera(t) {
     <div class="riga ricevuta">
       <div>
         <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
-        <div class="quando">${esc(r.numero)} · ${dataTesto(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}</div>
+        <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · mese ' + meseTesto(r.mese) : ''}</div>
       </div>
       <button type="button" data-ricevuta="${r.id}">In chat</button>
     </div>`).join('') : '<p class="vuoto">Ancora nessuna ricevuta.</p>';
