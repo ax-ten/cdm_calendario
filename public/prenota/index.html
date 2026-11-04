@@ -4106,7 +4106,7 @@ function disegnaGestione() {
   const dove = el('elenco-gestione');
   const tutti = gestione.dati;
   const senza = tutti.prenotazioni.filter(senzaChiApre);
-  const filtri = [['tutte', 'Tutte', tutti.prenotazioni.length], ['senza-apre', 'Nessuno apre', senza.length]];
+  const filtri = [['tutte', 'Tutte', tutti.prenotazioni.length], ['senza-apre', 'Senza chiavi', senza.length]];
   el('filtro-gestione').hidden = false;
   el('filtro-gestione').innerHTML = filtri.map(([k, nome, n]) =>
     `<button type="button" role="tab" data-filtro-gestione="${k}" aria-selected="${k === gestione.filtro}"${k === 'senza-apre' && n ? ' class="avviso"' : ''}>${nome} · ${n}</button>`).join('');
