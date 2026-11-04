@@ -911,6 +911,11 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .voce:disabled { opacity: .5; cursor: default; }
 #scheda-quota.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .giorno-gestione { margin-top: 22px; }
+#azione.grave { background: var(--pieno); color: #fff; }
+#riepilogo-serie.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
+.riga.data-serie { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 11px 13px; margin-bottom: 6px; }
+.giorno-serie::first-letter { text-transform: uppercase; }
+.nota-serie { color: var(--tenue); font-size: .9rem; margin: 14px 0 18px; }
 .giorno-gestione::first-letter { text-transform: uppercase; }
 .anno-ricevute { display: flex; align-items: center; gap: 12px; padding: 4px 13px 10px;
   font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none; }
@@ -1122,6 +1127,12 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <button type="button" class="indietro" id="chiudi-gestione">‹ Attività</button>
   <h1>Prenotazioni</h1>
   <div id="elenco-gestione" class="vuoto">…</div>
+</section>
+
+<!-- Prima di chiudere un'attivita' periodica, lo staff vede cosa sparisce. -->
+<section class="pannello" id="pannello-serie" hidden>
+  <button type="button" class="indietro" id="chiudi-serie">‹ Prenotazioni</button>
+  <div id="riepilogo-serie" class="vuoto">…</div>
 </section>
 
 <!-- --------------------------------------------------------- inventario -->
@@ -1824,6 +1835,7 @@ function indietro() {
   if (!el('pannello-aggiungi').hidden || !el('pannello-prestiti').hidden) return mostra('inventario');
   if (!el('pannello-ricevute').hidden) return mostra('tessera');
   if (!el('pannello-gestione').hidden) return mostra('mie');
+  if (!el('pannello-serie').hidden) return mostra('gestione');
   if (!el('pannello-quote').hidden) return mostra('tessera');
   if (!el('pannello-quota').hidden) return mostra('quote');
   if (!el('pannello-prenota').hidden) {
@@ -1895,7 +1907,7 @@ el('azione').onclick = () => {
 
 function pulsantePrincipale(testo, attivo) {
   const b = el('azione');
-  b.classList.remove('spento');
+  b.classList.remove('spento', 'grave');
   b.classList.remove('freccia');
   b.removeAttribute('aria-label');
   b.textContent = testo;
@@ -1914,7 +1926,7 @@ const ICONE = {
 // si vede solo con la classe con-etichetta.
 function pulsanteTondo(icona, etichetta, attivo = true, scritta = '') {
   const b = el('azione');
-  b.classList.remove('spento', 'con-etichetta');
+  b.classList.remove('spento', 'con-etichetta', 'grave');
   b.classList.add('freccia');
   b.setAttribute('aria-label', etichetta);
   b.innerHTML = ICONE[icona] +
@@ -1926,6 +1938,7 @@ function pulsanteTondo(icona, etichetta, attivo = true, scritta = '') {
 
 function nascondiAzione() {
   el('azione').hidden = true;
+  el('azione').classList.remove('grave');
   el('azione-a-nome').hidden = true;
   document.body.classList.remove('due-azioni');
 }
@@ -4082,6 +4095,7 @@ async function caricaGestione() {
         ${p.serveApertura ? (p.apre ? `<div class="quando">Apre ${esc(p.apre)}</div>`
           : '<div class="quando ritardo">Nessuno ha ancora detto che apre</div>') : ''}
         <div class="azioni a-destra">
+          ${p.serieId ? `<button type="button" class="grave" data-serie="${esc(p.serieId)}" data-sede="${esc(p.sede)}">Annulla la serie</button>` : ''}
           <button type="button" class="grave" data-annulla="${esc(p.id)}" data-sede="${esc(p.sede)}" data-titolo="${esc(p.titolo)}">${p.fissa ? 'Annulla questa data' : 'Annulla'}</button>
           ${p.serveApertura && !p.apre ? `<button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}">Apro io</button>` : ''}
         </div>
@@ -4107,6 +4121,9 @@ async function caricaGestione() {
   dove.querySelectorAll('[data-apro]').forEach(b => {
     b.onclick = () => agisci(b, 'staff/apro', { sede: b.dataset.sede, eventId: b.dataset.apro }, 'Segnato: apri tu.');
   });
+  dove.querySelectorAll('[data-serie]').forEach(b => {
+    b.onclick = () => apriSerie(b.dataset.sede, b.dataset.serie);
+  });
   dove.querySelectorAll('[data-annulla]').forEach(b => {
     b.onclick = async () => {
       if (!await conferma(`Annullare “${b.dataset.titolo}”? Chi l’ha prenotata riceve un messaggio.`)) return;
@@ -4115,8 +4132,68 @@ async function caricaGestione() {
   });
 }
 
+// Il riepilogo di un'attivita' periodica, prima di chiuderla: cos'e', chi
+// l'ha proposta, quante date spariscono e le prime di queste. Le date
+// passate restano nel calendario. Il pulsante in basso, rosso, la chiude.
+const serieAperta = { sede: null, id: null };
+
+async function apriSerie(sede, serieId) {
+  Object.assign(serieAperta, { sede, id: serieId });
+  mostra('serie');
+  window.scrollTo(0, 0);
+  const dove = el('riepilogo-serie');
+  dove.className = 'vuoto';
+  dove.textContent = 'Carico…';
+  let s;
+  try {
+    ({ serie: s } = await chiama('staff/serie', { sede, serieId }));
+  } catch (err) {
+    dove.textContent = err.message;
+    return;
+  }
+  const giorno = (iso) => new Date(iso).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const righe = [
+    ['Sede', esc(s.sedeNome)],
+    ['Quando', `${esc(s.cadenza)}, ${esc(s.orario)}`],
+    [s.cominciata ? 'Va dal' : 'Comincia il', dataTesto(s.dal)],
+    ...(s.chi ? [['Proposta da', esc(s.chi)]] : []),
+    ['Date che spariscono', s.quante ? `${s.quante} nel prossimo anno` : 'nessuna'],
+  ];
+  dove.className = 'con-pagamento';
+  dove.innerHTML = `
+    <h1>${esc(s.titolo)}</h1>
+    <div class="riepilogo">${righe.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+    ${s.prossime.length ? `<h2>Le prossime</h2>
+      ${s.prossime.map(d => `<div class="riga data-serie"><span class="giorno-serie">${giorno(d.inizio)}</span>${d.apre ? `<span class="quando">apre ${esc(d.apre)}</span>` : ''}</div>`).join('')}
+      ${s.quante > s.prossime.length ? `<p class="nota-pagamento">…e altre ${s.quante - s.prossime.length}.</p>` : ''}` : ''}
+    <p class="nota-serie">${s.cominciata ? 'Le date già passate restano nel calendario: se ne vanno solo quelle da adesso in poi.'
+      : 'Non è ancora cominciata: se ne va tutta.'} Non si torna indietro.</p>
+    ${s.avvisabile ? `<div class="campo">
+      <label for="messaggio-serie">Un messaggio per chi l’ha proposta (facoltativo)</label>
+      <textarea id="messaggio-serie" maxlength="500" placeholder="Per esempio, perché si chiude."></textarea>
+    </div>
+    <p class="nota-pagamento">Riceve comunque un messaggio in chat che dice che l’attività è chiusa.</p>` : ''}`;
+  azionePrincipale = annullaSerie;
+  pulsantePrincipale('Annulla la serie', true);
+  el('azione').classList.add('grave');
+}
+
+async function annullaSerie() {
+  const messaggio = el('messaggio-serie')?.value || '';
+  attesaAzione(true);
+  try {
+    await chiama('staff/annulla-serie', { sede: serieAperta.sede, serieId: serieAperta.id, messaggio });
+    attesaAzione(false);
+    toast('Serie annullata.');
+    mostra('gestione');
+  } catch (err) {
+    attesaAzione(false);
+    lamenta(err.message);
+  }
+}
+
 // ------------------------------------------------------------------ avvio
-const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute', 'gestione', 'quote', 'quota'];
+const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute', 'gestione', 'serie', 'quote', 'quota'];
 
 function mostra(quale) {
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
@@ -4125,13 +4202,13 @@ function mostra(quale) {
   el('azione-a-nome').hidden = true;
   document.body.classList.remove('due-azioni');
   const scheda = quale === 'aggiungi' || quale === 'prestiti' ? 'inventario'
-    : quale === 'mie' || quale === 'gestione' ? 'prenota'
+    : ['mie', 'gestione', 'serie'].includes(quale) ? 'prenota'
     : ['ricevute', 'quote', 'quota'].includes(quale) ? 'tessera' : quale;
   for (const t of ['prenota', 'inventario', 'tessera']) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
-  const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute', 'gestione', 'quote', 'quota'].includes(quale);
+  const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute', 'gestione', 'serie', 'quote', 'quota'].includes(quale);
   if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
   document.body.classList.toggle('in-passi', quale === 'prenota');
   azionePrincipale = quale === 'prenota' ? azionePrenota
@@ -4262,6 +4339,7 @@ async function avvia() {
   el('apri-gestione').hidden = !(info.staff || info.direttivo);
   el('apri-gestione').onclick = () => mostra('gestione');
   el('chiudi-gestione').onclick = () => mostra('mie');
+  el('chiudi-serie').onclick = () => mostra('gestione');
   if (info.bloccato) {
     el('pannello-prenota').querySelectorAll('input, textarea, button')
       .forEach(n => n.disabled = true);

@@ -465,6 +465,39 @@ export async function annullaPrenotazione(auth, calendarId, eventId) {
   await client(auth).events.delete({ calendarId, eventId });
 }
 
+// Le prossime date di una serie, da `da` in poi, quelle saltate escluse.
+export async function prossimeDellaSerie(auth, calendarId, serieId, da, a) {
+  const date = [];
+  let pageToken;
+  do {
+    const { data } = await client(auth).events.instances({
+      calendarId, eventId: serieId, timeMin: da.toISO(), timeMax: a.toISO(), maxResults: 250, pageToken,
+    });
+    date.push(...(data.items || []).filter(ev => ev.status !== 'cancelled' && ev.start?.dateTime));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return date;
+}
+
+// Una serie chiusa dallo staff finisce da `da` in poi: le date passate
+// restano nel calendario, come quello che e' successo davvero. Se la serie
+// non e' ancora cominciata se ne va tutta. Le date toccate a mano (chi apre,
+// un orario spostato) sono eventi a se': se dopo il taglio ne resta
+// qualcuna, si toglie una per una.
+export async function chiudiSerie(auth, calendarId, serieId, da) {
+  const serie = await leggiPrenotazione(auth, calendarId, serieId);
+  if (DateTime.fromISO(serie.start?.dateTime || serie.start?.date) >= da) {
+    await annullaPrenotazione(auth, calendarId, serieId);
+    return;
+  }
+  const fino = da.toUTC().minus({ seconds: 1 }).toFormat("yyyyMMdd'T'HHmmss'Z'");
+  const regole = (serie.recurrence || []).map(r => r.startsWith('RRULE:')
+    ? r.replace(/;(UNTIL|COUNT)=[^;]*/g, '') + `;UNTIL=${fino}` : r);
+  await client(auth).events.patch({ calendarId, eventId: serieId, requestBody: { recurrence: regole } });
+  const restano = await prossimeDellaSerie(auth, calendarId, serieId, da, da.plus({ years: 2 }));
+  for (const ev of restano) await annullaPrenotazione(auth, calendarId, ev.id);
+}
+
 // Chi ha detto "apro io" finisce nell'evento: fra due settimane nessuno si
 // ricorda chi aveva le chiavi, e il messaggio in chat e' gia' scivolato via.
 export async function segnaChiApre(auth, calendarId, eventId, chi) {

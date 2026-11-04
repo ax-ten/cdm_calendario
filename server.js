@@ -1929,6 +1929,7 @@ app.post('/prenota/api/staff/prenotazioni', (req, res) => conUtente(req, res, as
         serveApertura: priv.serve_apertura === 'si',
         apre: priv.apre || null,
         fissa: priv.fissa === 'si' || Boolean(ev.recurringEventId),
+        serieId: ev.recurringEventId || null,
       };
     });
   }));
@@ -1980,6 +1981,78 @@ app.post('/prenota/api/staff/annulla', (req, res) => conUtente(req, res, async (
             `${quando.toFormat('cccc d MMMM')} alle ${quando.toFormat('HH:mm')} ` +
             `a ${SEDI_NOMI.get(sede) || sede}. Per sapere perché, scrivi a ${nomeTelegram(utente)}.`,
     }).catch(err => console.error('annulla staff: messaggio non mandato:', err.message));
+  }
+  res.json({ ok: true });
+}));
+
+// Un'attivita' periodica intera, prima di chiuderla: cos'e', chi l'ha
+// proposta, da quando va e quali date spariranno. Lo staff la guarda in una
+// pagina sua, e solo da li' la chiude.
+const GIORNI_SERIE_DA_MOSTRARE = 365;
+const DATE_SERIE_DA_MOSTRARE = 8;
+
+app.post('/prenota/api/staff/serie', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const { sede, serieId } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId || !serieId) return res.status(400).json({ errore: 'Quale attività?' });
+  const auth = await getAuth();
+  const serie = await prenotazioni.leggiPrenotazione(auth, calendarId, serieId);
+  if (!serie.recurrence?.length || serie.status === 'cancelled') {
+    return res.status(404).json({ errore: 'Questa serie non c’è più.' });
+  }
+  const priv = serie.extendedProperties?.private || {};
+  const zona = 'Europe/Rome';
+  const inizio = DateTime.fromISO(serie.start.dateTime).setZone(zona);
+  const fine = DateTime.fromISO(serie.end.dateTime).setZone(zona);
+  const adesso = DateTime.now().setZone(zona);
+  const prossime = await prenotazioni.prossimeDellaSerie(auth, calendarId, serieId,
+    adesso, adesso.plus({ days: GIORNI_SERIE_DA_MOSTRARE }));
+  res.json({
+    serie: {
+      id: serieId,
+      sede,
+      sedeNome: SEDI_NOMI.get(sede) || sede,
+      titolo: serie.summary || 'senza titolo',
+      cadenza: prenotazioni.testoRicorrenza(priv.ricorrenza || 'settimanale', inizio),
+      orario: `${inizio.toFormat('HH:mm')}–${fine.toFormat('HH:mm')}`,
+      dal: inizio.toISODate(),
+      cominciata: inizio < adesso,
+      chi: priv.richiedente || '',
+      avvisabile: Boolean(priv.telegram_id),
+      quante: prossime.length,
+      prossime: prossime.slice(0, DATE_SERIE_DA_MOSTRARE).map(ev => ({
+        inizio: ev.start.dateTime,
+        apre: ev.extendedProperties?.private?.apre || null,
+      })),
+    },
+  });
+}));
+
+// Chiudere la serie: le date da adesso in poi se ne vanno, quelle passate
+// restano. Chi l'aveva proposta lo sa da un messaggio, con le due righe
+// che lo staff ha voluto aggiungere.
+app.post('/prenota/api/staff/annulla-serie', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloStaff(utente, res)) return;
+  const { sede, serieId } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  if (!calendarId || !serieId) return res.status(400).json({ errore: 'Quale attività?' });
+  const messaggio = String(req.body?.messaggio || '').trim().slice(0, 500);
+  const auth = await getAuthScrittura();
+  const serie = await prenotazioni.leggiPrenotazione(auth, calendarId, serieId);
+  if (!serie.recurrence?.length || serie.status === 'cancelled') {
+    return res.status(404).json({ errore: 'Questa serie non c’è più.' });
+  }
+  await prenotazioni.chiudiSerie(auth, calendarId, serieId, DateTime.now().setZone('Europe/Rome'));
+  const telegramId = serie.extendedProperties?.private?.telegram_id;
+  if (telegramId) {
+    telegram('sendMessage', {
+      chat_id: telegramId,
+      text: `Lo staff ha chiuso l’attività periodica “${serie.summary || 'senza titolo'}” ` +
+            `a ${SEDI_NOMI.get(sede) || sede}: le prossime date non ci sono più.` +
+            (messaggio ? `\n\n${nomeTelegram(utente)} scrive: ${messaggio}`
+              : `\nPer sapere perché, scrivi a ${nomeTelegram(utente)}.`),
+    }).catch(err => console.error('annulla serie: messaggio non mandato:', err.message));
   }
   res.json({ ok: true });
 }));
