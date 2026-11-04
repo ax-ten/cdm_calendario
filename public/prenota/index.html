@@ -3249,7 +3249,7 @@ function disegnaTessera(t) {
   const voci = [
     ['obolo_giornaliero', 'Obolo', euro(t.importi.obolo_giornaliero)],
     ['contributo_mensile', 'Mensilità', euro(t.importi.contributo_mensile)],
-    ['contributo_evento', 'Evento', '3–5 €'],
+    ['contributo_evento', 'Evento', ''],
   ];
   return `
     <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
@@ -3265,7 +3265,7 @@ function disegnaTessera(t) {
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
     <h2>Paga</h2>
     <div class="voci">${voci.map(([k, nome, prezzo]) =>
-      `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"><b>${nome}</b><span>${prezzo}</span>${ICONE_VOCI[k]}</button>`).join('')}</div>
+      `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
     <div id="dettaglio-pagamento"></div>
     <h2>Spese ${t.anno}</h2>
     ${spese}
