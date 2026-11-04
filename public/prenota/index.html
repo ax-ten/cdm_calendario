@@ -860,6 +860,14 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 /* Il calendario del telefono si apre toccando "Altro giorno": il campo data
    e' invisibile sopra la scritta. */
 .scelta-data input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.eventi-pagabili { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 16px; }
+.evento-pagabile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 12px 14px; border-radius: 12px; background: var(--scheda); border: 1.5px solid transparent;
+  color: var(--testo); font: inherit; text-align: left; cursor: pointer; }
+.evento-pagabile b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evento-pagabile span { color: var(--tenue); font-size: .86rem; white-space: nowrap; }
+.evento-pagabile[aria-pressed="true"] { border-color: var(--accento);
+  background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
 .contatore { display: inline-flex; align-items: center; gap: 14px; background: var(--scheda);
   border-radius: 999px; padding: 4px; margin: 8px 0 16px; }
 .contatore button { width: 40px; height: 40px; border-radius: 50%; border: 0; font-size: 1.2rem; cursor: pointer;
@@ -3289,7 +3297,8 @@ const ICONE_VOCI = {
   contributo_evento: icona('M232,104a8,8,0,0,0,8-8V64a16,16,0,0,0-16-16H32A16,16,0,0,0,16,64V96a8,8,0,0,0,8,8,24,24,0,0,1,0,48,8,8,0,0,0-8,8v32a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V160a8,8,0,0,0-8-8,24,24,0,0,1,0-48ZM32,167.2a40,40,0,0,0,0-78.4V64H88V192H32Zm192,0V192H104V64H224V88.8a40,40,0,0,0,0,78.4Z'),
 };
 
-const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: 3 };
+const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: 3,
+               eventi: null, eventoScelto: null };
 const PAGAMENTO_ATTIVO = false;
 const isoLocale = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -3300,7 +3309,9 @@ function collegaTessera(dove) {
     b.onclick = () => {
       const v = b.dataset.voce;
       Object.assign(tess, { voce: tess.voce === v ? null : v, giorno: null, data: '',
-                            modoMesi: null, mesi: new Set(), evento: tess.dati.importi.contributo_evento });
+                            modoMesi: null, mesi: new Set(), evento: tess.dati.importi.contributo_evento,
+                            eventoScelto: null });
+      preseleziona();
       disegnaPagamento();
     };
   });
@@ -3311,11 +3322,51 @@ function meseCorrente() {
   return isoLocale(new Date()).slice(0, 7);
 }
 
+// I giorni con l'obolo gia' pagato: non si ripropongono.
+function oboliPagati() {
+  return new Set(tess.dati.ricevute.filter(r => r.codice === 'obolo_giornaliero').map(r => r.data));
+}
+
+// La scelta piu' probabile e' gia' fatta: l'obolo di oggi, la mensilita' di
+// questo mese, l'evento piu' recente. Nel caso normale bastano due tocchi.
+function preseleziona() {
+  const oggi = isoLocale(new Date());
+  if (tess.voce === 'obolo_giornaliero' && !oboliPagati().has(oggi)) {
+    tess.giorno = 'oggi'; tess.data = oggi;
+  }
+  if (tess.voce === 'contributo_mensile') {
+    const questo = meseCorrente();
+    if (tess.dati.mensilita.includes(questo)) tess.modoMesi = 'scegli';
+    else { tess.modoMesi = 'questo'; tess.mesi = new Set([questo]); }
+  }
+  if (tess.voce === 'contributo_evento') caricaEventi();
+}
+
+async function caricaEventi() {
+  if (!tess.eventi) {
+    try {
+      tess.eventi = (await chiama('tessera/eventi')).eventi;
+    } catch {
+      tess.eventi = [];
+    }
+  }
+  if (tess.voce !== 'contributo_evento') return;
+  if (!tess.eventoScelto && tess.eventi[0]?.inizio.slice(0, 10) === isoLocale(new Date())) {
+    tess.eventoScelto = tess.eventi[0];
+  }
+  disegnaPagamento();
+}
+
+const giornoBreve = (iso) => {
+  const d = new Date(iso);
+  return `${['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][d.getDay()]} ${d.getDate()}`;
+};
+
 function totalePagamento() {
   const i = tess.dati.importi;
   switch (tess.voce) {
     case 'obolo_giornaliero': return tess.giorno ? i.obolo_giornaliero : 0;
-    case 'contributo_evento': return tess.giorno ? tess.evento : 0;
+    case 'contributo_evento': return tess.eventoScelto ? tess.evento : 0;
     case 'contributo_mensile': return tess.mesi.size * i.contributo_mensile;
     default: return 0;
   }
@@ -3329,17 +3380,33 @@ function disegnaPagamento() {
   const d = el('dettaglio-pagamento');
   if (!v) { d.innerHTML = ''; nascondiAzione(); return; }
   let html = '';
-  if (v === 'obolo_giornaliero' || v === 'contributo_evento') {
+  if (v === 'obolo_giornaliero') {
     const oggi = new Date();
     const ieri = new Date(oggi); ieri.setDate(oggi.getDate() - 1);
+    const pagati = oboliPagati();
+    const giorno = (d, nome, etichetta) => {
+      const pagato = pagati.has(isoLocale(d));
+      return `<button type="button" data-giorno="${isoLocale(d)}" data-nome="${nome}" aria-pressed="${tess.giorno === nome}" ${pagato ? 'disabled' : ''}>${etichetta}${pagato ? ' · già pagato' : ''}</button>`;
+    };
     html += `<p class="domanda">Per che giorno?</p>
       <div class="scelte">
-        <button type="button" data-giorno="${isoLocale(oggi)}" aria-pressed="${tess.giorno === 'oggi'}" data-nome="oggi">Oggi</button>
-        <button type="button" data-giorno="${isoLocale(ieri)}" aria-pressed="${tess.giorno === 'ieri'}" data-nome="ieri">Ieri</button>
+        ${giorno(oggi, 'oggi', 'Oggi')}
+        ${giorno(ieri, 'ieri', 'Ieri')}
         <label class="scelta-data" aria-pressed="${tess.giorno === 'data'}">${tess.giorno === 'data' ? dataNumerica(tess.data) : 'Altro giorno'}
           <input type="date" id="data-pagamento" max="${isoLocale(oggi)}" value="${tess.data}"></label>
       </div>`;
-    if (v === 'contributo_evento') {
+  }
+  if (v === 'contributo_evento') {
+    html += '<p class="domanda">Quale evento?</p>';
+    if (!tess.eventi) html += '<p class="nota-pagamento">Carico gli eventi…</p>';
+    else if (!tess.eventi.length) html += '<p class="nota-pagamento">Nessun evento negli ultimi sette giorni.</p>';
+    else {
+      html += `<div class="eventi-pagabili">${tess.eventi.slice(0, 8).map(e => `
+        <button type="button" class="evento-pagabile" data-evento-id="${esc(e.id)}" aria-pressed="${tess.eventoScelto?.id === e.id}">
+          <b>${esc(e.titolo)}</b><span>${giornoBreve(e.inizio)} · ${esc(e.sede)}</span>
+        </button>`).join('')}</div>`;
+    }
+    if (tess.eventoScelto) {
       html += `<p class="domanda">Quanto?</p>
         <div class="contatore"><button type="button" data-evento="-1" aria-label="Meno">−</button><b>${euro(tess.evento)}</b><button type="button" data-evento="1" aria-label="Più">+</button></div>`;
     }
@@ -3369,8 +3436,16 @@ function disegnaPagamento() {
   const campoData = d.querySelector('#data-pagamento');
   if (campoData) campoData.onchange = () => {
     if (!campoData.value) return;
+    if (oboliPagati().has(campoData.value)) return toast(`L’obolo del ${dataNumerica(campoData.value)} è già pagato.`, false);
     tess.giorno = 'data'; tess.data = campoData.value; disegnaPagamento();
   };
+  d.querySelectorAll('[data-evento-id]').forEach(b => {
+    b.onclick = () => {
+      const e = tess.eventi.find(x => x.id === b.dataset.eventoId);
+      tess.eventoScelto = tess.eventoScelto?.id === e.id ? null : e;
+      disegnaPagamento();
+    };
+  });
   d.querySelectorAll('[data-evento]').forEach(b => {
     b.onclick = () => { tess.evento = Math.min(5, Math.max(3, tess.evento + Number(b.dataset.evento))); disegnaPagamento(); };
   });

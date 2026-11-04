@@ -1665,6 +1665,31 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
   res.json({ ok: true, mandate });
 }));
 
+// Gli eventi da pagare: quelli in calendario da una settimana fa a stasera,
+// in tutte le sedi. Il contributo di un evento si paga dopo esserci stati,
+// quindi niente eventi futuri.
+const GIORNI_EVENTI = 7;
+app.post('/prenota/api/tessera/eventi', (req, res) => conUtente(req, res, async () => {
+  const adesso = DateTime.now().setZone('Europe/Rome');
+  const auth = await getAuth();
+  const perCalendario = await Promise.all(CALENDARI.map(async (c) => {
+    const { data } = await google.calendar({ version: 'v3', auth }).events.list({
+      calendarId: c.id,
+      singleEvents: true,
+      orderBy: 'startTime',
+      timeMin: adesso.minus({ days: GIORNI_EVENTI }).startOf('day').toISO(),
+      timeMax: adesso.endOf('day').toISO(),
+      maxResults: 100,
+    });
+    return (data.items || [])
+      .filter(ev => ev.start?.dateTime)
+      .map(ev => ({ id: ev.id, sede: SEDI_NOMI.get(c.sede) || c.sede,
+                    titolo: ev.summary || 'senza titolo', inizio: ev.start.dateTime }));
+  }));
+  // Dal piu' recente: di solito si paga l'evento di stasera.
+  res.json({ eventi: perCalendario.flat().sort((a, b) => b.inizio.localeCompare(a.inizio)) });
+}));
+
 // Chi non e' sociə chiede il tesseramento dall'app. La quota si paga in
 // sede; il direttivo, quando l'ha vista, sceglie con che metodo e la
 // scheda nasce con la sua ricevuta. Finche' e' in prova, solo col link debug.
