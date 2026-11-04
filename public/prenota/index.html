@@ -857,7 +857,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .spese-totale { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
 .spesa { display: flex; justify-content: space-between; color: var(--tenue); font-size: .92rem; padding: 3px 0; }
 .spesa b { color: var(--testo); font-weight: 600; }
-/* "Le mie ricevute" sta sulla riga del titolo Paga, a destra, come link. */
+/* "Le mie ricevute" sta sulla riga del titolo Contribuisci, a destra, come link. */
 .titolo-con-link { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .titolo-con-link .link { font-size: .92rem; white-space: nowrap; }
 .voci { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -3466,7 +3466,7 @@ function disegnaTessera(t) {
     <div class="mensilita">${MESI_BREVI.map((m, i) =>
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}${pagati.has(i + 1) ? ': pagato' : ''}">${m}</span>`).join('')}</div>
     <div class="titolo-con-link">
-      <h2>Paga</h2>
+      <h2>Contribuisci</h2>
       <button type="button" class="link" id="vai-ricevute">Le mie ricevute ›</button>
     </div>
     <div class="voci">${voci.map(([k, nome, prezzo]) =>
