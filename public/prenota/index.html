@@ -833,8 +833,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .spese-totale { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
 .spesa { display: flex; justify-content: space-between; color: var(--tenue); font-size: .92rem; padding: 3px 0; }
 .spesa b { color: var(--testo); font-weight: 600; }
-button.vai-ricevute { width: 100%; display: flex; justify-content: space-between; align-items: center;
-  border: 0; color: var(--testo); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+/* "Le mie ricevute" sta sulla riga del titolo Paga, a destra, come link. */
+.titolo-con-link { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.titolo-con-link .link { font-size: .92rem; white-space: nowrap; }
 .voci { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
 .voce { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column;
   align-items: flex-start; gap: 2px; padding: 14px 12px;
@@ -847,9 +848,8 @@ button.vai-ricevute { width: 100%; display: flex; justify-content: space-between
 .voce[aria-pressed="true"] .voce-icona { color: var(--accento); opacity: .45; }
 .voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
 #dettaglio-pagamento:not(:empty) { margin-bottom: 18px; }
-/* "Ricevute" e' l'ultima cosa della tessera: lo spazio sotto lascia
-   posto al pulsante Paga quando compare. */
-button.vai-ricevute { margin: 8px 0 calc(var(--azione) + 24px); }
+/* Lo spazio sotto la tessera lascia posto al pulsante Paga quando compare. */
+#tessera:not(.vuoto) { padding-bottom: calc(var(--azione) + 24px); }
 .domanda { margin: 4px 0 0; font-weight: 600; }
 .scelte { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
 .scelte button, .scelta-data { position: relative; padding: 10px 16px; border-radius: 999px; background: none;
@@ -1253,7 +1253,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 
 <section class="pannello" id="pannello-ricevute" hidden>
   <button type="button" class="indietro" id="chiudi-ricevute">‹ Tessera</button>
-  <h1>Ricevute</h1>
+  <h1>Le mie ricevute</h1>
   <div id="lista-ricevute"></div>
 </section>
 
@@ -3229,10 +3229,20 @@ function disegnaRicevute(t) {
   return ricevute;
 }
 
+// In cima alla pagina delle ricevute, quanto si e' speso quest'anno.
+function disegnaSpese(t) {
+  const totale = t.spese.reduce((n, s) => n + s.totale, 0);
+  return `<h2>Spese ${t.anno}</h2>` + (t.spese.length ? `
+    <div class="spese">
+      <div class="spese-totale">${euro(totale)}</div>
+      ${t.spese.map(s => `<div class="spesa"><span>${esc(s.tipo)}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
+    </div>` : '<p class="nota-pagamento">Ancora niente quest’anno.</p>');
+}
+
 function apriRicevute() {
   mostra('ricevute');
   const dove = el('lista-ricevute');
-  dove.innerHTML = disegnaRicevute(tess.dati);
+  dove.innerHTML = disegnaSpese(tess.dati) + '<h2>Ricevute</h2>' + disegnaRicevute(tess.dati);
   collegaRicevute(dove);
   window.scrollTo(0, 0);
 }
@@ -3240,12 +3250,6 @@ function apriRicevute() {
 function disegnaTessera(t) {
   const pagati = new Set(t.mensilita.map(m => Number(m.slice(5))));
   const adesso = new Date().getMonth() + 1;
-  const totale = t.spese.reduce((n, s) => n + s.totale, 0);
-  const spese = t.spese.length ? `
-    <div class="spese">
-      <div class="spese-totale">${euro(totale)}</div>
-      ${t.spese.map(s => `<div class="spesa"><span>${esc(s.tipo)}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
-    </div>` : '<p class="nota-pagamento">Ancora niente quest’anno.</p>';
   const voci = [
     ['obolo_giornaliero', 'Obolo', euro(t.importi.obolo_giornaliero)],
     ['contributo_mensile', 'Mensilità', euro(t.importi.contributo_mensile)],
@@ -3263,15 +3267,13 @@ function disegnaTessera(t) {
     <h2>Mensilità ${t.anno}</h2>
     <div class="mensilita">${MESI_BREVI.map((m, i) =>
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m}</span>`).join('')}</div>
-    <h2>Paga</h2>
+    <div class="titolo-con-link">
+      <h2>Paga</h2>
+      <button type="button" class="link" id="vai-ricevute">Le mie ricevute ›</button>
+    </div>
     <div class="voci">${voci.map(([k, nome, prezzo]) =>
       `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
-    <div id="dettaglio-pagamento"></div>
-    <h2>Spese ${t.anno}</h2>
-    ${spese}
-    <button type="button" class="riga vai-ricevute" id="vai-ricevute">
-      <span>Ricevute</span><span class="quando">${t.ricevute.length} ›</span>
-    </button>`;
+    <div id="dettaglio-pagamento"></div>`;
 }
 
 // ---------------------------------------------------------------- pagare
