@@ -456,6 +456,29 @@ export async function saltaIstanza(auth, calendarId, istanzaId) {
   await client(auth).events.delete({ calendarId, eventId: istanzaId });
 }
 
+// Sposta una sola data di una serie (o una prenotazione singola): cambia
+// giorno, ora e, se serve, sede. Si modifica l'istanza, non la serie, cosi'
+// le altre date restano dove sono. Cambiando sede l'evento passa al calendario
+// della nuova sede: da quel momento e' una data a se'.
+export async function spostaIstanza(auth, { da, nuova, eventId, inizio, fine }) {
+  const api = client(auth);
+  let calendarId = da;
+  let id = eventId;
+  if (nuova !== da) {
+    const { data } = await api.events.move({ calendarId: da, eventId, destination: nuova });
+    calendarId = nuova;
+    id = data.id;
+  }
+  await api.events.patch({
+    calendarId,
+    eventId: id,
+    requestBody: {
+      start: { dateTime: inizio.toISO(), timeZone: 'Europe/Rome' },
+      end: { dateTime: fine.toISO(), timeZone: 'Europe/Rome' },
+    },
+  });
+}
+
 export async function leggiPrenotazione(auth, calendarId, eventId) {
   const { data } = await client(auth).events.get({ calendarId, eventId });
   return data;

@@ -2086,7 +2086,8 @@ function aggiornaEsito() {
     dove.innerHTML = '';
   }
   stato.fasciaLibera = libero;
-  abilita(Boolean(libero && stato.categoria && el('titolo').value.trim()));
+  // Spostando una data il nome e la categoria ci sono gia': basta l'orario.
+  abilita(Boolean(libero && (stato.spostando || (stato.categoria && el('titolo').value.trim()))));
 }
 
 // ------------------------------------------------------------------ passi
@@ -2098,15 +2099,24 @@ const PASSI = [
 ];
 stato.passo = 1;
 
+// Spostare una data non chiede di nuovo nome e categoria: restano quelli.
+// Il passo 3 si salta, avanti e indietro, e la barra conta tre passi invece di quattro.
 function vaiAPasso(n) {
-  stato.passo = Math.min(Math.max(n, 1), PASSI.length);
+  const prima = stato.passo;
+  let dove = Math.min(Math.max(n, 1), PASSI.length);
+  if (stato.spostando && dove === 3) dove = prima < 3 ? 4 : 2;
+  stato.passo = dove;
+  const totale = stato.spostando ? 3 : PASSI.length;
+  const numero = stato.spostando && stato.passo === 4 ? 3 : stato.passo;
   document.querySelectorAll('#pannello-prenota .passo').forEach(p => {
     p.hidden = Number(p.dataset.passo) !== stato.passo;
   });
   el('dopo-giorno').hidden = !stato.giorno;
-  el('avanzamento-pieno').style.width = `${stato.passo / PASSI.length * 100}%`;
-  el('avanzamento').setAttribute('aria-valuenow', String(stato.passo));
-  el('avanzamento').setAttribute('aria-valuetext', `Passo ${stato.passo} di ${PASSI.length}`);
+  el('apertura').closest('.campo').hidden = Boolean(stato.spostando);
+  el('fissa').closest('.campo').hidden = Boolean(stato.spostando);
+  el('avanzamento-pieno').style.width = `${numero / totale * 100}%`;
+  el('avanzamento').setAttribute('aria-valuenow', String(numero));
+  el('avanzamento').setAttribute('aria-valuetext', `Passo ${numero} di ${totale}`);
   el('titolo-passo').textContent = PASSI[stato.passo - 1].titolo;
   if (stato.passo === PASSI.length) disegnaRiepilogo();
   window.scrollTo(0, 0);
@@ -2149,12 +2159,31 @@ function indietro() {
 // Da Le tue prenotazioni si comincia una prenotazione nuova.
 function nuovaPrenotazione() {
   if (stato.bloccato || stato.senzaTessera) return;
+  stato.spostando = null;
   stato.passo = 1;
   mostra('prenota');
   vaiAPasso(1);
 }
 
+// Modifica la data di una data di serie: si parte dal calendario della sede
+// della data, con la stessa scelta di giorno e orario di una prenotazione nuova.
+// Si puo' cambiare anche sede, che qui e' la stanza.
+function apriSposta(sede, id, nome) {
+  if (stato.bloccato || stato.senzaTessera) return;
+  stato.spostando = { sede, id, nome };
+  stato.sede = sede;
+  stato.giorno = null;
+  Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+  el('sedi').querySelectorAll('button')
+    .forEach(x => x.setAttribute('aria-pressed', String(x.dataset.slug === sede)));
+  mostra('prenota');
+  stato.passo = 1;
+  vaiAPasso(2);
+  caricaMese();
+}
+
 function disegnaRiepilogo() {
+  if (stato.spostando) return disegnaRiepilogoSposta();
   const sede = (stato.sediInfo || []).find(x => x.slug === stato.sede);
   const categoria = (stato.categorieInfo || []).find(c => c.slug === stato.categoria);
   const giorno = new Date(stato.giorno + 'T12:00')
@@ -2174,6 +2203,21 @@ function disegnaRiepilogo() {
       ? '<p>Essendo ricorrente, lo staff della sede deve approvarla: ti scrivo appena decide.</p>' : '');
 }
 
+function disegnaRiepilogoSposta() {
+  const sede = (stato.sediInfo || []).find(x => x.slug === stato.sede);
+  const giorno = new Date(stato.giorno + 'T12:00')
+    .toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const righe = [
+    ['Attività', stato.spostando.nome || ''],
+    ['Sede', sede ? sede.nome : stato.sede],
+    ['Giorno', giorno],
+    ['Orario', `${oraTesto(stato.daOra)}-${oraTesto(stato.aOra)}`],
+  ];
+  el('riepilogo').innerHTML = righe.map(([k, v]) =>
+    `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('') +
+    '<p>Cambia solo questa data: le altre restano come sono.</p>';
+}
+
 // Fino al penultimo passo non c'e' un pulsante Avanti: si va avanti
 // compilando. La freccia, piccola a destra, compare quando il passo e' gia'
 // completo (per esempio tornando indietro), e all'ultimo c'e' Prenota.
@@ -2181,7 +2225,7 @@ function abilita(si) {
   stato.prenotabile = si;
   if (el('pannello-prenota').hidden) return;
   if (stato.passo === PASSI.length) {
-    pulsantePrincipale(el('fissa').checked ? 'Chiedi allo staff' : 'Prenota', si);
+    pulsantePrincipale(stato.spostando ? 'Sposta' : el('fissa').checked ? 'Chiedi allo staff' : 'Prenota', si);
   } else {
     // La freccia c'e' sempre: spenta finche' il passo non e' completo, e se la
     // si tocca lo stesso dice cosa manca.
@@ -2396,7 +2440,33 @@ function aggiornaSerie() {
 
 
 // ---------------------------------------------------------------- prenota
+async function sposta() {
+  if (!stato.prenotabile) return;
+  attesaAzione(true);
+  try {
+    await chiama('sposta', {
+      sede: stato.spostando.sede,
+      eventId: stato.spostando.id,
+      nuovaSede: stato.sede,
+      data: stato.giorno,
+      oraInizio: stato.daOra,
+      oraFine: stato.aOra,
+    });
+    tg?.HapticFeedback?.notificationOccurred('success');
+    toast('Data spostata.');
+    stato.spostando = null;
+    Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+    stato.passo = 1;
+    mostra('mie');
+  } catch (err) {
+    lamenta(err.message);
+  } finally {
+    attesaAzione(false);
+  }
+}
+
 async function prenota() {
+  if (stato.spostando) return sposta();
   if (!stato.prenotabile) return;
   const titolo = el('titolo').value.trim();
   if (!titolo) {
@@ -2513,6 +2583,9 @@ async function caricaMie() {
         ${p.fissa ? '' : `<div class="azioni sinistra">
           <button class="conferma" data-pieno data-icona="ricorrente" data-sede="${p.sede}" data-id="${p.id}" data-cosa="settimanale">Rendi ricorrente</button>
         </div>`}
+        ${p.fissa ? `<div class="azioni sinistra">
+          <button class="conferma" data-pieno data-icona="modifica" data-sede="${p.sede}" data-id="${p.id}" data-nome="${esc(p.nome || '')}" data-cosa="sposta">Modifica la data</button>
+        </div>` : ''}
         ${p.fissa && p.serieId ? `<div class="azioni solo-menu" hidden>
           <button class="grave" data-icona="elimina" data-sede="${p.sede}" data-id="${p.serieId}" data-cosa="serie">Elimina la serie</button>
         </div>` : ''}
@@ -2520,7 +2593,9 @@ async function caricaMie() {
     dove.querySelectorAll('button').forEach(b => {
       b.onclick = b.dataset.cosa === 'settimanale'
         ? () => rendiSettimanale(b.dataset.sede, b.dataset.id, b)
-        : () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
+        : b.dataset.cosa === 'sposta'
+          ? () => apriSposta(b.dataset.sede, b.dataset.id, b.dataset.nome)
+          : () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
     });
     collegaAvvisoTessera(dove);
     scorrevoli(dove, '.riga', { tocco: menuDellaRiga, menu: menuDellaRiga });
@@ -5851,6 +5926,7 @@ const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tesse
 
 function mostra(quale) {
   chiudiMenuRiga();
+  if (quale !== 'prenota') stato.spostando = null;
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
   // "Segna come prestato" e' del bene scelto in biblioteca: cambiando scheda
   // se ne va, e il pulsante grande torna da solo a tutta larghezza.

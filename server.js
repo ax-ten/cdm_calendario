@@ -1192,6 +1192,44 @@ function noteDallEvento(descrizione) {
 // altre, e quelle le decide lo staff: stessa richiesta, stessi due pulsanti,
 // stesso percorso. L'evento di partenza resta dov'e' finche' non si approva,
 // se no chi chiede rischia di perdere anche la settimana che aveva gia'.
+// Modifica la data di una prenotazione o di una data di serie: giorno, ora e
+// sede. Stessi limiti della prenotazione normale e stessi controlli sulla
+// sovrapposizione: la pagina e' riscrivibile, quindi si rifanno qui.
+app.post('/prenota/api/sposta', (req, res) => conUtente(req, res, async (utente) => {
+  const { sede, eventId, nuovaSede, data, oraInizio, oraFine } = req.body || {};
+  const calendarId = calendarioDi(sede);
+  const nuovoCalendario = calendarioDi(nuovaSede || sede);
+  if (!calendarId || !nuovoCalendario) return res.status(400).json({ errore: 'Sede sconosciuta.' });
+  if (prenotazioni.eBloccato(utente.id)) {
+    return res.status(403).json({ errore: 'Lo staff ha sospeso le tue attività.' });
+  }
+  if (senzaTessera(utente)) return res.status(403).json({ errore: TESTO_SENZA_TESSERA });
+
+  const guai = prenotazioni.validaRichiesta({ data, oraInizio, oraFine });
+  if (guai.length) return res.status(400).json({ errore: guai.join('; ') });
+
+  const auth = await getAuth();
+  const evento = await prenotazioni.leggiPrenotazione(auth, calendarId, eventId);
+  const proprietario = evento.extendedProperties?.private?.telegram_id;
+  if (proprietario !== utente.id && !(await eStaff(utente.id))) {
+    return res.status(403).json({ errore: 'Non è una tua attività.' });
+  }
+
+  const { inizio, fine } = prenotazioni.estremi(data, oraInizio, oraFine);
+  // L'occorrenza che si sposta non conta fra le sovrapposte: se resta nella
+  // stessa sede, puo' anche stare in parte dov'era.
+  const sovrapposti = (await prenotazioni.occupazione(auth, nuovoCalendario, inizio, fine))
+    .filter(ev => !(nuovoCalendario === calendarId && ev.id === eventId));
+  if (sovrapposti.length >= prenotazioni.MAX_CONTEMPORANEI) {
+    return res.status(409).json({ errore: 'In quelle ore ci sono già due attività.' });
+  }
+
+  await prenotazioni.spostaIstanza(await getAuthScrittura(), {
+    da: calendarId, nuova: nuovoCalendario, eventId, inizio, fine,
+  });
+  res.json({ ok: true });
+}));
+
 app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (utente) => {
   const { sede, eventId } = req.body || {};
   const calendarId = calendarioDi(sede);
