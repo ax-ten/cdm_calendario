@@ -938,7 +938,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .socio-quota { display: flex; align-items: center; gap: 12px; padding: 10px 13px; }
 .numero-tessera { flex: 0 0 2.4em; text-align: right; color: var(--tenue); font-variant-numeric: tabular-nums; }
 .socio-nome { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stellina { font-size: .85em; margin-left: 2px; }
+.stellina { font-size: .85em; }
 .stellina.direttivo { color: #f2c14e; }
 .stellina.staff { color: #7cc4ff; }
 .tessera-nome .stellina.staff { color: #cfe9ff; }
@@ -3746,7 +3746,7 @@ function disegnaTessera(t) {
     <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
       <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${t.anno}</span></div>
       <div class="tessera-piede">
-        <div class="tessera-nome">${esc(t.nome)}${stellina(stato.ruolo)}</div>
+        <div class="tessera-nome">${stellina(stato.ruolo)}${esc(t.nome)}</div>
         <div class="tessera-dati">${[t.numero_socio && t.tesserato ? `Tessera n. ${esc(t.numero_socio)}` : '', t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</div>
       </div>
     </div>
@@ -4183,8 +4183,9 @@ async function caricaQuote() {
 // sotto. Il menu del mese mostra chi ha pagato quel mese.
 // La stellina accanto al nome: oro per il direttivo, azzurra per lo staff.
 const RUOLI = { direttivo: 'Direttivo', staff: 'Staff' };
+// Sta a sinistra del nome.
 const stellina = (ruolo) => RUOLI[ruolo]
-  ? ` <span class="stellina ${ruolo}" title="${RUOLI[ruolo]}" aria-label="${RUOLI[ruolo]}">★</span>` : '';
+  ? `<span class="stellina ${ruolo}" title="${RUOLI[ruolo]}" aria-label="${RUOLI[ruolo]}">★</span> ` : '';
 
 const ORDINI_QUOTE = {
   nome: (a, b) => String(a.nome).localeCompare(String(b.nome), 'it'),
@@ -4220,7 +4221,7 @@ function disegnaQuote() {
   el('riepilogo-quote').textContent = riepilogo;
   if (quo.soci.some(s => RUOLI[s.ruolo])) {
     el('riepilogo-quote').insertAdjacentHTML('beforeend',
-      `<span class="legenda-stelline">${stellina('direttivo')} direttivo ${stellina('staff')} staff</span>`);
+      `<span class="legenda-stelline">${stellina('direttivo')}direttivo &nbsp;${stellina('staff')}staff</span>`);
   }
 
   const t = quo.testo;
@@ -4238,7 +4239,7 @@ function disegnaQuote() {
   dove.innerHTML = lista.map(s => `
     <div class="riga socio-quota${s.tesserato ? '' : ' senza-tessera'}" role="button" tabindex="0" data-socio="${s.id}">
       <span class="numero-tessera" title="${s.tesserato && s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza tessera ' + quo.anno}">${s.tesserato && s.numero_socio ? esc(s.numero_socio) : ''}</span>
-      <span class="socio-nome">${esc(s.nome)}${stellina(s.ruolo)}${s.tesserato ? '' : `<small>senza tessera ${quo.anno}</small>`}</span>
+      <span class="socio-nome">${stellina(s.ruolo)}${esc(s.nome)}${s.tesserato ? '' : `<small>senza tessera ${quo.anno}</small>`}</span>
       <span class="mesi-mini" aria-label="Mensilità pagate: ${s.mensilita.length} su 12">${MESI_BREVI.map((m, i) =>
         `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</span>
     </div>`).join('');
@@ -4387,7 +4388,7 @@ function disegnaQuota() {
   const ricevute = (t.ricevute || []).filter(r => String(r.data).startsWith(String(t.anno)));
   dove.className = 'con-pagamento';
   dove.innerHTML = `
-    <h1 class="nome-quota">${esc(t.nome)}${stellina(quo.soci?.find(s => s.id === t.id)?.ruolo)}</h1>
+    <h1 class="nome-quota">${stellina(quo.soci?.find(s => s.id === t.id)?.ruolo)}${esc(t.nome)}</h1>
     <p class="quando-quota">${[t.numero_socio && t.tesserato ? `Tessera n. ${esc(t.numero_socio)}` : `Senza tessera ${t.anno}`, t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</p>
     ${t.tesserato ? '' : `<p class="tessera-avviso">Tessera ${t.anno} da rinnovare: la prima mensilità vale anche come tesseramento.</p>`}
     <div id="mesi-pagati-quota">
