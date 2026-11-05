@@ -784,8 +784,11 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
 #foglio-a-nome h2 { margin: 0 0 4px; }
 #foglio-a-nome .spiega { margin: 0 0 12px; }
+/* Nel foglio del prestito l'elenco e' gia' aperto e prende meta' schermo. */
+#foglio-a-nome .suggerimenti-soci { height: 50vh; max-height: 50vh; }
 .aiuto-foglio { font-size: .82rem; color: var(--tenue); margin: 8px 0 14px; }
 .suggerimenti-soci { margin-top: 6px; max-height: 34vh; overflow-y: auto; border-radius: 12px;
+  overscroll-behavior: contain;
   background: var(--scheda); animation: entra .14s ease-out; }
 .suggerimenti-soci[hidden] { display: none; }
 .suggerimenti-soci button { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
@@ -2972,6 +2975,7 @@ function apriPrestatoA(beneId) {
   el('a-nome-titolo').textContent = `“${b.titolo}”, a ${b.sede}.`;
   el('a-nome').value = '';
   mostraSuggerimentiSoci([]);
+  cercaSociANome(0);
   el('a-nome-conferma').disabled = false;
   el('foglio-a-nome').hidden = false;
   setTimeout(() => el('a-nome').focus(), 50);
@@ -2991,7 +2995,7 @@ function mostraSuggerimentiSoci(soci) {
   const dove = el('a-nome-soci');
   dove.innerHTML = soci.map((s, i) => `
     <button type="button" role="option" id="a-nome-soci-${i}" data-indice="${i}" aria-selected="false">
-      <b>${esc(s.nome)}</b><span>${s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : ''}</span>
+      <b>${esc(s.nome)}</b><span>${s.numero_socio ? '#' + esc(s.numero_socio) : ''}</span>
     </button>`).join('');
   dove.hidden = !soci.length;
   el('a-nome').setAttribute('aria-expanded', String(Boolean(soci.length)));
@@ -3023,13 +3027,14 @@ function evidenziaSocio(i) {
   el('a-nome').setAttribute('aria-activedescendant', bottoni[aNome.evidenziato].id);
 }
 
-el('a-nome').addEventListener('input', () => {
+// L'elenco e' aperto da subito, a meta' schermo: con il campo vuoto ci sono
+// i nomi in ordine, e si puo' scorrere e toccare senza scrivere niente.
+function cercaSociANome(attesa = 250) {
   clearTimeout(aNome.attesa);
   const testo = el('a-nome').value.trim();
   if (aNome.scelto && aNome.scelto.nome !== testo) aNome.scelto = null;
   // Le risposte che arrivano dopo una lettera nuova non valgono piu'.
   const giro = ++aNome.giro;
-  if (!testo) return mostraSuggerimentiSoci([]);
   aNome.attesa = setTimeout(async () => {
     try {
       const { soci } = await chiama('inventario/admin/soci', { testo });
@@ -3037,8 +3042,9 @@ el('a-nome').addEventListener('input', () => {
       // Gia' scelto e uguale: non c'e' niente da riproporre.
       mostraSuggerimentiSoci(aNome.scelto ? [] : soci);
     } catch { /* i suggerimenti sono un aiuto: se non arrivano si scrive */ }
-  }, 250);
-});
+  }, attesa);
+}
+el('a-nome').addEventListener('input', () => cercaSociANome());
 el('a-nome').addEventListener('keydown', (e) => {
   if (el('a-nome-soci').hidden) return;
   if (e.key === 'ArrowDown') { e.preventDefault(); evidenziaSocio(aNome.evidenziato + 1); }
@@ -4734,7 +4740,7 @@ function collegaCercaIncasso() {
     lista.innerHTML = voci.map((s, i) => `
       <button type="button" role="option" id="incasso-${i}" data-indice="${i}" aria-selected="${i === 0}">
         <b>${esc(s.nome)}</b><span class="${s.tesserato ? '' : 'senza-tessera'}">${s.tesserato
-          ? (s.numero_socio ? `Tessera n. ${esc(s.numero_socio)}` : 'Tessera ' + anno) : `Senza tessera ${anno}`}</span>
+          ? (s.numero_socio ? `#${esc(s.numero_socio)}` : 'Tessera ' + anno) : `Senza tessera ${anno}`}</span>
       </button>`).join('');
     lista.hidden = !voci.length;
     campo.setAttribute('aria-expanded', String(Boolean(voci.length)));

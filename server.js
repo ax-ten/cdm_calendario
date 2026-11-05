@@ -1540,8 +1540,9 @@ app.post('/prenota/api/inventario/admin/presta', (req, res) => conUtente(req, re
 app.post('/prenota/api/inventario/admin/soci', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdmin(utente, res)) return;
   const testo = String(req.body?.testo || '').trim().slice(0, 60);
-  // Dalla prima lettera: con una sola i nomi sono tanti, se ne mandano i primi.
-  res.json({ soci: !testo ? [] : (await odoo.miniapp('cerca_soci', testo)).slice(0, 8) });
+  // Anche col campo vuoto: l'elenco nel foglio e' aperto da subito, in
+  // ordine, e si scorre. Con poche lettere i nomi sono tanti: un tetto.
+  res.json({ soci: (await odoo.miniapp('cerca_soci', testo)).slice(0, testo ? 20 : 60) });
 }));
 
 app.post('/prenota/api/inventario/admin/chiudi', (req, res) => conUtente(req, res, async (utente) => {
