@@ -1003,6 +1003,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   padding: 22px 18px; margin: 8px 0 14px; line-height: 1.4; text-align: center; font-size: 1.08rem; font-weight: 600; }
 .avviso-tessera .link { display: block; margin: 10px auto 0; font-size: 1rem; }
 #filtro-prestiti { margin: 0 0 14px; }
+#sede-prestiti { margin: 0 0 8px; }
+#sede-prestiti[hidden] { display: none; }
 #filtro-prestiti[hidden] { display: none; }
 .tipi .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
 .testa-prestito { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
@@ -1342,7 +1344,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-prestiti" hidden>
   <button type="button" class="indietro" id="chiudi-prestiti">‹ Biblioteca</button>
   <h1>Prestiti in corso</h1>
-  <p class="riepilogo-quote" id="riepilogo-prestiti"></p>
+  <div class="tipi" id="sede-prestiti" role="tablist" aria-label="Sede" hidden></div>
   <div class="tipi" id="filtro-prestiti" role="tablist" aria-label="Quali prestiti" hidden></div>
   <div id="elenco-prestiti" class="vuoto">…</div>
 </section>
@@ -3207,7 +3209,7 @@ async function preparaFoto(file) {
 
 // Chi amministra la biblioteca vede tutti i prestiti in corso, prima quelli
 // in ritardo, e li chiude o li prolunga. In cima quanti sono e quanti in
-// ritardo; il filtro parte da "In ritardo" quando ce n'e' qualcuno, perche'
+// ritardo (i numeri sono sui filtri); il filtro parte da "In ritardo" quando ce n'e' qualcuno, perche'
 // sono quelli di cui occuparsi. Accanto al titolo, se la persona ha
 // Telegram collegato (e uno username), un pulsante apre la sua chat.
 const prestitiAdmin = { lista: null, filtro: null };
@@ -3224,20 +3226,34 @@ async function caricaPrestitiAdmin() {
       || String(a.scadenza || '9').localeCompare(String(b.scadenza || '9')));
   } catch (err) {
     el('filtro-prestiti').hidden = true;
-    el('riepilogo-prestiti').textContent = '';
     dove.textContent = err.message;
     return;
   }
+  await sedeGestione();
   if (!prestitiAdmin.filtro) prestitiAdmin.filtro = prestitiAdmin.lista.some(p => p.giorni_ritardo) ? 'ritardo' : 'tutti';
   disegnaPrestitiAdmin();
 }
 
 function disegnaPrestitiAdmin() {
   const dove = el('elenco-prestiti');
-  const tutti = prestitiAdmin.lista;
+  // La sede e' la stessa scelta delle Prenotazioni, ricordata per persona.
+  // Qui la sede arriva da Odoo col suo nome: si confronta il nome.
+  const sedi = stato.sediInfo || [];
+  el('sede-prestiti').hidden = sedi.length < 2;
+  el('sede-prestiti').innerHTML = [['', 'Tutte le sedi'], ...sedi.map(x => [x.slug, x.nome])].map(([k, nome]) =>
+    `<button type="button" role="tab" data-sede-prestiti="${k}" aria-selected="${k === gestione.sede}">${esc(nome)}</button>`).join('');
+  el('sede-prestiti').querySelectorAll('[data-sede-prestiti]').forEach(b => {
+    b.onclick = () => {
+      gestione.sede = b.dataset.sedePrestiti;
+      sedeGestioneLetta = Promise.resolve(gestione.sede);
+      scriviNotaUtente(SEDE_GESTIONE, gestione.sede);
+      disegnaPrestitiAdmin();
+    };
+  });
+  const nomeScelta = sedi.find(x => x.slug === gestione.sede)?.nome;
+  const tutti = prestitiAdmin.lista.filter(p => !nomeScelta
+    || String(p.sede).toLowerCase() === nomeScelta.toLowerCase());
   const inRitardo = tutti.filter(p => p.giorni_ritardo);
-  el('riepilogo-prestiti').textContent = tutti.length
-    ? `${tutti.length} in corso · ${inRitardo.length} in ritardo` : '';
   el('filtro-prestiti').hidden = !tutti.length;
   el('filtro-prestiti').innerHTML = [['ritardo', 'In ritardo', inRitardo.length], ['tutti', 'Tutti', tutti.length]]
     .map(([k, nome, n]) => `<button type="button" role="tab" data-filtro-prestiti="${k}" aria-selected="${k === prestitiAdmin.filtro}"${k === 'ritardo' && n ? ' class="avviso"' : ''}>${nome}${conta(n)}</button>`).join('');
