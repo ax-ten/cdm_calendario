@@ -3738,7 +3738,7 @@ function disegnaTessera(t) {
       const spenta = !t.tesserato && k !== 'contributo_mensile';
       return `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce="${k}" aria-pressed="false"${spenta ? ' disabled' : ''}><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`;
     }).join('')}</div>
-    ${t.tesserato ? '' : '<p class="nota-pagamento nota-voci">Per partecipare alle nostre attività ed eventi serve la tessera. Tesserandoti copri anche gli ingressi alle attività di tutto il primo mese.</p>'}
+    ${t.tesserato ? '' : '<p class="nota-pagamento nota-voci">Per partecipare alle nostre attività ed eventi serve la tessera. Tesserandoti copri anche gli ingressi alle attività del mese corrente.</p>'}
     <div id="dettaglio-pagamento"></div>`;
 }
 
