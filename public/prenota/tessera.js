@@ -151,7 +151,7 @@ const ICONE_VOCI = {
 
 // L'evento parte da 5 €: si puo' scendere fino a 3.
 const EVENTO_BASE = 5;
-const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: EVENTO_BASE };
+const tess = { dati: null, voce: null, giorno: null, data: '', mesi: new Set(), evento: EVENTO_BASE };
 const PAGAMENTO_ATTIVO = false;
 // Dove pagare a distanza. Ancora da riempire: finche' sono vuoti non si vede
 // niente (non si inventa un IBAN o un link). Basta scriverli qui.
@@ -174,7 +174,7 @@ function collegaTessera(dove) {
     b.onclick = () => {
       const v = b.dataset.voce;
       Object.assign(tess, { voce: tess.voce === v ? null : v, giorno: null, data: '',
-                            modoMesi: null, mesi: new Set(), evento: EVENTO_BASE, nomeEvento: '' });
+                            mesi: new Set(), evento: EVENTO_BASE, nomeEvento: '' });
       preseleziona();
       disegnaPagamento();
       if (tess.voce) mostraDettaglio();
@@ -209,19 +209,6 @@ function scorriDi(dy, durata = 450) {
 
 function meseCorrente() {
   return isoLocale(new Date()).slice(0, 7);
-}
-
-// Tutti i mesi dell'anno ancora senza ricevuta, anche quelli passati: chi
-// non ha pagato un mese in cui c'era lo puo' saldare. Dalla griglia se ne
-// toglie uno toccandolo.
-function mesiNonPagati() {
-  const anno = tess.dati.anno;
-  const mesi = [];
-  for (let m = 1; m <= 12; m++) {
-    const k = `${anno}-${String(m).padStart(2, '0')}`;
-    if (!tess.dati.mensilita.includes(k)) mesi.push(k);
-  }
-  return mesi;
 }
 
 // I giorni con l'obolo gia' pagato: non si ripropongono.
@@ -289,16 +276,10 @@ function disegnaPagamento() {
       <div class="contatore"><button type="button" data-evento="-1" aria-label="Meno">−</button><b>${euro(tess.evento)}</b><button type="button" data-evento="1" aria-label="Più">+</button></div>`;
   }
   if (v === 'contributo_mensile') {
-    const questo = meseCorrente();
-    const giaQuesto = t.mensilita.includes(questo);
     // Una griglia sola: quella dei mesi pagati, sopra, se ne va e qui i
-    // mesi gia' pagati hanno la spunta verde. I due pulsanti scelgono in fretta.
-    const nomeMese = MESI[Number(questo.slice(5)) - 1].replace(/^./, c => c.toUpperCase());
-    html += `<p class="domanda">Quali mesi?</p>
-      <div class="scelte">
-        <button type="button" data-mesi="questo" aria-pressed="${tess.modoMesi === 'questo'}" ${giaQuesto ? 'disabled class="pagato"' : ''}>${giaQuesto ? `${nomeMese} pagato` : 'Questo mese'}</button>
-        <button type="button" data-mesi="anno" aria-pressed="${tess.modoMesi === 'anno'}">Tutto l’anno</button>
-      </div>`;
+    // mesi gia' pagati hanno la spunta verde. Niente scorciatoie sopra la
+    // griglia: sembravano filtri, e non lo erano.
+    html += `<p class="domanda">Quali mesi?</p>`;
     {
       html += `<div class="mensilita scegli">${MESI_BREVI.map((m, i) => {
         const k = `${t.anno}-${String(i + 1).padStart(2, '0')}`;
@@ -339,20 +320,9 @@ function disegnaPagamento() {
     b.onclick = () => { tess.evento = Math.min(EVENTO_BASE, Math.max(3, tess.evento + Number(b.dataset.evento))); disegnaPagamento(); };
   });
   if (v === 'contributo_evento') collegaCampoEvento('tessera', tess.data, (nome) => { tess.nomeEvento = nome; });
-  d.querySelectorAll('[data-mesi]').forEach(b => {
-    b.onclick = () => {
-      tess.modoMesi = b.dataset.mesi;
-      tess.mesi = new Set(tess.modoMesi === 'questo' ? [meseCorrente()]
-        : tess.modoMesi === 'anno' ? mesiNonPagati() : []);
-      disegnaPagamento();
-      if (tess.modoMesi !== 'questo') mostraDettaglio();
-    };
-  });
   d.querySelectorAll('[data-mese]').forEach(b => {
     b.onclick = () => {
       tess.mesi.has(b.dataset.mese) ? tess.mesi.delete(b.dataset.mese) : tess.mesi.add(b.dataset.mese);
-      // Toccato un mese, la scelta e' a mano.
-      tess.modoMesi = 'scegli';
       disegnaPagamento();
     };
   });
