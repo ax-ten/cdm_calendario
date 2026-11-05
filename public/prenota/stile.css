@@ -382,7 +382,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .rotella { animation-duration: 2.4s; }
 }
-.griglia.in-attesa { opacity: .45; }
+/* Finche' non arrivano i giorni non si sceglie: uno pieno sembrerebbe libero. */
+.griglia.in-attesa { opacity: .45; pointer-events: none; }
 
 .griglia {
   display: grid;

@@ -91,10 +91,15 @@ async function avvia() {
       stato.sede = b.dataset.slug;
       el('sedi').querySelectorAll('button')
         .forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      // Si passa subito al calendario, spento e con la rotella finche' non
+      // arrivano i giorni: aspettare sulla sede sembrava un tocco a vuoto.
+      if (stato.passo === 1) {
+        vaiAPasso(2);
+        disegnaCalendario();
+      }
       await caricaMese();
       if (stato.giorno) await scegliGiorno(stato.giorno);
       else aggiornaEsito();
-      if (stato.passo === 1) vaiAPasso(2);
     };
   });
 

@@ -30,22 +30,34 @@ function dimenticaMesi() {
   meseInVolo.clear();
 }
 
+// Chiede i giorni di una sede e un mese, se non ci sono gia' e nessuno li
+// sta gia' chiedendo.
+function richiediMese(sede, anno, mese) {
+  const chiave = `${sede}|${anno}-${mese}`;
+  if (stato.occupazione[chiave] || meseInVolo.has(chiave)) return;
+  const richiesta = chiama('mese', { sede, anno, mese })
+    .then(r => r.giorni || {})
+    // Senza i dati il calendario si disegna lo stesso: meglio poter
+    // scegliere un giorno che una griglia vuota.
+    .catch(() => ({}))
+    .then(giorni => {
+      if (meseInVolo.get(chiave) !== richiesta) return;   // dimenticata nel frattempo
+      meseInVolo.delete(chiave);
+      stato.occupazione[chiave] = giorni;
+    });
+  meseInVolo.set(chiave, richiesta);
+}
+
+// Mentre si sceglie la sede, i giorni del mese di tutte le sedi sono gia' in
+// viaggio: toccata la sede, spesso il calendario e' gia' pronto.
+function precaricaSedi() {
+  for (const s of stato.sediInfo || []) richiediMese(s.slug, stato.mese.anno, stato.mese.mese);
+}
+
 async function caricaMese() {
   const chiave = chiaveMese();
   if (!stato.occupazione[chiave]) {
-    if (!meseInVolo.has(chiave)) {
-      const richiesta = chiama('mese', { sede: stato.sede, anno: stato.mese.anno, mese: stato.mese.mese })
-        .then(r => r.giorni || {})
-        // Senza i dati il calendario si disegna lo stesso: meglio poter
-        // scegliere un giorno che una griglia vuota.
-        .catch(() => ({}))
-        .then(giorni => {
-          if (meseInVolo.get(chiave) !== richiesta) return;   // dimenticata nel frattempo
-          meseInVolo.delete(chiave);
-          stato.occupazione[chiave] = giorni;
-        });
-      meseInVolo.set(chiave, richiesta);
-    }
+    richiediMese(stato.sede, stato.mese.anno, stato.mese.mese);
     attesaMese(true);
     await meseInVolo.get(chiave);
     if (chiaveMese() !== chiave) return false;
@@ -412,6 +424,7 @@ function nuovaPrenotazione() {
   azzeraDoveQuando();
   mostra('prenota');
   vaiAPasso(1);
+  precaricaSedi();
 }
 
 // Ore decimali (18.5 e' 18:30), come la fascia e i dati del mese.
