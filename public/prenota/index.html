@@ -966,8 +966,14 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .giorno-gestione { margin-top: 22px; }
 #filtro-gestione { margin: 2px 0 18px; }
 .tipi .conta { margin-left: 3px; font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
-.azioni.in-vista { margin-top: 12px; justify-content: center; }
-.azioni.in-vista button { min-width: 50%; padding: 9px 16px; }
+.riga.con-apro { display: flex; align-items: center; gap: 12px; }
+.con-apro > .corpo-riga { flex: 1; min-width: 0; }
+.con-apro > .azioni.in-vista { margin: 0; flex: 0 0 auto; }
+.azioni.in-vista button { padding: 10px 16px; }
+.senza-entrata .riga, .senza-entrata .scorri { animation: none !important; }
+.avviso-tessera { background: color-mix(in srgb, var(--occupato) 14%, var(--scheda)); border-radius: 12px;
+  padding: 12px 13px; margin-bottom: 12px; line-height: 1.4; }
+.avviso-tessera .link { display: block; margin-top: 4px; }
 #filtro-prestiti { margin: 0 0 14px; }
 #filtro-prestiti[hidden] { display: none; }
 .tipi .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
@@ -1037,9 +1043,10 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 #foglio-a-nome:not([hidden]) { animation: entra .18s ease-out; }
 #foglio-a-nome:not([hidden]) .foglio { animation: sale .24s cubic-bezier(.2, .8, .3, 1); }
 /* ---- righe da scorrere: le azioni stanno dietro */
-.scorri { position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 10px;
+.scorri { animation: entra-su .24s ease-out backwards;
+  position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 10px;
   background: color-mix(in srgb, var(--tenue) 30%, var(--scheda)); }
-.scorri > .riga { position: relative; z-index: 1; margin: 0; cursor: pointer; touch-action: pan-y;
+.scorri > .riga { animation: none; position: relative; z-index: 1; margin: 0; cursor: pointer; touch-action: pan-y;
   -webkit-user-select: none; user-select: none;
   transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
 .scorri.trascina > .riga { transition: none; }
@@ -1060,7 +1067,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 }
 .scorri > .riga.capolino { animation: capolino 1.1s cubic-bezier(.45, 0, .25, 1); }
 @media (prefers-reduced-motion: reduce) {
-  .pannello, .passo, .bene, .riga, .mio-prestito, .tondo, #azione, #azione-a-nome, .tessera-carta,
+  .pannello, .passo, .bene, .riga, .scorri, .mio-prestito, .tondo, #azione, #azione-a-nome, .tessera-carta,
   .etichetta-tondo, .tab button svg, #foglio-a-nome, #foglio-a-nome .foglio { animation: none !important; }
 }
 </style>
@@ -1972,7 +1979,7 @@ function indietro() {
 
 // Da Le tue prenotazioni si comincia una prenotazione nuova.
 function nuovaPrenotazione() {
-  if (stato.bloccato) return;
+  if (stato.bloccato || stato.senzaTessera) return;
   stato.passo = 1;
   mostra('prenota');
   vaiAPasso(1);
@@ -2312,19 +2319,22 @@ async function caricaMie() {
   dove.className = 'vuoto';
   dove.textContent = 'Carico…';
   try {
-    const { prenotazioni } = await chiama('mie');
+    // Di un'attivita' periodica si mostra solo la prossima data.
+    const prenotazioni = primeDelleSerie((await chiama('mie')).prenotazioni);
     el('azione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
     el('apri-gestione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
+    const avviso = stato.senzaTessera ? AVVISO_SENZA_TESSERA : '';
     if (!prenotazioni.length) {
       dove.className = '';
-      dove.innerHTML = NESSUNA_MIA;
+      dove.innerHTML = avviso + NESSUNA_MIA;
+      collegaAvvisoTessera(dove);
       return;
     }
     dove.className = '';
-    dove.innerHTML = prenotazioni.map(p => `
+    dove.innerHTML = avviso + prenotazioni.map(p => `
       <div class="riga">
         <div>${p.nome || 'senza titolo'}${p.fissa ? ' · ' + (CADENZE[p.ricorrenza] || CADENZE.settimanale) : ''}</div>
-        <div class="quando">${quandoTesto(p.inizio, p.fine)} · ${esc(nomeSede(p.sede))}</div>
+        <div class="quando">${p.fissa ? 'Prossima: ' : ''}${quandoTesto(p.inizio, p.fine)} · ${esc(nomeSede(p.sede))}</div>
         <div class="azioni">
           <button data-sede="${p.sede}" data-id="${p.id}"
                   data-cosa="${p.fissa ? 'volta' : 'una'}">
@@ -2343,10 +2353,33 @@ async function caricaMie() {
         ? () => rendiSettimanale(b.dataset.sede, b.dataset.id, b)
         : () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
     });
+    collegaAvvisoTessera(dove);
     scorrevoli(dove);
   } catch (err) {
     dove.textContent = err.message;
   }
+}
+
+// Di ogni attivita' periodica, solo la prima data dell'elenco: le altre
+// sono la stessa cosa ripetuta. L'elenco arriva gia' in ordine di data.
+function primeDelleSerie(lista) {
+  const viste = new Set();
+  return lista.filter(p => {
+    if (!p.serieId) return true;
+    if (viste.has(p.serieId)) return false;
+    viste.add(p.serieId);
+    return true;
+  });
+}
+
+// Senza la tessera dell'anno non si prenota: lo si dice in cima, con la
+// strada per farla.
+const AVVISO_SENZA_TESSERA = `<div class="avviso-tessera">
+  Per prenotare un’attività serve la tessera.
+  <button type="button" class="link" data-vai-tessera>Vai alla Tessera ›</button></div>`;
+function collegaAvvisoTessera(dove) {
+  const b = dove.querySelector('[data-vai-tessera]');
+  if (b) b.onclick = () => mostra('tessera');
 }
 
 // Il nome della sede, non quello tecnico: "Trani", non "trani".
@@ -2381,6 +2414,11 @@ function annulla(sede, id, bottone, cosa = 'una') {
     try {
       await chiama('annulla', { sede, eventId: id });
       tg?.HapticFeedback?.notificationOccurred('success');
+      // Saltata una data di una serie, la riga mostra la prossima: si rilegge.
+      if (cosa === 'volta') {
+        Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+        return caricaMie();
+      }
       riga.remove();
       if (!el('elenco-mie').querySelector('.riga')) {
         el('elenco-mie').className = 'vuoto';
@@ -2543,6 +2581,22 @@ function dataTesto(iso) {
 // e' l'unico grassetto che i suoi popup permettono. Il titolo sta in 64
 // caratteri. Se il popup non parte (Telegram vecchio, testo troppo lungo) si
 // ripiega sul confirm del browser, invece di lasciare il tocco senza effetto.
+// Una domanda con due risposte, piu' Annulla: restituisce l'id scelto o
+// null. Il popup di Telegram ha al massimo tre pulsanti.
+function scegli(titolo, testo, scelte) {
+  return new Promise(ok => {
+    try {
+      if (tg?.showPopup && tg.isVersionAtLeast?.('6.2')) {
+        tg.showPopup({ title: titolo.slice(0, 64), message: testo,
+          buttons: [...scelte.map(([id, t]) => ({ id, type: 'default', text: t })), { type: 'cancel' }] },
+          id => ok(scelte.some(([x]) => x === id) ? id : null));
+        return;
+      }
+    } catch { /* si ripiega sotto */ }
+    ok(window.confirm(`${titolo}\n${testo}\n\nOK: ${scelte[0][1]}`) ? scelte[0][0] : null);
+  });
+}
+
 function conferma(testo, titolo = '') {
   return new Promise(ok => {
     try {
@@ -3593,7 +3647,7 @@ function disegnaTessera(t) {
       <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${t.anno}</span></div>
       <div class="tessera-piede">
         <div class="tessera-nome">${esc(t.nome)}</div>
-        <div class="tessera-dati">${[t.numero_socio ? `Tessera n. ${esc(t.numero_socio)}` : '', t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</div>
+        <div class="tessera-dati">${[t.numero_socio && t.tesserato ? `Tessera n. ${esc(t.numero_socio)}` : '', t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</div>
       </div>
     </div>
     ${t.tesserato ? '' : '<p class="tessera-avviso">Tesseramento da rinnovare</p>'}
@@ -4065,7 +4119,7 @@ function disegnaQuote() {
   dove.className = '';
   dove.innerHTML = lista.map(s => `
     <div class="riga socio-quota" role="button" tabindex="0" data-socio="${s.id}">
-      <div class="numero-tessera${s.tesserato ? '' : ' senza'}" title="${s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza numero'}${s.tesserato ? '' : ' · tessera ' + quo.anno + ' da fare'}">${s.numero_socio ? esc(s.numero_socio) : '-'}</div>
+      <div class="numero-tessera${s.tesserato ? '' : ' senza'}" title="${s.tesserato && s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza tessera ' + quo.anno}">${s.tesserato && s.numero_socio ? esc(s.numero_socio) : '-'}</div>
       <div class="socio-corpo">
         <b>${esc(s.nome)}</b>
         <div class="quando">${[s.categoria ? esc(s.categoria) : '',
@@ -4218,7 +4272,7 @@ function disegnaQuota() {
   dove.className = 'con-pagamento';
   dove.innerHTML = `
     <h1 class="nome-quota">${esc(t.nome)}</h1>
-    <p class="quando-quota">${[t.numero_socio ? `Tessera n. ${esc(t.numero_socio)}` : 'Senza numero di tessera', t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</p>
+    <p class="quando-quota">${[t.numero_socio && t.tesserato ? `Tessera n. ${esc(t.numero_socio)}` : `Senza tessera ${t.anno}`, t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</p>
     ${t.tesserato ? '' : `<p class="tessera-avviso">Tessera ${t.anno} da rinnovare: la prima mensilità vale anche come tesseramento.</p>`}
     <p class="etichetta-mesi">Mensilità pagate nel ${t.anno}</p>
     <div class="mensilita">${MESI_BREVI.map((m, i) => {
@@ -4706,19 +4760,23 @@ async function registraIncassi() {
 const gestione = { dati: null, filtro: 'tutte' };
 const senzaChiApre = (p) => p.serveApertura && !p.apre;
 
-async function caricaGestione() {
+async function caricaGestione({ silenzioso = false } = {}) {
   const dove = el('elenco-gestione');
-  dove.className = 'vuoto';
-  dove.textContent = 'Carico…';
+  if (!silenzioso) {
+    dove.className = 'vuoto';
+    dove.textContent = 'Carico…';
+  }
   try {
     gestione.dati = await chiama('staff/prenotazioni');
     chiaviControllate = Date.now();
   } catch (err) {
+    if (silenzioso) return lamenta(err.message);
     el('filtro-gestione').hidden = true;
     dove.textContent = err.message;
     return;
   }
   disegnaGestione();
+  dove.classList.toggle('senza-entrata', silenzioso);
 }
 
 // ---- il pallino rosso sul tasto Prenotazioni
@@ -4757,7 +4815,7 @@ async function controllaChiavi() {
 
 async function aggiornaPallinoChiavi() {
   if (!Array.isArray(gestione.dati?.prenotazioni)) return;
-  const scoperte = gestione.dati.prenotazioni.filter(senzaChiApre);
+  const scoperte = primeDelleSerie(gestione.dati.prenotazioni).filter(senzaChiApre);
   const viste = await chiaviGiaViste();
   const nuove = scoperte.some(p => !viste.has(p.id));
   const pallino = el('pallino-chiavi');
@@ -4771,7 +4829,7 @@ async function aggiornaPallinoChiavi() {
 // date ancora scoperte: le altre non servono, e la memoria resta piccola.
 async function segnaChiaviViste() {
   if (!Array.isArray(gestione.dati?.prenotazioni)) return;
-  const ids = gestione.dati.prenotazioni.filter(senzaChiApre).map(p => p.id);
+  const ids = primeDelleSerie(gestione.dati.prenotazioni).filter(senzaChiApre).map(p => p.id);
   chiaviViste = Promise.resolve(new Set(ids));
   scriviNotaUtente(CHIAVI_VISTE, JSON.stringify(ids));
   aggiornaPallinoChiavi();
@@ -4780,8 +4838,9 @@ async function segnaChiaviViste() {
 function disegnaGestione() {
   const dove = el('elenco-gestione');
   const tutti = gestione.dati;
-  const senza = tutti.prenotazioni.filter(senzaChiApre);
-  const filtri = [['tutte', 'Tutte', tutti.prenotazioni.length], ['senza-apre', 'Senza chiavi', senza.length]];
+  const righe = primeDelleSerie(tutti.prenotazioni);
+  const senza = righe.filter(senzaChiApre);
+  const filtri = [['tutte', 'Tutte', righe.length], ['senza-apre', 'Senza chiavi', senza.length]];
   el('filtro-gestione').hidden = false;
   el('filtro-gestione').innerHTML = filtri.map(([k, nome, n]) =>
     `<button type="button" role="tab" data-filtro-gestione="${k}" aria-selected="${k === gestione.filtro}"${k === 'senza-apre' && n ? ' class="avviso"' : ''}>${nome}${conta(n)}</button>`).join('');
@@ -4791,7 +4850,7 @@ function disegnaGestione() {
   const soloSenza = gestione.filtro === 'senza-apre';
   if (soloSenza) segnaChiaviViste(); else aggiornaPallinoChiavi();
   // Con il filtro le richieste da approvare restano fuori: non hanno date.
-  const dati = { richieste: soloSenza ? [] : tutti.richieste, prenotazioni: soloSenza ? senza : tutti.prenotazioni };
+  const dati = { richieste: soloSenza ? [] : tutti.richieste, prenotazioni: soloSenza ? senza : righe };
   dove.className = '';
   let html = '';
   if (dati.richieste.length) {
@@ -4819,19 +4878,21 @@ function disegnaGestione() {
   html += perGiorno.size ? [...perGiorno].map(([g, lista]) => `
     <h2 class="giorno-gestione">${nomeGiorno(g)}</h2>
     ${lista.map(p => `
-      <div class="riga">
+      <div class="riga${soloSenza ? ' con-apro' : ''}">
+        <div class="corpo-riga">
         <div><b>${esc(p.titolo)}</b></div>
-        <div class="quando">${ora(p.inizio)}-${ora(p.fine)} · ${esc(p.sedeNome)}${p.fissa ? ' · si ripete' : ''}</div>
+        <div class="quando">${ora(p.inizio)}-${ora(p.fine)} · ${esc(p.sedeNome)}${p.serieId ? ' · si ripete' : ''}</div>
         ${p.chi ? `<div class="quando">Prenotata da ${esc(p.chi)}</div>` : ''}
         ${p.serveApertura ? (p.apre ? `<div class="quando">Apre ${esc(p.apre)}</div>`
-          : '<div class="quando ritardo">Ancora senza chiavi</div>') : ''}
+          : '<div class="quando ritardo">Non hanno le chiavi</div>') : ''}
+        </div>
         ${soloSenza ? `<div class="azioni in-vista">
-          <button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}">Apro io</button>
+          <button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}" data-serie-apro="${esc(p.serieId || '')}" data-giorno="${esc(nomeGiorno(g))}">Apro io</button>
         </div>` : ''}
         <div class="azioni a-destra">
           ${p.serieId ? `<button type="button" class="grave" data-serie="${esc(p.serieId)}" data-sede="${esc(p.sede)}">Annulla la serie</button>` : ''}
           <button type="button" class="grave" data-annulla="${esc(p.id)}" data-sede="${esc(p.sede)}" data-titolo="${esc(p.titolo)}">${p.fissa ? 'Annulla questa data' : 'Annulla'}</button>
-          ${p.serveApertura && !p.apre && !soloSenza ? `<button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}">Apro io</button>` : ''}
+          ${p.serveApertura && !p.apre && !soloSenza ? `<button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}" data-serie-apro="${esc(p.serieId || '')}" data-giorno="${esc(nomeGiorno(g))}">Apro io</button>` : ''}
         </div>
       </div>`).join('')}`).join('')
     : soloSenza ? '<p class="vuoto">Tutte le aperture dei prossimi quattordici giorni hanno le chiavi.</p>'
@@ -4843,7 +4904,9 @@ function disegnaGestione() {
     try {
       await chiama(percorso, dati);
       toast(fatto);
-      caricaGestione();
+      // Si rilegge senza "Carico…" e senza le animazioni d'entrata: la
+      // pagina resta ferma, cambia solo la riga toccata.
+      caricaGestione({ silenzioso: true });
     } catch (err) {
       lamenta(err.message);
       bottone.disabled = false;
@@ -4854,7 +4917,18 @@ function disegnaGestione() {
       b.dataset.scelta === 'si' ? 'Approvata: è in calendario.' : 'Rifiutata.');
   });
   dove.querySelectorAll('[data-apro]').forEach(b => {
-    b.onclick = () => agisci(b, 'staff/apro', { sede: b.dataset.sede, eventId: b.dataset.apro }, 'Segnato: apri tu.');
+    b.onclick = async () => {
+      // Di un'attivita' periodica si apre una volta, o tutte le volte.
+      let tutte = false;
+      if (b.dataset.serieApro) {
+        const scelta = await scegli('Apri tu le chiavi?', 'È un’attività che si ripete.',
+          [['una', `Solo ${b.dataset.giorno.toLowerCase()}`], ['tutte', 'Tutte le date']]);
+        if (!scelta) return;
+        tutte = scelta === 'tutte';
+      }
+      agisci(b, 'staff/apro', { sede: b.dataset.sede, eventId: b.dataset.apro, serieId: b.dataset.serieApro, tutte },
+        tutte ? 'Segnato: apri tu, tutte le date.' : 'Segnato: apri tu.');
+    };
   });
   dove.querySelectorAll('[data-serie]').forEach(b => {
     b.onclick = () => apriSerie(b.dataset.sede, b.dataset.serie);
@@ -5156,7 +5230,7 @@ function mostra(quale) {
     : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
   else if (quale === 'mie') {
-    pulsanteTondo('piu', 'Nuova attività', !stato.bloccato, 'Aggiungi');
+    pulsanteTondo('piu', 'Nuova attività', !stato.bloccato && !stato.senzaTessera, 'Aggiungi');
     // "Aggiungi" c'e' da subito; se ne va solo con piu' di due attivita',
     // quando l'elenco arriva in fondo e la scritta finirebbe sopra.
     el('azione').classList.add('con-etichetta');
@@ -5281,6 +5355,8 @@ async function avvia() {
   tg?.BackButton?.onClick(indietro);
 
   stato.bloccato = Boolean(info.bloccato);
+  // Odoo dice tesserato sulla scheda; se non lo dice, non si blocca nessuno.
+  stato.senzaTessera = info.socio?.tesserato === false;
   // Le prenotazioni di tutti le vede lo staff: gruppi staff o direttivo.
   el('apri-gestione').hidden = !(info.staff || info.direttivo);
   el('apri-gestione').onclick = () => mostra('gestione');

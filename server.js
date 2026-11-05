@@ -613,6 +613,11 @@ async function usernameDi(telegramId) {
   return username;
 }
 
+// Senza la tessera dell'anno non si prenota: la scheda in Odoo lo dice con
+// tesserato. Se Odoo non lo manda (versioni di prima), non si blocca nessuno.
+const TESTO_SENZA_TESSERA = 'Per prenotare un’attività serve la tessera: la trovi nella scheda Tessera.';
+const senzaTessera = (utente) => utente.socio?.tesserato === false;
+
 // Un gruppo Telegram che manca in gruppi.txt o staff.txt e' un problema di
 // chi gestisce il server: va nel log. A chi usa l'app si dice cosa fare.
 function mancaGruppo(res, quale, chi) {
@@ -949,6 +954,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
   if (prenotazioni.eBloccato(utente.id)) {
     return res.status(403).json({ errore: 'Lo staff ha sospeso le tue attività.' });
   }
+  if (senzaTessera(utente)) return res.status(403).json({ errore: TESTO_SENZA_TESSERA });
   if (vetrina && !(await eDirettivo(utente.id))) {
     return res.status(403).json({ errore: 'Solo il direttivo mette le attività in vetrina.' });
   }
@@ -1178,6 +1184,7 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
   if (prenotazioni.eBloccato(utente.id)) {
     return res.status(403).json({ errore: 'Lo staff ha sospeso le tue attività.' });
   }
+  if (senzaTessera(utente)) return res.status(403).json({ errore: TESTO_SENZA_TESSERA });
 
   const evento = await prenotazioni.leggiPrenotazione(
     await getAuthScrittura(), calendarId, eventId);
@@ -1720,7 +1727,8 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
 //   prestiti_aperti()    in ogni prestito anche telegram_id, per aprire la chat
 //   annulla_ricevuta(ricevuta_id, da_chi)
 //                       -> { numero, tipo, importo, socio, telegram_id }
-// e, facoltativa, la spunta admin_tessere nella risposta di socio_da_telegram.
+// e, facoltative, nella risposta di socio_da_telegram: la spunta admin_tessere
+// e tesserato (senza la tessera dell'anno non si prenota).
 
 // Le quote le gestisce il direttivo, o chi ha la spunta "Gestisce le quote"
 // sulla scheda in Odoo: non lo staff di una sede, e non chi amministra la
@@ -2066,11 +2074,14 @@ app.post('/prenota/api/staff/prenotazioni', (req, res) => conUtente(req, res, as
 
 app.post('/prenota/api/staff/apro', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloStaff(utente, res)) return;
-  const { sede, eventId } = req.body || {};
+  const { sede, eventId, serieId, tutte } = req.body || {};
   const calendarId = calendarioDi(sede);
   if (!calendarId || !eventId) return res.status(400).json({ errore: 'Quale prenotazione?' });
   const chi = nomeTelegram(utente);
-  const gia = await prenotazioni.segnaChiApre(await getAuthScrittura(), calendarId, eventId, chi);
+  // Per tutte le date di un'attivita' periodica si segna sulla serie: le
+  // date la seguono, tranne quelle gia' toccate una per una.
+  const gia = await prenotazioni.segnaChiApre(await getAuthScrittura(), calendarId,
+    tutte && serieId ? serieId : eventId, chi);
   if (gia) return res.status(409).json({ errore: `Apre già ${gia}.` });
   res.json({ ok: true, apre: chi });
 }));
