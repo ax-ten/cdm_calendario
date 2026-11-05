@@ -952,7 +952,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .socio-nome small { display: block; font-weight: 400; font-size: .78rem; color: var(--tenue); }
 .socio-quota .mesi-mini { flex: 0 0 auto; grid-template-columns: repeat(6, 18px); gap: 3px; margin: 0; }
 .socio-quota .mesi-mini span { padding: 1px 0; font-size: .64rem; border-radius: 4px; }
-#mese-pagato { flex: 1; }
+.mese-coperto { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+  color: var(--tenue); font-size: .88rem; white-space: nowrap; }
+.mese-coperto select { flex: 1; min-width: 0; }
 #vista-persone .filtri { align-items: center; }
 #vista-persone .ordina { align-self: stretch; min-height: 38px; }
 .anno-quote { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
@@ -1522,7 +1524,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
       <input type="search" id="cerca-quote" placeholder="Nome o numero di tessera" autocomplete="off">
     </div>
     <div class="filtri">
-      <select id="mese-pagato" aria-label="Chi ha pagato un mese"></select>
+      <label class="mese-coperto"><span>Ha coperto</span>
+        <select id="mese-pagato" aria-label="Chi ha coperto un mese"></select></label>
       <label class="ordina" title="Ordina">
         <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg></span>
         <select id="ordine-quote" aria-label="Ordina">
@@ -4206,10 +4209,8 @@ function disegnaQuote() {
   const dove = el('elenco-quote');
   if (!quo.soci) return;
   const base = quo.soci.filter(s => quo.ancheSenza || s.tesserato);
-  el('mese-pagato').innerHTML = `<option value="">Tutti i mesi</option>` + MESI.map((m, i) => {
-    const k = meseKey(quo.anno, i);
-    return `<option value="${k}">Ha pagato ${m} (${base.filter(s => s.mensilita.includes(k)).length})</option>`;
-  }).join('');
+  el('mese-pagato').innerHTML = `<option value="">Tutti i mesi</option>` + MESI.map((m, i) =>
+    `<option value="${meseKey(quo.anno, i)}">${m.replace(/^./, c => c.toUpperCase())}</option>`).join('');
   if (quo.mesePagato && !quo.mesePagato.startsWith(String(quo.anno))) quo.mesePagato = '';
   el('mese-pagato').value = quo.mesePagato;
   el('ordine-quote').value = quo.ordine;
