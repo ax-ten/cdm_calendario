@@ -1030,7 +1030,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .avviso-tessera .link { display: block; margin: 10px auto 0; font-size: 1rem; }
 #sede-prestiti[hidden] { display: none; }
 #filtro-prestiti[hidden] { display: none; }
-.tipi .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
 .testa-prestito { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .riga .icona-chat { flex: 0 0 auto; width: 34px; height: 34px; margin: -6px -6px -6px 0; border-radius: 50%; border: 0; padding: 0;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
@@ -1042,7 +1041,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   line-height: 20px; text-align: center; box-shadow: 0 0 0 2px var(--sfondo, #17202a); pointer-events: none; }
 .tondo .pallino[hidden] { display: none; }
 #filtro-gestione[hidden] { display: none; }
-#filtro-gestione .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
 #azione.grave { background: var(--pieno); color: #fff; }
 #riepilogo-serie.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
 .riga.data-serie { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 11px 13px; margin-bottom: 6px; }
@@ -2500,7 +2498,7 @@ async function caricaMie() {
             <button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.id}"
                     data-cosa="una">Annulla</button>`}
           ${p.fissa ? `
-            <button data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta questa volta</button>` : `
+            <button data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>` : `
             <button data-sede="${p.sede}" data-id="${p.id}"
                     data-cosa="settimanale">Rendi ricorrente</button>`}
         </div>
@@ -2553,8 +2551,8 @@ function quandoTesto(inizio, fine) {
 // un'attivita' periodica, "serie" tutte le date.
 const DOMANDE = {
   una: ['Annullo questa attività?', 'Annullo…', 'Annulla'],
-  volta: ['Salto solo questa volta? Le prossime restano.',
-          'Salto…', 'Salta questa volta'],
+  volta: ['Salto il prossimo slot? Gli altri restano.',
+          'Salto…', 'Salta il prossimo slot'],
   serie: ['Elimino tutte le date? Non si torna indietro.',
           'Elimino…', 'Elimina la serie'],
 };
@@ -3321,7 +3319,7 @@ function disegnaPrestitiAdmin() {
   const inRitardo = tutti.filter(p => p.giorni_ritardo);
   el('filtro-prestiti').hidden = !tutti.length;
   el('filtro-prestiti').innerHTML = [['tutti', 'Tutti', tutti.length], ['ritardo', 'In ritardo', inRitardo.length]]
-    .map(([k, nome, n]) => `<button type="button" role="tab" data-filtro-prestiti="${k}" aria-selected="${k === prestitiAdmin.filtro}"${k === 'ritardo' && n ? ' class="avviso"' : ''}>${nome}${conta(n)}</button>`).join('');
+    .map(([k, nome, n]) => `<button type="button" role="tab" data-filtro-prestiti="${k}" aria-selected="${k === prestitiAdmin.filtro}">${nome}${conta(n)}</button>`).join('');
   el('filtro-prestiti').querySelectorAll('[data-filtro-prestiti]').forEach(b => {
     b.onclick = () => { prestitiAdmin.filtro = b.dataset.filtroPrestiti; disegnaPrestitiAdmin(); };
   });
@@ -3891,11 +3889,6 @@ function disegnaTessera(t) {
       </div>
     </div>
     ${t.tesserato ? '' : '<p class="tessera-avviso">Tesseramento da rinnovare</p>'}
-    <div id="mesi-pagati-tessera">
-    <p class="etichetta-mesi">Mensilità pagate nel ${t.anno}</p>
-    <div class="mensilita">${MESI_BREVI.map((m, i) =>
-      `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}${pagati.has(i + 1) ? ': pagato' : ''}">${m}</span>`).join('')}</div>
-    </div>
     <div class="titolo-con-link">
       <h2>Contribuisci</h2>
       <button type="button" class="link" id="vai-ricevute">Le mie ricevute ›</button>
@@ -3907,7 +3900,14 @@ function disegnaTessera(t) {
       return `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce="${k}" aria-pressed="false"${spenta ? ' disabled' : ''}><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`;
     }).join('')}</div>
     ${t.tesserato ? '' : '<p class="nota-pagamento nota-voci">Per partecipare alle nostre attività ed eventi serve la tessera. Tesserandoti copri anche gli ingressi alle attività del mese corrente.</p>'}
-    <div id="dettaglio-pagamento"></div>`;
+    <div id="dettaglio-pagamento"></div>
+    <!-- In fondo: scegliendo la mensilita' se ne va senza spostare il resto.
+         Senza la tessera dell'anno non c'e'. -->
+    <div id="mesi-pagati-tessera"${t.tesserato ? '' : ' hidden'}>
+    <p class="etichetta-mesi">Mensilità pagate nel ${t.anno}</p>
+    <div class="mensilita">${MESI_BREVI.map((m, i) =>
+      `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}${pagati.has(i + 1) ? ': pagato' : ''}">${m}</span>`).join('')}</div>
+    </div>`;
 }
 
 // ---------------------------------------------------------------- pagare
@@ -4002,11 +4002,7 @@ function preseleziona() {
   if (tess.voce === 'contributo_evento') {
     tess.giorno = 'oggi'; tess.data = oggi;
   }
-  if (tess.voce === 'contributo_mensile') {
-    const questo = meseCorrente();
-    if (tess.dati.mensilita.includes(questo)) tess.modoMesi = 'scegli';
-    else { tess.modoMesi = 'questo'; tess.mesi = new Set([questo]); }
-  }
+  // Per la mensilita' nessun mese e' scelto da solo: si sceglie nella griglia.
 }
 
 function totalePagamento() {
@@ -4025,7 +4021,7 @@ function disegnaPagamento() {
   el('tessera').querySelectorAll('[data-voce]').forEach(b =>
     b.setAttribute('aria-pressed', String(b.dataset.voce === v)));
   const d = el('dettaglio-pagamento');
-  el('mesi-pagati-tessera').hidden = v === 'contributo_mensile';
+  el('mesi-pagati-tessera').hidden = v === 'contributo_mensile' || !t.tesserato;
   el('tessera').classList.toggle('con-pagamento', Boolean(v));
   el('apri-quote').classList.toggle('secondo', Boolean(v));
   if (!v) { d.innerHTML = ''; nascondiAzione(); return; }
@@ -5178,7 +5174,7 @@ function disegnaGestione() {
   const filtri = [['tutte', 'Tutte', righe.length], ['senza-apre', 'Senza chiavi', senza.length]];
   el('filtro-gestione').hidden = false;
   el('filtro-gestione').innerHTML = filtri.map(([k, nome, n]) =>
-    `<button type="button" role="tab" data-filtro-gestione="${k}" aria-selected="${k === gestione.filtro}"${k === 'senza-apre' && n ? ' class="avviso"' : ''}>${nome}${conta(n)}</button>`).join('');
+    `<button type="button" role="tab" data-filtro-gestione="${k}" aria-selected="${k === gestione.filtro}">${nome}${conta(n)}</button>`).join('');
   el('filtro-gestione').querySelectorAll('[data-filtro-gestione]').forEach(b => {
     b.onclick = () => { gestione.filtro = b.dataset.filtroGestione; disegnaGestione(); };
   });
