@@ -5871,8 +5871,8 @@ function mostra(quale) {
     : quale === 'inventario' ? prendiScelto : null;
   if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
   else if (quale === 'mie') {
-    pulsanteTondo('piu', 'Nuova attività', !stato.bloccato && !stato.senzaTessera, 'Aggiungi');
-    // "Aggiungi" c'e' da subito; se ne va solo con piu' di due attivita',
+    pulsanteTondo('piu', 'Nuova attività', !stato.bloccato && !stato.senzaTessera, 'Crea');
+    // "Crea" c'e' da subito; se ne va solo con piu' di due attivita',
     // quando l'elenco arriva in fondo e la scritta finirebbe sopra.
     el('azione').classList.add('con-etichetta');
   }
