@@ -251,6 +251,12 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
 }
 
 .sedi { display: flex; gap: 8px; }
+/* "Dove?" ha solo la scelta della sede: sta al centro dello spazio libero,
+   non schiacciata in cima con lo schermo vuoto sotto. 150px sono la testa
+   (Indietro e titolo) e il margine sopra. */
+.passo[data-passo="1"]:not([hidden]) { display: flex; flex-direction: column; justify-content: center;
+  min-height: calc(100dvh - var(--ingombro-fondo) - 150px); }
+.passo[data-passo="1"] .aiuto { text-align: center; }
 .sedi button {
   flex: 1;
   padding: 11px 8px;
