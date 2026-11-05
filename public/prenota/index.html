@@ -1143,6 +1143,9 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .foglio h2 { margin: 0 0 4px; }
 .foglio .spiega { margin: 0 0 14px; color: var(--tenue); }
 .foglio .riepilogo { margin-bottom: 14px; }
+.menu-azioni { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.menu-azioni .bottone { width: 100%; padding: 13px 14px; font-size: .95rem; }
+.solo-menu[hidden] { display: none; }
 .griglia-azioni { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin: 8px 0 14px; }
 .griglia-azioni .bottone { width: 100%; padding: 12px 10px; font-size: .92rem; }
 /* Nella serie: a sinistra cosa (Apro io / Annulla), a destra le due scelte. */
@@ -2488,17 +2491,16 @@ async function caricaMie() {
         <div>${p.nome || 'senza titolo'}${p.fissa ? ' · ' + (CADENZE[p.ricorrenza] || CADENZE.settimanale) : ''}</div>
         <div class="quando">${p.fissa ? 'Prossima: ' : ''}${quandoTesto(p.inizio, p.fine)} · ${esc(nomeSede(p.sede))}</div>
         <div class="azioni">
-          ${p.fissa && p.serieId ? `
-            <button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.serieId}"
-                    data-cosa="serie">Elimina la serie</button>` : ''}
-          ${p.fissa ? '' : `
-            <button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.id}"
-                    data-cosa="una">Annulla</button>`}
-          ${p.fissa ? `
-            <button data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>` : `
-            <button data-sede="${p.sede}" data-id="${p.id}"
-                    data-cosa="settimanale">Rendi ricorrente</button>`}
+          ${p.fissa
+            ? `<button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>`
+            : `<button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.id}" data-cosa="una">Annulla</button>`}
         </div>
+        ${p.fissa ? '' : `<div class="azioni sinistra">
+          <button class="conferma" data-pieno data-sede="${p.sede}" data-id="${p.id}" data-cosa="settimanale">Rendi ricorrente</button>
+        </div>`}
+        ${p.fissa && p.serieId ? `<div class="azioni solo-menu" hidden>
+          <button class="grave" data-sede="${p.sede}" data-id="${p.serieId}" data-cosa="serie">Elimina la serie</button>
+        </div>` : ''}
       </div>`).join('');
     dove.querySelectorAll('button').forEach(b => {
       b.onclick = b.dataset.cosa === 'settimanale'
@@ -2506,7 +2508,7 @@ async function caricaMie() {
         : () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
     });
     collegaAvvisoTessera(dove);
-    scorrevoli(dove);
+    scorrevoli(dove, '.riga', { tocco: menuDellaRiga, menu: menuDellaRiga });
   } catch (err) {
     dove.textContent = err.message;
   }
@@ -3008,12 +3010,12 @@ function collegaBottoni(dove) {
       sceglieBene(inv.scelto === id ? null : id);
     };
     scheda.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scheda.click(); } };
-    // Chi amministra la biblioteca trascina la scheda verso sinistra e trova
+    // Chi amministra la biblioteca trascina la scheda verso destra e trova
     // "Modifica": apre lo stesso modulo dell'aggiunta, sede compresa. Per
     // gli altri la scheda non si sposta.
     if (inv.admin) {
       const azioni = document.createElement('div');
-      azioni.className = 'azioni';
+      azioni.className = 'azioni sinistra';
       azioni.innerHTML = '<button type="button" class="conferma" data-pieno>Modifica</button>';
       azioni.querySelector('button').onclick = () => { chiudiScorri(scheda); apriModifica(id); };
       scheda.append(azioni);
@@ -3338,9 +3340,14 @@ function disegnaPrestitiAdmin() {
         ? `In ritardo di ${p.giorni_ritardo} ${p.giorni_ritardo === 1 ? 'giorno' : 'giorni'}`
         : p.scadenza ? `Da riportare entro il ${dataTesto(p.scadenza)}` : 'Senza scadenza'}</div>
       <div class="azioni a-destra" data-azioni>
-        <button type="button" data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
-        <button type="button" data-apri-prolunga>Estendi</button>
+        <button type="button" class="grave" data-pieno data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
       </div>
+      <div class="azioni sinistra">
+        <button type="button" class="conferma" data-pieno data-apri-prolunga>Estendi</button>
+      </div>
+      ${p.username ? `<div class="azioni solo-menu" hidden>
+        <button type="button" data-chat="${esc(p.username)}">Scrivi in chat</button>
+      </div>` : ''}
       <div class="azioni a-destra prolunga" data-prolunga-di="${p.id}" hidden>
         <div class="contagiorni">
           <button type="button" data-meno aria-label="Un giorno in meno">−</button>
@@ -3373,7 +3380,7 @@ function disegnaPrestitiAdmin() {
     scelta.querySelector('[data-conferma-prolunga]').onclick = (e) =>
       prolunga(Number(scelta.dataset.prolungaDi), vale(), e.currentTarget);
   });
-  scorrevoli(dove);
+  scorrevoli(dove, '.riga', { tocco: menuDellaRiga, menu: menuDellaRiga });
 }
 
 async function chiudiPrestito(prestitoId, titolo, socio, bottone) {
@@ -5209,8 +5216,7 @@ function disegnaGestione() {
           <button type="button" class="libero" data-pieno data-apro="${esc(p.id)}">Apro io</button>
         </div>` : ''}
         <div class="azioni">
-          ${p.serieId ? `<button type="button" class="grave" data-serie="${esc(p.serieId)}" data-sede="${esc(p.sede)}">Annulla la serie</button>` : ''}
-          <button type="button" class="arancio" data-pieno data-annulla="${esc(p.id)}">${p.serieId ? 'Annulla questa data' : 'Annulla'}</button>
+          <button type="button" class="grave" data-pieno data-annulla="${esc(p.id)}">${p.serieId ? 'Annulla questa data' : 'Annulla'}</button>
         </div>
       </div>`;
     }).join('')}`).join('')
@@ -5231,6 +5237,7 @@ function disegnaGestione() {
   // Toccare una prenotazione apre i suoi dettagli, con tutte le azioni.
   scorrevoli(dove, '.riga:not(.da-decidere)', {
     tocco: (riga) => dettaglioPrenotazione(prenotazione(riga.dataset.pren)),
+    menu: (riga) => dettaglioPrenotazione(prenotazione(riga.dataset.pren)),
   });
 }
 
@@ -5400,7 +5407,7 @@ const SCORRI_SOGLIA = 8;
 const SCORRI_PIENO = 0.6;
 let scorriAperta = null;
 
-function scorrevoli(dove, selettore = '.riga', { tocco = null } = {}) {
+function scorrevoli(dove, selettore = '.riga', { tocco = null, menu = null } = {}) {
   dove.querySelectorAll(selettore).forEach(riga => {
     if (riga.parentElement?.classList.contains('scorri')) return;
     const destra = riga.querySelector(':scope > .azioni:not([hidden]):not(.in-vista):not(.sinistra)');
@@ -5432,7 +5439,7 @@ function scorrevoli(dove, selettore = '.riga', { tocco = null } = {}) {
     riga.tabIndex = 0;
     riga.setAttribute('aria-expanded', 'false');
     riga.setAttribute('aria-label', `${riga.textContent.trim().replace(/\s+/g, ' ')}. ${tocco ? 'Tocca per i dettagli.' : 'Tocca per le azioni.'}`);
-    collegaScorri(scatola, riga, lati, tocco);
+    collegaScorri(scatola, riga, lati, tocco, menu);
   });
   suggerisciScorri(dove);
 }
@@ -5508,7 +5515,7 @@ function chiudiPieno(scatola) {
   });
 }
 
-function collegaScorri(scatola, riga, lati, tocco) {
+function collegaScorri(scatola, riga, lati, tocco, menu) {
   let inizio = null;
   let trascinato = false;
   riga.addEventListener('pointerdown', (e) => {
@@ -5556,11 +5563,11 @@ function collegaScorri(scatola, riga, lati, tocco) {
       cresce?.classList.add('cresce');
       strato.style.width = `${Math.abs(x)}px`;
       // La scritta si allarga con lo swipe: le lettere si stirano in
-      // larghezza, le righe restano quelle. Al limite e' poco piu' del doppio,
+      // larghezza, le righe restano quelle. Al limite e' un quarto piu' larga,
       // e li' si ferma, come la riga.
       const scritta = cresce?.querySelector('.scritta-azione');
       const quanto = Math.min(1, Math.max(0, (Math.abs(x) - larga) / (limite - larga)));
-      if (scritta) scritta.style.transform = `scaleX(${1 + 1.2 * quanto})`;
+      if (scritta) scritta.style.transform = `scaleX(${1 + 0.25 * quanto})`;
     }
     mostraLato(scatola, strato ? lato : null);
   });
@@ -5625,6 +5632,9 @@ function collegaScorri(scatola, riga, lati, tocco) {
     e.preventDefault();
     if (trascinato) return;
     inizio = null;
+    // Dove c'e' un menu delle azioni, il tasto destro (o la pressione lunga)
+    // apre quello, come il tocco.
+    if (menu) { if (scatola._lato) apriScorri(scatola, false); return menu(riga); }
     const apri = !scatola._lato;
     apriScorri(scatola, apri);
     if (apri) scorriImparato();
@@ -5634,6 +5644,26 @@ function collegaScorri(scatola, riga, lati, tocco) {
     e.preventDefault();
     tocca();
     if (scatola._lato) scatola.querySelector(`:scope > .scorri-azioni.${scatola._lato} button:not(:disabled)`)?.focus();
+  });
+}
+
+// Il menu di una riga: tutte le azioni che ci sono, anche quelle che non
+// stanno nello swipe (una per lato). Prima le altre, in fondo quelle che
+// tolgono. Toccare una voce fa quello che farebbe il pulsante della riga.
+function menuDellaRiga(riga) {
+  const scatola = riga.closest('.scorri') || riga;
+  const bottoni = [...scatola.querySelectorAll('.scorri-azioni button, .solo-menu button')];
+  if (!bottoni.length) return;
+  const ordinati = [...bottoni.filter(b => !b.classList.contains('grave')), ...bottoni.filter(b => b.classList.contains('grave'))];
+  const titolo = riga.querySelector('b')?.textContent || riga.querySelector('div')?.textContent || '';
+  const sotto = riga.querySelector('.quando')?.textContent || '';
+  const corpo = apriFoglio(`
+    <h2>${esc(titolo.trim())}</h2>
+    ${sotto ? `<p class="spiega">${esc(sotto.trim())}</p>` : ''}
+    <div class="menu-azioni">${ordinati.map((b, i) =>
+      `<button type="button" class="bottone${b.classList.contains('grave') ? ' grave' : ' secondario'}" data-voce-menu="${i}">${esc(b.querySelector('.scritta-azione')?.textContent || b.textContent.trim())}</button>`).join('')}</div>`);
+  corpo.querySelectorAll('[data-voce-menu]').forEach(v => {
+    v.onclick = () => { chiudiFoglio(); ordinati[Number(v.dataset.voceMenu)].click(); };
   });
 }
 
