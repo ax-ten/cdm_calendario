@@ -13,18 +13,67 @@
   --sfondo: var(--tg-theme-bg-color, #17212b);
   --scheda: var(--tg-theme-secondary-bg-color, #232e3c);
   --testo: var(--tg-theme-text-color, #f5f5f5);
-  --tenue: var(--tg-theme-hint-color, #8a9aa9);
-  --accento: var(--tg-theme-button-color, #4a9ee0);
+  --suggerimento: var(--tg-theme-hint-color, #8a9aa9);
+  /* Il grigio dei testi secondari: quello di Telegram da solo, nel tema
+     chiaro, sul grigio delle schede non si legge (2,5:1). Un terzo del
+     colore del testo lo porta sopra 4,5:1 in tutti e due i temi. */
+  --tenue: color-mix(in srgb, var(--suggerimento) 70%, var(--testo));
+  /* Il blu di riserva (fuori da Telegram) e' piu' scuro di quello di prima:
+     il bianco sopra si legge (4,9:1). */
+  --accento-base: var(--tg-theme-button-color, #2a74b8);
+  --accento: var(--accento-base);
   --su-accento: var(--tg-theme-button-text-color, #fff);
+  /* Il blu usato come colore di una scritta (link, Indietro, la voce scelta
+     del menu): un po' verso il colore del testo, cosi' sullo sfondo si legge
+     anche quando il blu del tema e' pensato per i pulsanti. */
+  --accento-testo: color-mix(in srgb, var(--accento) 65%, var(--testo));
+  /* Gli stati, come scritte e pallini: nel tema scuro chiari, nel chiaro
+     scuri (sotto, .tema-chiaro). Come fondo pieno con il bianco sopra ci
+     sono i -fondo, uguali nei due temi. */
   --occupato: #e0a92a;
-  --pieno: #d9534f;
-  --libero: #4caf7d;
+  --pieno: #ff7a72;
+  --libero: #66cc94;
+  --occupato-fondo: #9a6500;
+  --pieno-fondo: #c4372f;
+  --libero-fondo: #23784a;
+  --stella-direttivo: #f2c14e;
+  --stella-staff: #7cc4ff;
+  /* Nel tema chiaro le schede hanno un filo intorno: #f1f1f1 su bianco non
+     si distingue. Nel tema scuro non serve. */
+  --bordo-scheda: transparent;
   /* Il menu galleggia in basso: quanto e' alto, quanto sta staccato dal
      bordo, e quanto spazio occupa in tutto. Le barre fisse ci stanno sopra. */
   --menu: 62px;
   --menu-margine: 10px;
   --azione: 50px;
   --ingombro-menu: calc(var(--menu) + var(--menu-margine) + env(safe-area-inset-bottom));
+  /* Tutto quello che galleggia in fondo (menu, pulsante d'azione, pulsanti
+     tondi): lo misura aggiornaFondo() e lo scrive qui. Questo e' il valore
+     prima della prima misura. */
+  --ingombro-fondo: calc(var(--ingombro-menu) + 70px);
+}
+/* Fuori da Telegram, con il telefono in tema chiaro: i colori di riserva
+   chiari. Dentro Telegram valgono sempre quelli del suo tema. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --sfondo: var(--tg-theme-bg-color, #ffffff);
+    --scheda: var(--tg-theme-secondary-bg-color, #f1f1f1);
+    --testo: var(--tg-theme-text-color, #000000);
+    --suggerimento: var(--tg-theme-hint-color, #999999);
+  }
+}
+/* Il tema chiaro (di Telegram o del telefono): la classe la mette
+   aggiornaTema() guardando quanto e' chiaro lo sfondo. Gli stati diventano
+   scuri, il blu dei pulsanti un poco piu' scuro (il bianco sopra arriva a
+   4,5:1), le stelline piu' cariche e le schede hanno il loro filo. */
+.tema-chiaro {
+  --accento: color-mix(in srgb, var(--accento-base) 86%, #000);
+  --occupato: #855600;
+  --pieno: #b3261e;
+  --libero: #17693d;
+  --stella-direttivo: #a26c00;
+  --stella-staff: #1f6fb5;
+  --bordo-scheda: color-mix(in srgb, var(--testo) 11%, transparent);
 }
 
 * { box-sizing: border-box; }
@@ -40,8 +89,10 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 
 body {
   margin: 0;
-  /* Lo spazio in fondo tiene conto della barra dell'esito, che e' fissa. */
-  padding: 18px 14px calc(150px + var(--ingombro-menu));
+  /* Lo spazio in fondo e' alto quanto quello che galleggia in fondo (menu,
+     pulsante d'azione, pulsanti tondi), misurato: l'ultima riga finisce
+     sempre sopra, e non sotto un pulsante. */
+  padding: 18px 14px calc(var(--ingombro-fondo) + 20px);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--sfondo);
   color: var(--testo);
@@ -92,7 +143,7 @@ body {
   background: none;
   color: var(--testo);
   font: inherit;
-  font-size: .72rem;
+  font-size: .75rem;
   font-weight: 500;
   line-height: 1.1;
   cursor: pointer;
@@ -110,8 +161,7 @@ body {
 
 /* ----------------------------------------------------------------- passi */
 .testa-passi { display: flex; justify-content: space-between; align-items: center; min-height: 34px; }
-.testa-passi .indietro { padding: 6px 0; }
-.link-mie { appearance: none; border: 0; background: none; color: var(--accento);
+.link-mie { appearance: none; border: 0; background: none; color: var(--accento-testo);
   font: inherit; font-size: .88rem; padding: 6px 0; margin-left: auto; cursor: pointer; }
 .link-mie[hidden] { display: none; }
 /* La barra sta ferma in fondo, fra il menu e il pulsante d'azione: si vede
@@ -134,8 +184,9 @@ body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
 .riepilogo b { font-weight: 500; text-align: right; }
 .riepilogo p { margin: 10px 0; font-size: .86rem; color: var(--occupato); }
 .tab button[aria-selected="true"] {
-  color: var(--accento);
-  background: color-mix(in srgb, var(--accento) 16%, transparent);
+  color: var(--accento-testo);
+  background: color-mix(in srgb, var(--accento) 11%, transparent);
+  font-weight: 600;
 }
 .tab button svg { width: 24px; height: 24px; flex: 0 0 auto; }
 /* Ogni voce ha due icone di Phosphor (licenza MIT, vendor/phosphor-LICENSE.txt),
@@ -156,6 +207,14 @@ body.senza-menu { --ingombro-menu: calc(env(safe-area-inset-bottom) + 6px); }
    la barra dei passi e il pulsante scendono al suo posto, sopra la tastiera. */
 body.tastiera { --ingombro-menu: 6px; }
 body.tastiera .tab { display: none; }
+
+/* Il filo delle schede nel tema chiaro (nel tema scuro e' trasparente). Con
+   :where non pesa niente: chi ha gia' un'ombra sua (la riga col menu aperto)
+   tiene la sua. */
+:where(.riga, .riepilogo, .spese, .interruttore, .sedi button, .categoria, .riassunto-bene, .pista,
+  .segmenti, .ordina, .contatore, .mese button, .anno-quote button, select, textarea,
+  input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="date"],
+  input[type="number"]) { box-shadow: inset 0 0 0 1px var(--bordo-scheda); }
 
 h1 {
   font-size: 1.35rem;
@@ -184,6 +243,8 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
 
 /* Le etichette sono maiuscoletto, e una frase intera in maiuscoletto si urla
    invece di leggersi. Le istruzioni stanno qui sotto, scritte normali. */
+/* "(facoltativa)" dentro l'etichetta: scritto normale, non in maiuscolo. */
+.campo > label small, .riga-campi > div > label small { text-transform: none; letter-spacing: 0; font-size: .95em; }
 .campo > .aiuto.conta { display: flex; justify-content: space-between; gap: 12px; }
 .campo > .aiuto .lungo { color: var(--occupato); }
 #conta-note { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -210,11 +271,11 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
   gap: 2px;
   line-height: 1.2;
 }
-.sedi small { color: var(--tenue); font-size: .72rem; }
+.sedi small { color: var(--tenue); font-size: .76rem; }
 .sedi button[aria-pressed="true"] small { color: inherit; opacity: .8; }
 .sedi button[aria-pressed="true"] {
   border-color: var(--accento);
-  color: var(--accento);
+  color: var(--accento-testo);
 }
 
 /* -------------------------------------------------------------- categorie
@@ -239,16 +300,16 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
   /* Un'altezza definita serve all'icona: e' lei a stirarsi fino ai bordi, e
      senza un'altezza da cui partire sarebbe la sua dimensione naturale a
      decidere quanto e' alta la riga. */
-  height: 35px;
+  height: 44px;
   /* Cosi' la striscia di colore viene tagliata dal raggio dell'angolo invece
      di sporgere: e' quello che le da' la forma a mezzaluna sul bordo. */
   overflow: hidden;
 }
 /* Il colore e' lo stesso che quell'attivita' ha sul calendario pubblico: si
-   riconosce prima di leggere il nome. Riempie i primi 20px da bordo a bordo,
+   riconosce prima di leggere il nome. Riempie i primi 14px da bordo a bordo,
    senza margini. */
 .categoria .tinta {
-  flex: 0 0 20px;
+  flex: 0 0 14px;
   align-self: stretch;
   background: var(--tinta);
   opacity: .75;
@@ -265,7 +326,7 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
   flex: 0 0 auto;
   margin: 0;
 }
-.categoria span.nome { flex: 1; padding: 0 12px 0 10px; }
+.categoria span.nome { flex: 1; padding: 0 12px 0 12px; }
 .categoria[aria-pressed="true"] {
   border-color: var(--tinta);
   background: color-mix(in srgb, var(--tinta) 20%, var(--scheda));
@@ -302,11 +363,14 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   border: 0;
   background: var(--scheda);
   color: var(--testo);
-  width: 34px; height: 34px;
+  width: 38px; height: 38px;
   border-radius: 10px;
   font-size: 1.1rem;
   cursor: pointer;
+  position: relative;
 }
+/* Si vedono da 38px, si toccano da 46. */
+.mese button::before, .anno-quote button::before { content: ""; position: absolute; inset: -4px; }
 .mese button:disabled { opacity: .3; cursor: default; }
 
 /* Leggere il calendario di una sede vuol dire chiedere a Google: passa
@@ -335,7 +399,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 .griglia .intestazione {
   text-align: center;
-  font-size: .68rem;
+  font-size: .74rem;
   color: var(--tenue);
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -368,6 +432,14 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .giorno.pieno .segno { background: var(--pieno); }
 .giorno[aria-pressed="true"] .segno { box-shadow: 0 0 0 1.5px var(--su-accento); }
 .giorno.vuoto { visibility: hidden; }
+/* Spostando una data: quella di adesso, col bordo tratteggiato. */
+.giorno.attuale { border: 1.5px dashed var(--accento-testo); }
+.giorno.attuale[aria-pressed="true"] { border-style: solid; border-color: var(--su-accento); }
+.box-sposta { margin: -8px 0 16px; padding: 10px 13px; border-radius: 12px; font-size: .92rem; line-height: 1.4;
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda));
+  border: 1px solid color-mix(in srgb, var(--accento) 30%, transparent); }
+.box-sposta[hidden] { display: none; }
+.box-sposta b { font-weight: 600; }
 
 .legenda {
   display: flex;
@@ -387,7 +459,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .ore {
   display: flex;
   justify-content: space-between;
-  font-size: .68rem;
+  font-size: .74rem;
   color: var(--tenue);
   font-variant-numeric: tabular-nums;
   margin-bottom: 4px;
@@ -426,8 +498,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .maniglia {
   position: absolute;
   top: 0; bottom: 0;
-  width: 34px;
-  margin-left: -17px;
+  width: 44px;
+  margin-left: -22px;
   background: none;
   border: 0;
   cursor: ew-resize;
@@ -478,7 +550,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   font-size: .85rem;
   cursor: pointer;
 }
-.cadenze button[aria-pressed="true"] { border-color: var(--accento); color: var(--accento); }
+.cadenze button[aria-pressed="true"] { border-color: var(--accento); color: var(--accento-testo); }
 .frase-cadenza { margin: 8px 0 0; font-size: .84rem; line-height: 1.35; color: var(--testo); }
 .frase-cadenza[hidden] { display: none; }
 
@@ -509,15 +581,15 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 #azione[hidden] { display: none; }
 /* Due azioni affiancate: si dividono la stessa larghezza del pulsante da
-   solo, "Segna come prestato" a sinistra. */
+   solo, "Presta a un’altra persona…" a sinistra. */
 #azione-a-nome {
   position: fixed; z-index: 24;
   left: calc((100% - min(440px, 100% - 24px)) / 2);
   bottom: calc(var(--ingombro-menu) + 10px);
   width: calc(min(440px, 100% - 24px) / 2 - 4px); height: var(--azione);
   border: 1.5px solid var(--accento); border-radius: 999px;
-  background: var(--scheda); color: var(--accento);
-  font: inherit; font-size: .88rem; font-weight: 600; white-space: nowrap;
+  background: var(--scheda); color: var(--accento-testo);
+  font: inherit; font-size: .84rem; font-weight: 600; line-height: 1.15; padding: 0 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, .3); cursor: pointer;
   -webkit-tap-highlight-color: transparent; transition: transform .12s ease, filter .12s ease;
 }
@@ -570,6 +642,10 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
   color: var(--testo); font-size: .92rem; font-weight: 600;
   line-height: 1.2; pointer-events: none; display: none; }
 .tondo.con-etichetta .etichetta-tondo, #azione.con-etichetta .etichetta-tondo { display: block; }
+/* Se sotto la scritta finirebbe l'elenco, o c'e' la barra d'azione larga,
+   la scritta non c'e': resta il pulsante col suo nome per il lettore di
+   schermo. Lo decide aggiornaEtichette(). */
+.tondo.etichetta-coperta .etichetta-tondo, #azione.etichetta-coperta .etichetta-tondo { display: none; }
 .tondo.chiaro { background: var(--scheda); color: var(--testo);
   border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .tondo.secondo { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
@@ -598,10 +674,12 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 /* ------------------------------------------------------------------ toast
    Il popup di Telegram vuole un tocco per sparire, e per dire "fatto" e'
    troppo: si fa vedere da solo sopra la barra e se ne va. */
+/* I toast stanno sopra tutto quello che galleggia in fondo, pulsanti tondi
+   compresi: non coprono il + e il + non copre loro. */
 #toast-annulla {
   position: fixed; z-index: 30;
-  left: 12px; right: calc(22px + var(--azione));
-  bottom: calc(var(--ingombro-menu) + 10px);
+  left: 12px; right: 12px;
+  bottom: calc(var(--ingombro-fondo) + 10px);
   display: flex; align-items: center; gap: 10px;
   padding: 12px 8px 14px 14px; border-radius: 14px; overflow: hidden;
   background: #2b3036; color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.35);
@@ -614,7 +692,7 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 #toast-annulla[hidden] { display: none; }
 #toast-annulla:not(.visibile) { pointer-events: none; }
 #toast-annulla span { flex: 1; min-width: 0; }
-#toast-annulla button { appearance: none; border: 0; background: none; color: var(--accento);
+#toast-annulla button { appearance: none; border: 0; background: none; color: #8ec5ff;
   font: inherit; font-weight: 700; padding: 6px 8px; cursor: pointer; }
 #toast-annulla .tempo { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
   background: var(--accento); }
@@ -622,15 +700,15 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 #toast {
   position: fixed;
   left: 14px; right: 14px;
-  bottom: calc(var(--ingombro-menu) + var(--azione) + 84px);
+  bottom: calc(var(--ingombro-fondo) + 10px);
   z-index: 30;
   padding: 12px 14px;
   border-radius: 12px;
   /* Il colore e" tutto il messaggio: verde vuol dire fatto, rosso no, e si
-     capisce prima di aver letto. Il testo scuro perche" su questi due fondi
-     il bianco non regge il contrasto a 14px. */
-  background: var(--libero);
-  color: #12191d;
+     capisce prima di aver letto. Verde e rosso scuri, con il bianco sopra:
+     reggono il contrasto a 14px in tutti e due i temi. */
+  background: var(--libero-fondo);
+  color: #fff;
   box-shadow: 0 6px 24px rgba(0,0,0,.35);
   font-size: .9rem;
   font-weight: 500;
@@ -639,7 +717,7 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
   transition: opacity .22s ease, transform .22s ease;
 }
 #toast.visibile { opacity: 1; transform: none; }
-#toast.guasto { background: var(--pieno); }
+#toast.guasto { background: var(--pieno-fondo); }
 #toast[hidden] { display: none; }
 /* Durante la prenotazione il toast ("manca l'orario") sta accanto alla
    freccia che si e' appena premuta, alla stessa altezza, non sopra. */
@@ -691,6 +769,7 @@ body.in-passi #toast[hidden] { display: none; }
 .azioni.prolunga .contagiorni { margin-right: auto; }
 .riga .azioni.prolunga > button { padding: 7px 10px; }
 .vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
+.vuoto-testo { margin: 0 0 12px; }
 
 /* ------------------------------------------------------------ inventario */
 input[type="search"], input[type="number"], select {
@@ -712,16 +791,18 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .filtri select:disabled { opacity: .4; }
 .ordina { position: relative; flex: 0 0 44px; display: flex; align-items: center; justify-content: center;
   border-radius: 12px; background: var(--scheda); color: var(--testo); }
-.ordina.attivo { color: var(--accento); }
+.ordina.attivo { color: var(--accento-testo); }
 .ordina svg { width: 20px; height: 20px; display: block; }
 .ordina select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
   padding: 0; cursor: pointer; }
-.solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: 0 0 12px; }
+/* Le spunte su una riga: alta 44px da toccare, tutta la scritta compresa. */
+.solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: -6px 0 4px;
+  min-height: 44px; cursor: pointer; }
 .solo-disp input { width: 18px; height: 18px; margin: 0; accent-color: var(--accento); }
 .conteggio { color: var(--tenue); font-size: .84rem; margin: 0 0 8px; }
 
 .bene { background: var(--scheda); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px;
-  border: 1.5px solid transparent; }
+  border: 1.5px solid var(--bordo-scheda); }
 /* Un bene si sceglie toccandolo; il pulsante per prenderlo e' quello grande
    in fondo, non uno per scheda. */
 .bene[role="button"] { cursor: pointer; -webkit-user-select: none; user-select: none;
@@ -733,20 +814,25 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
    con se' una barra, che il Chrome di Telegram non sa nascondere. */
 .tipi { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .tipi button {
-  flex: 0 0 auto; padding: 7px 13px; border-radius: 999px; white-space: nowrap;
+  position: relative;
+  flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; white-space: nowrap;
   border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
   background: none; color: var(--testo); font: inherit; font-size: .86rem; cursor: pointer;
 }
 .tipi button[aria-pressed="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+/* Le chips restano basse a vedersi, ma si toccano per 44px: il resto lo
+   prende un bordo invisibile sopra e sotto. */
+.tipi button::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px;
+  transform: translateY(-50%); }
 .azioni-form { display: flex; gap: 8px; }
 .azioni-form .bottone { flex: 1; padding: 11px 14px; }
 
 .bene-testa { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .bene-testa b { font-weight: 600; }
 .bene-info { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
-.stato { font-size: .72rem; padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; margin-top: 2px; }
+.stato { font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; margin-top: 2px; }
 .stato-disponibile { color: var(--libero); background: color-mix(in srgb, var(--libero) 18%, transparent); }
-.stato-in_prestito { color: var(--occupato); background: color-mix(in srgb, var(--occupato) 18%, transparent); }
+.stato-in_prestito { color: var(--occupato); background: color-mix(in srgb, var(--occupato) 13%, transparent); }
 .stato-mancante { color: var(--pieno); background: color-mix(in srgb, var(--pieno) 18%, transparent); }
 
 .bottone {
@@ -754,7 +840,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   padding: 8px 14px; background: var(--accento); color: var(--su-accento);
   font: inherit; font-size: .88rem; cursor: pointer;
 }
-.bottone.secondario { background: transparent; color: var(--accento); }
+.bottone.secondario { background: transparent; color: var(--accento-testo); }
 .bottone:disabled { opacity: .5; cursor: default; }
 .bottone.largo { width: 100%; padding: 11px 14px; }
 .bottone[hidden] { display: none; }
@@ -768,15 +854,16 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .mio-prestito.scaduto .scadenza { color: var(--pieno); }
 .nota-prestito { color: var(--tenue); font-size: .84rem; margin: -6px 0 14px; }
 
-.indietro { appearance: none; border: 0; background: none; color: var(--accento);
-  font: inherit; padding: 14px 0 6px; cursor: pointer; }
+/* "‹ Indietro" e simili: alti 44px da toccare, in tutte le pagine uguali. */
+.indietro { appearance: none; border: 0; background: none; color: var(--accento-testo);
+  font: inherit; padding: 6px 12px 2px 0; min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips:empty { display: none; }
 .chips button {
   padding: 6px 10px; border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
   border-radius: 999px; background: none; color: var(--testo); font: inherit; font-size: .84rem; cursor: pointer;
 }
-.chips button[aria-pressed="true"] { border-color: var(--accento); color: var(--accento); }
+.chips button[aria-pressed="true"] { border-color: var(--accento); color: var(--accento-testo); }
 .riga-campi { display: flex; gap: 8px; }
 .riga-campi > * { flex: 1; min-width: 0; }
 .riga-campi .bottone { flex: 0 0 auto; }
@@ -818,7 +905,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 /* --------------------------------------------------------- registrazione */
 .intro { font-size: 1rem; margin: 0 0 22px; }
 .informativa { margin-top: 8px; font-size: .88rem; }
-.informativa summary { color: var(--accento); cursor: pointer; }
+.informativa summary { color: var(--accento-testo); cursor: pointer; }
 .informativa > div {
   margin-top: 10px; padding: 12px; border-radius: 12px;
   background: var(--scheda); color: var(--tenue);
@@ -864,11 +951,11 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .spesa b { color: var(--testo); font-weight: 600; }
 /* "Le mie ricevute" sta sulla riga del titolo Contribuisci, a destra, come link. */
 .titolo-con-link { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.titolo-con-link .link { font-size: .92rem; white-space: nowrap; }
+.titolo-con-link .link { font-size: .92rem; white-space: nowrap; padding: 12px 0 12px 12px; margin: -12px 0; }
 .voci { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
 .voce { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column;
   align-items: flex-start; gap: 2px; padding: 14px 12px;
-  border-radius: 14px; background: var(--scheda); border: 1.5px solid transparent; color: var(--testo);
+  border-radius: 14px; background: var(--scheda); border: 1.5px solid var(--bordo-scheda); color: var(--testo);
   font: inherit; cursor: pointer; text-align: left; transition: border-color .15s ease, background-color .15s ease; }
 .voce b, .voce span { position: relative; z-index: 1; }
 .voce span { color: var(--tenue); font-size: .88rem; }
@@ -877,9 +964,16 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .voce[aria-pressed="true"] .voce-icona { color: var(--accento); opacity: .45; }
 .voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
 #dettaglio-pagamento:not(:empty) { margin-bottom: 18px; }
-/* Lo spazio sotto lascia posto al pulsante Procedi, solo quando c'e': senza
-   una voce scelta la pagina resta corta e non scorre. */
-#tessera.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
+/* Il conto, in fondo alle scelte: quanto fa, e come si paga per ora. Un
+   riquadro da leggere, non un pulsante spento. */
+.conto-pagamento { margin: 4px 0 0; padding: 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda));
+  border: 1px solid color-mix(in srgb, var(--accento) 30%, transparent); }
+.conto-pagamento b { display: block; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.conto-pagamento span { display: block; margin-top: 2px; color: var(--tenue); font-size: .88rem; line-height: 1.35; }
+.conto-pagamento .dove-pagare { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
+.conto-pagamento a.link { color: var(--accento-testo); font-weight: 600; text-decoration: none; }
+.conto-pagamento .dove-pagare b { color: var(--testo); font-weight: 600; overflow-wrap: anywhere; }
 .domanda { margin: 4px 0 0; font-weight: 600; }
 .scelte { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
 .scelte button, .scelta-data { position: relative; padding: 10px 13px; border-radius: 999px; background: none;
@@ -897,17 +991,23 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .nota-pagamento { color: var(--tenue); font-size: .88rem; margin: 4px 0 0; }
 .mensilita button { color: var(--testo); cursor: pointer; }
 .mensilita button.pagato { cursor: default; }
-/* Nella scelta i mesi gia' pagati sono solo grigi: la spunta verde e' della
-   griglia dei pagati. */
-.mensilita.scegli button.pagato { background: transparent; color: var(--tenue); opacity: .45; }
-.mensilita.scegli button.pagato::after { content: none; }
+/* Nella scelta i mesi gia' pagati sono come nella griglia dei pagati: verdi
+   con la spunta, e non si toccano. Il blu pieno e' solo la scelta. Prima
+   erano grigi e spenti, e sembravano loro quelli da pagare. */
+.mensilita.scegli button.pagato:disabled { opacity: 1; }
+/* "Novembre pagato": uno stato, non un pulsante spento. */
+.scelte button.pagato:disabled { opacity: 1; border-color: transparent;
+  background: color-mix(in srgb, var(--libero) 18%, var(--scheda)); color: var(--testo); }
+.scelte button.pagato::before { content: "✓ "; color: var(--libero); font-weight: 700; }
 #mesi-pagati-tessera[hidden], #mesi-pagati-quota[hidden] { display: none; }
 .mensilita button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
+.nota-ricevute { margin: -4px 0 12px; }
 .ricevute-anno { margin-bottom: 12px; padding: 4px 8px; border-radius: 16px;
   background: color-mix(in srgb, var(--scheda) 45%, var(--sfondo)); }
 .testa-anno { display: flex; align-items: center; gap: 10px; padding: 6px 4px 6px 5px; }
-.scegli-anno { display: flex; cursor: pointer; }
-.apri-anno { flex: 1; display: flex; align-items: baseline; gap: 10px; padding: 6px 2px; border: 0; background: none;
+/* Il quadratino dell'anno si tocca per 44px: il resto e' margine trasparente. */
+.scegli-anno { display: flex; cursor: pointer; padding: 10px; margin: -10px; }
+.apri-anno { flex: 1; display: flex; align-items: baseline; gap: 10px; padding: 10px 2px; min-height: 44px; border: 0; background: none;
   color: var(--testo); font: inherit; cursor: pointer; text-align: left; }
 .apri-anno b { font-size: 1.05rem; }
 .apri-anno span { color: var(--tenue); font-size: .86rem; flex: 1; }
@@ -923,10 +1023,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .segmenti button { flex: 1; padding: 8px 10px; border: 0; border-radius: 999px; background: none; color: var(--tenue);
   font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
 .segmenti button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
-#vista-persone, #vista-pagamenti { padding-bottom: calc(var(--azione) + 24px); }
 #vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden] { display: none; }
-/* Il periodo sta su una riga anche sui telefoni stretti. */
-#periodo-pagamenti { flex-wrap: nowrap; }
 .date-pagamenti { display: flex; gap: 8px; margin: 0 0 12px; }
 .date-pagamenti label { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; color: var(--tenue); font-size: .88rem; }
 .date-pagamenti input { flex: 1 1 0; width: 100%; min-width: 0; padding: 9px 8px; font-size: .88rem; }
@@ -947,23 +1044,32 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
    mette alla meta' delle cifre. */
 .socio-quota > .stellina { position: absolute; left: 13px; top: 50%; transform: translateY(calc(-50% + 2px)); }
 .numero-tessera { flex: 0 0 2.4em; text-align: right; color: var(--tenue); font-variant-numeric: tabular-nums; }
-.socio-nome { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Il nome si legge sempre intero: se non ci sta va a capo. */
+.socio-nome { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .stellina { font-size: .85em; }
-.stellina.direttivo { color: #f2c14e; }
-.stellina.staff { color: #7cc4ff; }
+.stellina.direttivo { color: var(--stella-direttivo); }
+.stellina.staff { color: var(--stella-staff); }
+/* Sulla tessera lo sfondo e' sempre il blu scuro della carta: colori fissi. */
 .tessera-nome .stellina.staff { color: #cfe9ff; }
+.tessera-nome .stellina.direttivo { color: #f2c14e; }
 /* Sulla tessera la stellina sta sopra il nome, come un fregio. */
 .tessera-nome .stellina { display: block; font-size: 1.05rem; line-height: 1; margin-bottom: 4px; }
 .socio-nome small { display: block; font-weight: 400; font-size: .78rem; color: var(--tenue); }
-.socio-quota .mesi-mini { flex: 0 0 auto; grid-template-columns: repeat(6, 18px); gap: 3px; margin: 0; }
-.socio-quota .mesi-mini span { padding: 1px 0; font-size: .64rem; border-radius: 4px; }
+/* Nell'elenco, delle mensilita' solo quante: "8/12". La griglia dei mesi
+   (con le iniziali, che si confondevano: G F M A M G...) toglieva spazio al
+   nome; i mesi uno per uno stanno nella scheda della persona. Verde se il
+   mese in corso e' pagato. */
+.mesi-conto { flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; font-size: .85rem; color: var(--testo);
+  font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--tenue) 14%, transparent); }
+.mesi-conto b { font-weight: 700; }
+.mesi-conto.ok { background: color-mix(in srgb, var(--libero) 18%, transparent); }
 .mese-coperto { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
   color: var(--tenue); font-size: .88rem; white-space: nowrap; }
 .mese-coperto select { flex: 1; min-width: 0; }
 #vista-persone .filtri { align-items: center; }
 #vista-persone .ordina { align-self: stretch; min-height: 38px; }
 .anno-quote { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-.anno-quote button { width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+.anno-quote button { position: relative; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
   display: flex; align-items: center; justify-content: center; background: var(--scheda); color: var(--testo); }
 .anno-quote button svg { width: 18px; height: 18px; display: block; }
 .anno-quote button:disabled { opacity: .35; cursor: default; }
@@ -971,22 +1077,15 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .socio-quota { cursor: pointer; }
 .socio-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .socio-testa b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bollino { flex: 0 0 auto; font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+.bollino { flex: 0 0 auto; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
   color: var(--pieno); background: color-mix(in srgb, var(--pieno) 14%, transparent); }
 .bollino.ok { color: var(--libero); background: color-mix(in srgb, var(--libero) 16%, transparent); }
-.mesi-mini { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; margin-top: 9px; }
-.mesi-mini span { position: relative; text-align: center; font-size: .68rem; padding: 3px 0; border-radius: 5px;
-  color: var(--tenue); background: color-mix(in srgb, var(--tenue) 12%, transparent); }
-.mesi-mini .pagato { color: var(--testo); background: color-mix(in srgb, var(--libero) 40%, var(--scheda)); }
 .nome-quota { margin-bottom: 2px; }
 .quando-quota { color: var(--tenue); margin: 0 0 14px; }
 .ricorda-quota { margin: -12px 0 18px; font-size: .92rem; }
 .voce:disabled { opacity: .45; cursor: default; filter: grayscale(1); }
 .nota-voci { margin: -4px 0 16px; }
 .nota-pagamento.attento { color: var(--occupato); }
-#scheda-quota.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
-#modulo-incassi { padding-bottom: calc(var(--azione) + 24px); }
-#modulo-incassi.vuoto { padding-bottom: 34px; }
 .campo-cerca-incasso { margin: 8px 0 12px; }
 .suggerimenti-soci .senza-tessera, .quando.attento { color: var(--occupato); }
 .scelto-incasso .testa-prestito { align-items: center; }
@@ -998,24 +1097,29 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 /* I giorni negli elenchi: titoli leggeri, separano senza pesare. */
 .giorno-gestione { margin-top: 20px; font-size: 1rem; font-weight: 400; }
 /* Righe di filtri: a sinistra la categoria, a destra le scelte.
-   Se le scelte non ci stanno si scorrono di lato, senza andare a capo. */
-.filtro-riga { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+   Se le scelte non ci stanno vanno a capo, sotto la prima: scorrendo di
+   lato, sui telefoni stretti "Altro…" ed "Eventi" restavano fuori dallo
+   schermo senza che niente lo dicesse. Il nome resta in alto a sinistra. */
+.filtro-riga { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 8px; }
 .filtro-riga:has(> .tipi[hidden]) { display: none; }
 .filtro-nome { flex: 0 0 auto; color: var(--tenue); font-size: .84rem; }
+.filtro-riga > .filtro-nome { padding-top: 7px; }
 .filtro-riga > .tipi { gap: 4px; }
 .filtro-riga > .tipi button { padding: 6px 9px; font-size: .84rem; }
 .filtro-riga > .tipi .conta { margin-left: 2px; }
-.filtro-riga > .tipi { flex: 1; min-width: 0; margin: 0; flex-wrap: nowrap; overflow-x: auto;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.filtro-riga > .tipi::-webkit-scrollbar { display: none; }
+.filtro-riga > .tipi { flex: 1; min-width: 0; margin: 0; flex-wrap: wrap; row-gap: 8px; }
 .filtro-riga + :not(.filtro-riga) { margin-top: 14px; }
 #sede-gestione[hidden] { display: none; }
-.tipi .conta { margin-left: 3px; font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
+/* Il numero accanto al nome del filtro: piu' piccolo e leggero, ma non
+   piu' chiaro (era al 70%, e non si leggeva) ne' sotto i 12px. */
+.tipi .conta { margin-left: 3px; font-size: .75rem; font-weight: 400; font-variant-numeric: tabular-nums; }
 .riga.pren { padding: 11px 13px; }
 .pren-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.pren-testa b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pren-testa b { min-width: 0; overflow-wrap: anywhere; }
 .pren .quando { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chiavi { flex: 0 0 auto; font-size: .78rem; font-weight: 600; }
+/* Chi apre sta su una riga sua, sotto: in testa toglieva posto al titolo,
+   che a 320px finiva tagliato. */
+.chiavi { display: block; margin-top: 2px; font-size: .84rem; font-weight: 600; }
 .chiavi.ok { color: var(--libero); }
 .chiavi.no { color: var(--pieno); }
 .riga.con-apro { display: flex; align-items: center; gap: 12px; }
@@ -1029,18 +1133,21 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #sede-prestiti[hidden] { display: none; }
 #filtro-prestiti[hidden] { display: none; }
 .testa-prestito { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.riga .icona-chat { flex: 0 0 auto; width: 34px; height: 34px; margin: -6px -6px -6px 0; border-radius: 50%; border: 0; padding: 0;
+.riga .icona-chat { position: relative; flex: 0 0 auto; width: 40px; height: 40px; margin: -9px -8px -9px 0; border-radius: 50%; border: 0; padding: 0;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
-  background: color-mix(in srgb, var(--accento) 16%, transparent); color: var(--accento); }
+  background: color-mix(in srgb, var(--accento) 16%, transparent); color: var(--accento-testo); }
 .riga .icona-chat svg { width: 18px; height: 18px; }
+.riga .icona-chat::before { content: ""; position: absolute; inset: -2px; }
+/* Senza username Telegram la chat non si apre: l'icona c'e' lo stesso,
+   barrata e grigia, e toccandola dice perche'. */
+.riga .icona-chat.spenta { background: color-mix(in srgb, var(--tenue) 14%, transparent); color: var(--tenue); cursor: help; }
 /* Il pallino rosso sul tasto Prenotazioni: date senza chiavi non ancora viste. */
 .tondo .pallino { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px;
-  border-radius: 999px; background: var(--pieno); color: #fff; font-size: .72rem; font-weight: 700;
+  border-radius: 999px; background: var(--pieno-fondo); color: #fff; font-size: .75rem; font-weight: 700;
   line-height: 20px; text-align: center; box-shadow: 0 0 0 2px var(--sfondo, #17202a); pointer-events: none; }
 .tondo .pallino[hidden] { display: none; }
 #filtro-gestione[hidden] { display: none; }
-#azione.grave { background: var(--pieno); color: #fff; }
-#riepilogo-serie.con-pagamento { padding-bottom: calc(var(--azione) + 24px); }
+#azione.grave { background: var(--pieno-fondo); color: #fff; }
 .riga.data-serie { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 11px 13px; margin-bottom: 6px; }
 .giorno-serie::first-letter { text-transform: uppercase; }
 .nota-serie { color: var(--tenue); font-size: .9rem; margin: 14px 0 18px; }
@@ -1048,7 +1155,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .anno-ricevute { display: flex; align-items: center; gap: 12px; padding: 4px 13px 10px;
   font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none; }
 .riga.ricevuta { display: flex; align-items: center; gap: 12px; cursor: pointer;
-  -webkit-user-select: none; user-select: none; border: 1.5px solid transparent;
+  -webkit-user-select: none; user-select: none; border: 1.5px solid var(--bordo-scheda);
   transition: border-color .15s ease, background-color .15s ease; }
 .riga.ricevuta[aria-checked="true"] { border-color: var(--accento);
   background: color-mix(in srgb, var(--accento) 10%, var(--scheda)); }
@@ -1066,7 +1173,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   border-radius: 2px; background: var(--accento); }
 .vai-iscrizione { margin: 10px 0 0 4px; color: var(--tenue); }
 button.link { appearance: none; border: 0; background: none; padding: 0; font: inherit;
-  color: var(--accento); font-weight: 600; cursor: pointer; }
+  color: var(--accento-testo); font-weight: 600; cursor: pointer; }
 
 /* ---- piccole animazioni ----
    Brevi, e solo su quello che compare: niente che faccia aspettare. I
@@ -1114,9 +1221,9 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   display: flex; align-items: center; justify-content: center;
   font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.2; white-space: normal; cursor: pointer;
   color: var(--testo); background: color-mix(in srgb, var(--tenue) 30%, var(--scheda)); }
-.scorri-azioni button.grave { background: var(--pieno); color: #fff; }
-.scorri-azioni button.arancio { background: var(--occupato); color: #fff; }
-.scorri-azioni button.libero { background: var(--libero); color: #fff; }
+.scorri-azioni button.grave { background: var(--pieno-fondo); color: #fff; }
+.scorri-azioni button.arancio { background: var(--occupato-fondo); color: #fff; }
+.scorri-azioni button.libero { background: var(--libero-fondo); color: #fff; }
 .scorri-azioni button.conferma { background: var(--accento); color: var(--su-accento); }
 .scorri-azioni button:disabled { opacity: .6; cursor: default; }
 .scorri-azioni button:active:not(:disabled) { filter: brightness(.9); }
@@ -1170,7 +1277,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .titolo-foglio { margin-bottom: 12px !important; }
 .bottone.grave { background: transparent; color: var(--pieno); border-color: var(--pieno); }
 .bottone.arancio { background: transparent; color: var(--occupato); border-color: var(--occupato); }
-.bottone.pieno-grave { background: var(--pieno); border-color: var(--pieno); color: #fff; }
+.bottone.pieno-grave { background: var(--pieno-fondo); border-color: var(--pieno-fondo); color: #fff; }
 /* "Segna un pagamento" e' un'azione, non un elenco: sta in un riquadro suo,
    tinto, cosi' non si confonde con i pagamenti sotto. */
 .blocco-segna { margin: 6px 0 24px; padding: 14px 12px 4px; border-radius: 16px;
@@ -1185,7 +1292,6 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .riassunto-bene { margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: var(--scheda); }
 .riassunto-bene b { display: block; }
 .riassunto-bene span { color: var(--tenue); font-size: .86rem; }
-#pannello-aggiungi { padding-bottom: calc(var(--azione) + 40px); }
 /* Il codice a barre e' la scorciatoia del primo passo: sta in un riquadro. */
 .riquadro-isbn { padding: 12px 12px 14px; border-radius: 14px;
   background: color-mix(in srgb, var(--accento) 9%, var(--sfondo));
@@ -1233,6 +1339,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <div class="avanzamento-pieno" id="avanzamento-pieno"></div>
   </div>
   <h1 id="titolo-passo"></h1>
+  <!-- Spostando una data: quale data si sta spostando. -->
+  <p class="box-sposta" id="box-sposta" hidden></p>
 
   <div class="passo" data-passo="1">
   <div class="campo">
@@ -1313,13 +1421,13 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <div class="campo">
     <label for="titolo">Nome attività</label>
     <input type="text" id="titolo" maxlength="80" required
-           placeholder="Giochi da tavolo, il nome della tua campagna gdr…">
+           placeholder="Es. Serata giochi, campagna GdR">
     <datalist id="serie-note"></datalist>
     <p class="serie" id="serie-nota" hidden></p>
   </div>
 
   <div class="campo">
-    <label for="note">(Opzionale) Descrizione</label>
+    <label for="note">Descrizione <small>(facoltativa)</small></label>
     <span class="aiuto conta">
       <span>Una riga sola: va sotto il titolo, in vetrina.</span>
       <b id="conta-note">0/70</b>
@@ -1361,7 +1469,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <div id="elenco-mie" class="vuoto">…</div>
   <!-- phosphor: calendar-dots. Per lo staff: le prenotazioni di tutti. Sta
        sopra il +, come Prestiti in biblioteca. -->
-  <button type="button" class="tondo chiaro secondo" id="apri-gestione" aria-label="Prenotazioni" hidden><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-68-76a12,12,0,1,1-12-12A12,12,0,0,1,140,132Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,132ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,140,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"/></svg><span class="etichetta-tondo" aria-hidden="true">Prenotazioni</span><span class="pallino" id="pallino-chiavi" aria-hidden="true" hidden></span></button>
+  <button type="button" class="tondo chiaro secondo con-etichetta" id="apri-gestione" aria-label="Prenotazioni" hidden><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-68-76a12,12,0,1,1-12-12A12,12,0,0,1,140,132Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,132ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,140,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"/></svg><span class="etichetta-tondo" aria-hidden="true">Prenotazioni</span><span class="pallino" id="pallino-chiavi" aria-hidden="true" hidden></span></button>
 </section>
 
 <section class="pannello" id="pannello-gestione" hidden>
@@ -1408,8 +1516,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <!-- lucide: plus -->
   <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta sopra il +
        quando c'e' anche quello. -->
-  <button type="button" class="tondo chiaro" id="apri-prestiti" aria-label="Registro prestiti" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg><span class="etichetta-tondo" aria-hidden="true">Registro prestiti</span></button>
-  <button type="button" class="tondo" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span class="etichetta-tondo" aria-hidden="true">Aggiungi</span></button>
+  <button type="button" class="tondo chiaro con-etichetta" id="apri-prestiti" aria-label="Registro prestiti" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg><span class="etichetta-tondo" aria-hidden="true">Registro prestiti</span></button>
+  <button type="button" class="tondo con-etichetta" id="apri-aggiungi" aria-label="Aggiungi un bene" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span class="etichetta-tondo" aria-hidden="true">Aggiungi</span></button>
   <div id="elenco-beni"></div>
   <button type="button" class="bottone secondario largo" id="altri-beni" hidden>Mostra altri</button>
 </section>
@@ -1532,7 +1640,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <button type="button" id="azione" hidden></button>
 <!-- Per chi amministra, accanto a "Prendi in prestito": segnare che il bene
      l'ha preso qualcun altro. -->
-<button type="button" id="azione-a-nome" hidden>Segna come prestato</button>
+<button type="button" id="azione-a-nome" hidden>Presta a un’altra persona…</button>
 
 <!-- La foto del bene riportato in sede. capture apre direttamente la
      fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
@@ -1554,7 +1662,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <p class="aiuto-foglio">Se il nome è tra i suggerimenti sceglilo: il prestito va sulla sua scheda.</p>
     <div class="azioni-form">
       <button type="button" class="bottone secondario" id="a-nome-annulla">Annulla</button>
-      <button type="button" class="bottone" id="a-nome-conferma">Segna</button>
+      <button type="button" class="bottone" id="a-nome-conferma">Presta</button>
     </div>
   </div>
 </div>
@@ -1578,15 +1686,15 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-tessera" role="tabpanel" aria-labelledby="tab-tessera" hidden>
   <div id="tessera" class="vuoto">…</div>
   <!-- lucide: users. Per il direttivo: le quote di tuttɜ. Sale sopra il
-       pulsante Procedi quando c'e' anche quello. -->
-  <button type="button" class="tondo chiaro con-etichetta" id="apri-quote" aria-label="Gestisci quote" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="etichetta-tondo" aria-hidden="true">Gestisci quote</span></button>
+       pulsante Procedi quando c'e' anche quello (quando si potra' pagare dall'app). -->
+  <button type="button" class="tondo chiaro con-etichetta" id="apri-quote" aria-label="Gestisci contributi" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="etichetta-tondo" aria-hidden="true">Gestisci contributi</span></button>
 </section>
 
 <!-- ------------------------------------------- quote dei soci (direttivo) -->
 <section class="pannello" id="pannello-quote" hidden>
   <button type="button" class="indietro" id="chiudi-quote">‹ Tessera</button>
   <div class="titolo-con-anno">
-    <h1>Quote</h1>
+    <h1>Contributi</h1>
     <div class="anno-quote" id="anno-quote-nav">
       <!-- lucide: chevron-left / chevron-right: i caratteri ‹ › non stanno al centro -->
       <button type="button" id="anno-prima" aria-label="Anno precedente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
@@ -1631,13 +1739,13 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 
 <!-- Lo stesso pagamento per tante persone: l'obolo di una serata. -->
 <section class="pannello" id="pannello-incassi" hidden>
-  <button type="button" class="indietro" id="chiudi-incassi">‹ Quote</button>
+  <button type="button" class="indietro" id="chiudi-incassi">‹ Contributi</button>
   <h1>Segna pagamenti</h1>
   <div id="modulo-incassi" class="vuoto">…</div>
 </section>
 
 <section class="pannello" id="pannello-quota" hidden>
-  <button type="button" class="indietro" id="chiudi-quota">‹ Quote</button>
+  <button type="button" class="indietro" id="chiudi-quota">‹ Contributi</button>
   <div id="scheda-quota" class="vuoto">…</div>
 </section>
 
@@ -1647,13 +1755,15 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <div id="lista-ricevute"></div>
 </section>
 
-<!-- Chi non e' ancora sociə chiede qui il tesseramento: la quota si paga in
-     sede, e il direttivo registra il pagamento dal suo gruppo. -->
+<!-- Chi non e' ancora sociə chiede qui il tesseramento. Il primo
+     tesseramento si fa solo in sede (li' si paga la quota), e il direttivo
+     registra il pagamento dal suo gruppo: qui nessuna strada per pagare. -->
 <section class="pannello" id="pannello-iscrizione" hidden>
   <button type="button" class="indietro" id="chiudi-iscrizione">‹ Indietro</button>
   <h1>Tesserati</h1>
-  <p class="intro">Compila i tuoi dati: servono per il libro soci. La quota di
-    <span id="quota-iscrizione">10 €</span> si paga in sede, alla prossima apertura.</p>
+  <p class="intro">Il primo tesseramento si fa in sede. Compila qui i tuoi dati, che
+    servono per il libro soci, poi passa alla prossima apertura: la quota di
+    <span id="quota-iscrizione">10 €</span> si paga lì.</p>
   <div class="campo riga-campi">
     <div><label for="isc-nome">Nome</label><input type="text" id="isc-nome" maxlength="60" autocomplete="given-name"></div>
     <div><label for="isc-cognome">Cognome</label><input type="text" id="isc-cognome" maxlength="60" autocomplete="family-name"></div>
@@ -1769,6 +1879,23 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
+// ---- tema chiaro o scuro
+// I colori li da' Telegram (o, fuori, il telefono); gli stati (verde, giallo,
+// rosso) e le stelline invece sono nostri, e vanno scuriti sul chiaro. Si
+// guarda lo sfondo vero, non tg.colorScheme: e' lo sfondo che decide cosa si
+// legge, anche con un tema fatto a mano. Si riguarda quando Telegram cambia
+// tema o il telefono passa da chiaro a scuro.
+function aggiornaTema() {
+  const m = getComputedStyle(document.body).backgroundColor.match(/[\d.]+/g);
+  if (!m) return;
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const luce = 0.2126 * lin(+m[0]) + 0.7152 * lin(+m[1]) + 0.0722 * lin(+m[2]);
+  document.documentElement.classList.toggle('tema-chiaro', luce > 0.4);
+}
+aggiornaTema();
+tg?.onEvent?.('themeChanged', aggiornaTema);
+window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', aggiornaTema);
+
 // Le cose ancora in prova (la tessera, il tesseramento dall'app) si vedono
 // solo aprendo l'app dal link t.me/<bot>/<app>?startapp=debug. Il server
 // lo controlla da se', sull'initData firmato.
@@ -1804,7 +1931,8 @@ const articoloGiorno = (n) => [1, 8, 11].includes(n) ? `l’${n}` : `il ${n}`;
 
 // Prima di scegliere una categoria non si sa che esempio dare, quindi si
 // danno i due estremi.
-const ESEMPIO_GENERICO = 'Giochi da tavolo, il nome della tua campagna gdr…';
+// Corto: sta intero nel campo anche a 320px.
+const ESEMPIO_GENERICO = 'Es. Serata giochi, campagna GdR';
 
 const el = (id) => document.getElementById(id);
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1982,9 +2110,13 @@ function disegnaCalendario() {
     const classe = ['giorno'];
     if (info.pieno) classe.push('pieno');
     else if (info.occupati > 0) classe.push('occupato');
+    // Spostando una data, quella di adesso ha un bordo suo: si vede da dove
+    // si parte.
+    const attuale = stato.spostando?.giorno === chiave;
+    if (attuale) classe.push('attuale');
     // Per chi non vede i colori: il giorno per esteso, e com'e' messo.
     const nome = data.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-    const come = info.pieno ? ', pieno' : info.occupati > 0 ? ', occupato' : '';
+    const come = (info.pieno ? ', pieno' : info.occupati > 0 ? ', occupato' : '') + (attuale ? ', data attuale' : '');
     pezzi.push(
       `<button class="${classe.join(' ')}" data-data="${chiave}"` +
       `${fuori || info.pieno ? ' disabled' : ''}` +
@@ -2235,6 +2367,7 @@ function vaiAPasso(n) {
   el('dopo-giorno').hidden = !stato.giorno;
   el('apertura').closest('.campo').hidden = Boolean(stato.spostando);
   el('fissa').closest('.campo').hidden = Boolean(stato.spostando);
+  el('box-sposta').hidden = !stato.spostando || stato.passo !== 2;
   el('avanzamento-pieno').style.width = `${numero / totale * 100}%`;
   el('avanzamento').setAttribute('aria-valuenow', String(numero));
   el('avanzamento').setAttribute('aria-valuetext', `Passo ${numero} di ${totale}`);
@@ -2325,6 +2458,9 @@ function apriSposta(sede, id, nome, inizio, fine) {
   const da = valida ? oreDecimali(a) : null;
   const fino = valida ? oreDecimali(b) + (iso(b) !== iso(a) ? 24 : 0) : null;
   stato.spostando = { sede, id, nome, giorno: valida ? iso(a) : null, da, a: fino };
+  const quando = valida ? `${giornoLungo(inizio)}, ${oraTesto(da)}-${oraTesto(fino)}` : '';
+  el('box-sposta').innerHTML = html`Sposti <b>«${nome || 'senza titolo'}»</b>${quando ? ` di ${quando}` : ''}${
+    nomeSede(sede) ? ` a ${nomeSede(sede)}` : ''}. Scegli il giorno nuovo.`;
   stato.sede = sede;
   stato.giorno = null;
   if (valida) {
@@ -2363,15 +2499,18 @@ function disegnaRiepilogo() {
       ? '<p>Essendo ricorrente, lo staff della sede deve approvarla: ti scrivo appena decide.</p>' : '');
 }
 
+// Il riepilogo dice da dove a dove: "Da giovedì 5 novembre → sabato 21
+// novembre", e cosi' orario e sede se cambiano anche loro.
 function disegnaRiepilogoSposta() {
-  const sede = (stato.sediInfo || []).find(x => x.slug === stato.sede);
-  const giorno = new Date(stato.giorno + 'T12:00')
-    .toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const s = stato.spostando;
+  const lungo = (g) => new Date(g + 'T12:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const daA = (prima, dopo) => prima && prima !== dopo ? `Da ${prima} → ${dopo}` : dopo;
+  const orarioPrima = s.da !== null ? `${oraTesto(s.da)}-${oraTesto(s.a)}` : '';
   const righe = [
-    ['Attività', stato.spostando.nome || ''],
-    ['Sede', sede ? sede.nome : stato.sede],
-    ['Giorno', giorno],
-    ['Orario', `${oraTesto(stato.daOra)}-${oraTesto(stato.aOra)}`],
+    ['Attività', s.nome || ''],
+    ['Giorno', daA(s.giorno ? lungo(s.giorno) : '', lungo(stato.giorno))],
+    ['Orario', daA(orarioPrima, `${oraTesto(stato.daOra)}-${oraTesto(stato.aOra)}`)],
+    ['Sede', daA(nomeSede(s.sede), nomeSede(stato.sede))],
   ];
   el('riepilogo').innerHTML = righe.map(([k, v]) =>
     `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('') +
@@ -2443,6 +2582,62 @@ function pulsanteTondo(icona, etichetta, attivo = true, scritta = '') {
 }
 
 
+// ---- quanto occupa il fondo
+// Menu, pulsante d'azione, pulsanti tondi e barra dei passi galleggiano
+// sopra la pagina. In fondo serve uno spazio alto quanto loro, misurato:
+// cambia da pagina a pagina (un tondo o due, la barra larga, la tastiera
+// aperta). Si misura dallo stile (bottom e altezza), non dal riquadro sullo
+// schermo, che durante l'animazione d'entrata e' rimpicciolito.
+const GALLEGGIANTI = 'nav.tab, #azione, #azione-a-nome, .tondo, .avanzamento';
+function aggiornaFondo() {
+  let alto = 0;
+  for (const n of document.querySelectorAll(GALLEGGIANTI)) {
+    if (n.hidden || !n.getClientRects().length) continue;
+    const s = getComputedStyle(n);
+    if (s.position !== 'fixed') continue;
+    alto = Math.max(alto, (parseFloat(s.bottom) || 0) + n.offsetHeight);
+  }
+  document.documentElement.style.setProperty('--ingombro-fondo', `${Math.ceil(alto)}px`);
+  aggiornaEtichette();
+}
+
+// La scritta accanto a un pulsante tondo ("Crea", "Registro prestiti"...)
+// c'e' solo se c'e' posto: se il contenuto della pagina, senza scorrere,
+// arriverebbe fin sotto il pulsante, o se c'e' la barra d'azione larga, se
+// ne va. Il contenuto si misura dove sta nella pagina, non dove e' adesso
+// sullo schermo: scorrendo la scritta non va e viene.
+function aggiornaEtichette() {
+  const pannello = [...document.querySelectorAll('.pannello')].find(p => !p.hidden);
+  let fine = 0;
+  for (const n of pannello ? pannello.children : []) {
+    if (!n.getClientRects().length || getComputedStyle(n).position === 'fixed') continue;
+    fine = Math.max(fine, n.getBoundingClientRect().bottom + scrollY);
+  }
+  const azione = el('azione');
+  const barra = !azione.hidden && !azione.classList.contains('freccia');
+  for (const b of document.querySelectorAll('.tondo, #azione.freccia')) {
+    if (b.hidden || !b.querySelector('.etichetta-tondo') || !b.getClientRects().length) continue;
+    const s = getComputedStyle(b);
+    const cima = innerHeight - (parseFloat(s.bottom) || 0) - b.offsetHeight;
+    b.classList.toggle('etichetta-coperta', (barra && b !== azione) || fine > cima - 6);
+  }
+}
+
+// Si rimisura quando qualcosa compare o sparisce (un elenco disegnato, un
+// pannello aperto, un pulsante nascosto) e quando cambia la finestra: una
+// volta per fotogramma al massimo. Non si guardano le classi delle righe:
+// durante uno swipe cambiano a ogni movimento, e non spostano niente.
+let fondoChiesto = 0;
+function chiediFondo() {
+  if (!fondoChiesto) fondoChiesto = requestAnimationFrame(() => { fondoChiesto = 0; aggiornaFondo(); });
+}
+
+// Lo spazio sopra cui finisce il contenuto utile: sopra quello che galleggia.
+function fondoLibero() {
+  const alto = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ingombro-fondo')) || 140;
+  return innerHeight - alto;
+}
+
 function nascondiAzione() {
   el('azione').hidden = true;
   el('azione').classList.remove('grave');
@@ -2508,6 +2703,16 @@ function toastAnnulla(testo, azione) {
   clearTimeout(annullaVia);
   annullaVia = setTimeout(chiudi, DURATA_ANNULLA_MS);
   el('toast-annulla-bottone').onclick = () => { chiudi(); azione(); };
+}
+
+// Un elenco che non si e' caricato: il perche', e "Riprova" che rifa' la
+// stessa richiesta. Senza, restava solo la frase, e per riprovare bisognava
+// cambiare pagina e tornare.
+function erroreCarico(dove, err, riprova) {
+  dove.className = 'vuoto';
+  dove.innerHTML = html`<p class="vuoto-testo">${err.message}</p>
+    <button type="button" class="bottone secondario" data-riprova>Riprova</button>`;
+  dove.querySelector('[data-riprova]').onclick = riprova;
 }
 
 function lamenta(testo) {
@@ -2715,7 +2920,6 @@ async function prenota() {
 }
 
 // -------------------------------------------------------------------- mie
-const MAX_CON_AGGIUNGI = 2;
 const NESSUNA_MIA = `
   <div class="nessuna-mia">
     <p>Non hai attività in programma.</p>
@@ -2735,9 +2939,6 @@ async function caricaMie() {
     if (!giroValido('mie', giro)) return;
     segnaFresco('mie');
     const prenotazioni = primeDelleSerie(lette);
-    stato.quanteMie = prenotazioni.length;
-    el('azione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
-    el('apri-gestione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
     const avviso = stato.senzaTessera ? AVVISO_SENZA_TESSERA : '';
     if (!prenotazioni.length) {
       dove.className = '';
@@ -2753,8 +2954,8 @@ async function caricaMie() {
         <div class="quando">${p.fissa ? 'Prossima: ' : ''}${quandoTesto(p.inizio, p.fine)} · ${nomeSede(p.sede)}</div>
         <div class="azioni">
           ${p.fissa
-            ? html`<button class="grave" data-pieno data-icona="salta" data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>`
-            : html`<button class="grave" data-pieno data-icona="annulla" data-sede="${p.sede}" data-id="${p.id}" data-cosa="una">Annulla</button>`}
+            ? html`<button class="grave" data-pieno data-icona="salta" data-sede="${p.sede}" data-id="${p.id}" data-nome="${p.nome || ''}" data-inizio="${p.inizio}" data-fine="${p.fine}" data-cosa="volta">Salta la prossima data</button>`
+            : html`<button class="grave" data-pieno data-icona="elimina" data-menu="Elimina la prenotazione" data-sede="${p.sede}" data-id="${p.id}" data-nome="${p.nome || ''}" data-inizio="${p.inizio}" data-fine="${p.fine}" data-cosa="una">Elimina</button>`}
         </div>
         ${p.fissa ? '' : html`<div class="azioni sinistra">
           <button class="conferma" data-pieno data-icona="ricorrente" data-sede="${p.sede}" data-id="${p.id}" data-cosa="settimanale">Rendi ricorrente</button>
@@ -2763,7 +2964,7 @@ async function caricaMie() {
           <button class="conferma" data-pieno data-icona="modifica" data-sede="${p.sede}" data-id="${p.id}" data-nome="${p.nome || ''}" data-inizio="${p.inizio}" data-fine="${p.fine}" data-cosa="sposta">Modifica la data</button>
         </div>` : ''}
         ${p.fissa && p.serieId ? html`<div class="azioni solo-menu" hidden>
-          <button class="grave" data-icona="elimina" data-sede="${p.sede}" data-id="${p.serieId}" data-cosa="serie">Elimina la serie</button>
+          <button class="grave" data-icona="elimina" data-sede="${p.sede}" data-id="${p.serieId}" data-nome="${p.nome || ''}" data-cosa="serie">Elimina la serie</button>
         </div>` : ''}
       </div>`)}`;
     dove.querySelectorAll('button').forEach(b => {
@@ -2772,11 +2973,13 @@ async function caricaMie() {
         : b.dataset.cosa === 'sposta'
           ? () => apriSposta(b.dataset.sede, b.dataset.id, b.dataset.nome, b.dataset.inizio, b.dataset.fine)
           : () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
+      // Il pulsante si chiama "Elimina" (non "Annulla"): nelle domande di
+      // conferma "Annulla" vuol dire lasciar perdere.
     });
     collegaAvvisoTessera(dove);
     scorrevoli(dove, '.riga', { tocco: menuDellaRiga, menu: menuDellaRiga });
   } catch (err) {
-    if (giroValido('mie', giro)) dove.textContent = err.message;
+    if (giroValido('mie', giro)) erroreCarico(dove, err, caricaMie);
   }
 }
 
@@ -2813,17 +3016,38 @@ function quandoTesto(inizio, fine) {
 }
 
 // cosa: "una" una prenotazione singola, "volta" una sola data di
-// un'attivita' periodica, "serie" tutte le date.
+// un'attivita' periodica, "serie" tutte le date. La domanda dice quale data
+// e quale attivita'; il pulsante che conferma dice cosa fa, in rosso.
 const DOMANDE = {
-  una: ['Annullo questa attività?', 'Annullo…', 'Annulla'],
-  volta: ['Salto il prossimo slot? Gli altri restano.',
-          'Salto…', 'Salta il prossimo slot'],
-  serie: ['Elimino tutte le date? Non si torna indietro.',
-          'Elimino…', 'Elimina la serie'],
+  una: (d) => [`Eliminare la prenotazione di ${d.giorno}?`, `«${d.nome}»${d.orario ? ', ' + d.orario : ''}.`, 'Elimina', 'Elimino…'],
+  volta: (d) => [`Saltare ${d.giorno}?`, `«${d.nome}»: le altre date restano.`, 'Salta', 'Salto…'],
+  serie: (d) => ['Eliminare tutte le date?', `«${d.nome}»: non si torna indietro.`, 'Elimina', 'Elimino…'],
 };
 
+// Una conferma con il pulsante rosso (destructive, in Telegram) che dice
+// l'azione, accanto ad Annulla, che lascia perdere. Fuori da Telegram, o con
+// un Telegram vecchio, la conferma del browser.
+function confermaGrave(domanda, testo, etichetta) {
+  return new Promise(ok => {
+    try {
+      if (tg?.showPopup && tg.isVersionAtLeast?.('6.2')) {
+        const titolo = domanda.length > 64 ? domanda.slice(0, 63) + '…' : domanda;
+        tg.showPopup({ title: titolo, message: testo || domanda,
+          buttons: [{ type: 'cancel' }, { id: 'si', type: 'destructive', text: etichetta }] }, id => ok(id === 'si'));
+        return;
+      }
+    } catch { /* si ripiega sotto */ }
+    ok(window.confirm(testo ? `${domanda}\n${testo}` : domanda));
+  });
+}
+
 function annulla(sede, id, bottone, cosa = 'una') {
-  const [domanda, mentre, prima] = DOMANDE[cosa] || DOMANDE.una;
+  const b = bottone.dataset;
+  const valida = b.inizio && !isNaN(new Date(b.inizio));
+  const dati = { nome: b.nome || 'senza titolo', giorno: valida ? giornoLungo(b.inizio) : 'questa data',
+                 orario: valida && b.fine ? `${oraBreve(b.inizio)}-${oraBreve(b.fine)}` : '' };
+  const [domanda, testo, etichetta, mentre] = (DOMANDE[cosa] || DOMANDE.una)(dati);
+  const prima = bottone.innerHTML;
   const fai = async () => {
     // Il bottone dice cosa sta succedendo: la chiamata passa da Google e
     // qualche secondo ci mette, e un bottone che non reagisce sembra rotto.
@@ -2845,19 +3069,16 @@ function annulla(sede, id, bottone, cosa = 'una') {
         el('elenco-mie').className = '';
         el('elenco-mie').innerHTML = NESSUNA_MIA;
       }
-      if (el('elenco-mie').querySelectorAll('.riga').length <= MAX_CON_AGGIUNGI) {
-        el('azione').classList.add('con-etichetta');
-      }
       // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
       dimenticaMesi();
     } catch (err) {
       riga.querySelectorAll('button').forEach(b => b.disabled = false);
-      bottone.textContent = prima;
+      bottone.innerHTML = prima;
       lamenta(err.message);
     }
   };
-  // Fuori da Telegram chiede il browser: senza conferma non si annulla niente.
-  conferma(domanda).then(si => si && fai());
+  // Senza conferma non si toglie niente.
+  confermaGrave(domanda, testo, etichetta).then(si => si && fai());
 }
 
 // Ripeterla ogni settimana non e' una modifica alla propria prenotazione: e'
@@ -3079,7 +3300,7 @@ async function apriInventario() {
     try {
       o = await chiama('inventario/opzioni');
     } catch (err) {
-      el('elenco-beni').textContent = err.message;
+      erroreCarico(el('elenco-beni'), err, apriInventario);
       return;
     } finally {
       inv.caricando = false;
@@ -3224,19 +3445,9 @@ async function cercaBeni(daCapo) {
   const mio = ++ricercaInCorso;
   if (daCapo) inv.offset = 0;
   const dove = el('elenco-beni');
-  // Finche' non si sceglie una categoria (o Tutto), una sede, o non si
-  // cerca qualcosa, l'elenco resta vuoto.
+  // Si parte da "Tutto", in ordine di quanto e' preso in prestito: aprendo
+  // la biblioteca c'e' subito qualcosa da guardare.
   const f = filtriBeni();
-  if (!inv.tipo && !f.testo && !f.sede_id && !f.bene_id && !f.autore) {
-    inv.totale = 0; inv.offset = 0; inv.beni = new Map(); sceglieBene(null);
-    dove.className = 'vuoto'; dove.textContent = 'Seleziona un filtro.';
-    el('apri-prestiti').classList.add('con-etichetta');
-    el('apri-aggiungi').classList.add('con-etichetta');
-    el('altri-beni').hidden = true;
-    return;
-  }
-  el('apri-prestiti').classList.remove('con-etichetta');
-  el('apri-aggiungi').classList.remove('con-etichetta');
   if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; }
   el('altri-beni').disabled = true;
   try {
@@ -3249,33 +3460,53 @@ async function cercaBeni(daCapo) {
     inv.offset += beni.length;
     if (daCapo) { dove.className = ''; dove.innerHTML = ''; inv.beni = new Map(); sceglieBene(null); }
     for (const b of beni) inv.beni.set(b.id, b);
-    if (!totale) { dove.className = 'vuoto'; dove.textContent = 'Niente con questi filtri.'; }
+    if (!totale) nienteBeni(dove, f);
     dove.insertAdjacentHTML('beforeend', beni.map(schedaBene).join(''));
     collegaBottoni(dove);
     el('altri-beni').hidden = inv.offset >= totale;
   } catch (err) {
-    if (mio === ricercaInCorso) { dove.className = 'vuoto'; dove.textContent = err.message; }
+    if (mio === ricercaInCorso) erroreCarico(dove, err, () => cercaBeni(true));
   } finally {
     el('altri-beni').disabled = false;
   }
 }
 
+// Nessun risultato: si dice perche' (la ricerca guarda solo nella categoria
+// scelta) e si offre di togliere i filtri. La parola cercata resta.
+function nienteBeni(dove, f) {
+  const tipo = TIPI.find(t => t.chiave === inv.tipo);
+  const filtri = (tipo && tipo.chiave !== 'tutto') || f.sede_id || f.genere_id || f.solo_disponibili;
+  dove.className = 'vuoto';
+  dove.innerHTML = html`<p class="vuoto-testo">${f.testo ? `Niente per «${f.testo}»` : 'Niente'}${filtri ? ' con questi filtri' : ''}.${
+    f.testo && tipo && tipo.chiave !== 'tutto' ? ` La ricerca guarda solo tra: ${tipo.nome}.` : ''}</p>
+    ${filtri ? html`<button type="button" class="bottone secondario" data-azzera-filtri>Azzera i filtri</button>` : ''}`;
+  const azzera = dove.querySelector('[data-azzera-filtri]');
+  if (azzera) azzera.onclick = () => {
+    el('filtro-sede').value = '';
+    el('filtro-disponibili').checked = false;
+    el('filtro-genere').value = '';
+    scegliTipo('tutto');
+  };
+}
+
+// "Tutto" per primo: e' la scelta di partenza, e a 390px non va a capo da
+// solo sulla seconda riga.
 const TIPI = [
+  { chiave: 'tutto', nome: 'Tutto', categorie: [] },
   { chiave: 'libri', nome: 'Libri', categorie: ['libro'] },
   { chiave: 'giochi', nome: 'Giochi', categorie: ['gioco_da_tavolo'] },
   { chiave: 'gdr', nome: 'Manuali', categorie: ['gioco_di_ruolo', 'manuale'] },
   { chiave: 'altro', nome: 'Altro', categorie: ['altro'] },
-  { chiave: 'tutto', nome: 'Tutto', categorie: [] },
 ];
 
 function disegnaTipi() {
-  inv.tipo = inv.tipo || null;
+  inv.tipo = inv.tipo || 'tutto';
   el('tipi-beni').innerHTML = TIPI.map(t =>
     `<button type="button" data-tipo="${t.chiave}" aria-pressed="${t.chiave === inv.tipo}">${t.nome}</button>`
   ).join('');
-  // Toccare la categoria gia' scelta la toglie, e l'elenco torna vuoto.
+  // Toccare la categoria gia' scelta la toglie: si torna a "Tutto".
   el('tipi-beni').querySelectorAll('button').forEach(b => {
-    b.onclick = () => scegliTipo(inv.tipo === b.dataset.tipo ? null : b.dataset.tipo);
+    b.onclick = () => scegliTipo(inv.tipo === b.dataset.tipo ? 'tutto' : b.dataset.tipo);
   });
 }
 
@@ -3479,7 +3710,7 @@ function aggiornaPrestito() {
   else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
 
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
-  // Chi amministra, su un bene disponibile, ha anche "Segna come prestato".
+  // Chi amministra, su un bene disponibile, ha anche "Presta a un’altra persona…".
   const aNomeVisibile = visibile && inv.admin && b.stato === 'disponibile';
   el('azione-a-nome').hidden = !aNomeVisibile;
   document.body.classList.toggle('due-azioni', aNomeVisibile);
@@ -3492,15 +3723,15 @@ function aggiornaPrestito() {
 async function prendiScelto() {
   const b = inv.scelto && inv.beni?.get(inv.scelto);
   if (!b || b.stato !== 'disponibile' || inv.prestiti.length >= inv.maxPrestiti) return;
+  // Niente domanda prima: c'e' il toast con Annulla dopo, che basta e
+  // costa un tocco in meno. Il toast dice anche dove e quando riportarlo.
   const entro = new Date(); entro.setDate(entro.getDate() + inv.giorni);
-  if (!await conferma(`Confermi la prenotazione? Va riportato nella sede di ${b.sede} ` +
-                      `entro il ${dataTesto(iso(entro))}.`, b.titolo)) return;
   attesaAzione(true);
   try {
     const { prestito } = await chiama('inventario/presta', { beneId: b.id });
     inv.prestiti = [prestito];
     tg?.HapticFeedback?.notificationOccurred('success');
-    toastAnnulla(`Preso in prestito: “${b.titolo}”.`, async () => {
+    toastAnnulla(`Preso in prestito: «${b.titolo}». Riportalo a ${b.sede} entro il ${dataTesto(prestito.scadenza || iso(entro))}.`, async () => {
       try {
         await chiama('inventario/annulla-prestito', { prestitoId: prestito.id });
         inv.prestiti = [];
@@ -3591,8 +3822,11 @@ async function preparaFoto(file) {
 // in ritardo, e li chiude o li prolunga. In cima quanti sono e quanti in
 // ritardo (i numeri sono sui filtri); il filtro parte da "In ritardo" quando ce n'e' qualcuno, perche'
 // sono quelli di cui occuparsi. Accanto al titolo, se la persona ha
-// Telegram collegato (e uno username), un pulsante apre la sua chat.
+// Telegram collegato (e uno username), un pulsante apre la sua chat; se
+// no c'e' l'icona barrata, che toccata dice perche' la chat non si apre.
 const prestitiAdmin = { lista: null, filtro: null };
+// lucide: message-circle-off, per chi non ha uno username: la chat non si apre.
+const ICONA_CHAT_NO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 20 20"/><path d="M4.93 4.929a10 10 0 0 0-1.938 11.412 2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 0 0 11.302-1.989"/><path d="M8.35 2.69A10 10 0 0 1 21.3 15.65"/></svg>';
 // lucide: message-circle
 const ICONA_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
 
@@ -3609,7 +3843,7 @@ async function caricaPrestitiAdmin() {
   } catch (err) {
     if (!giroValido('prestiti', giro)) return;
     el('filtro-prestiti').hidden = true;
-    dove.textContent = err.message;
+    erroreCarico(dove, err, caricaPrestitiAdmin);
     return;
   }
   await sedeGestione();
@@ -3655,7 +3889,8 @@ function disegnaPrestitiAdmin() {
     <div class="riga">
       <div class="testa-prestito">
         <b>${esc(p.titolo)}</b>
-        ${p.username ? `<button type="button" class="icona-chat" data-chat="${esc(p.username)}" aria-label="Scrivi a ${esc(p.socio)} in chat" title="Scrivi in chat">${ICONA_CHAT}</button>` : ''}
+        ${p.username ? `<button type="button" class="icona-chat" data-chat="${esc(p.username)}" aria-label="Scrivi a ${esc(p.socio)} in chat" title="Scrivi in chat">${ICONA_CHAT}</button>`
+          : `<button type="button" class="icona-chat spenta" data-senza-chat="${esc(p.socio)}" aria-disabled="true" aria-label="Chat non disponibile: ${esc(p.socio)} non ha uno username Telegram" title="Senza username Telegram">${ICONA_CHAT_NO}</button>`}
       </div>
       <div class="quando">${esc(p.socio)} · ${esc(p.sede)} · dal ${dataTesto(p.data_prestito)}</div>
       <div class="quando${p.giorni_ritardo ? ' ritardo' : ''}">${p.giorni_ritardo
@@ -3686,6 +3921,9 @@ function disegnaPrestitiAdmin() {
       const link = `https://t.me/${b.dataset.chat}`;
       if (tg?.openTelegramLink) tg.openTelegramLink(link); else window.open(link, '_blank');
     };
+  });
+  dove.querySelectorAll('[data-senza-chat]').forEach(b => {
+    b.onclick = () => toast(`${b.dataset.senzaChat} non ha uno username Telegram: la chat non si può aprire da qui.`, false);
   });
   dove.querySelectorAll('[data-chiudi]').forEach(b => {
     b.onclick = () => chiudiPrestito(Number(b.dataset.chiudi), b.dataset.titolo, b.dataset.socio, b);
@@ -4148,9 +4386,17 @@ async function salvaBene() {
 // partecipa, quindi non c'e' un "in ritardo".
 const MESI_BREVI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 const euro = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 })} €`;
-// Nelle ricevute le date sono numeriche, come sulla ricevuta stampata:
-// 04/11/2026, e il mese di riferimento 10/2026.
-const dataNumerica = (iso) => iso ? iso.split('-').reverse().join('/') : '';
+// Le date si scrivono come nel resto dell'app: "4 novembre 2026", con
+// l'anno (le ricevute sono di anni diversi).
+const dataCompleta = (iso) => {
+  if (!iso) return '';
+  const [a, m, g] = String(iso).slice(0, 10).split('-').map(Number);
+  return `${g} ${MESI[m - 1]} ${a}`;
+};
+// Un nome per ogni voce, lo stesso dappertutto (il server, nelle ricevute,
+// scrive "Contributo evento"; qui e' "Evento", come nei pulsanti).
+const NOMI_VOCE = { obolo_giornaliero: 'Obolo', contributo_mensile: 'Mensilità', contributo_evento: 'Evento' };
+const nomeVoce = (codice, tipo) => NOMI_VOCE[codice] || tipo || '';
 const meseTesto = (m) => `${MESI[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
 
 async function caricaTessera() {
@@ -4168,7 +4414,7 @@ async function caricaTessera() {
     dove.innerHTML = disegnaTessera(tessera);
     collegaTessera(dove);
   } catch (err) {
-    if (giroValido('tessera', giro)) dove.textContent = err.message;
+    if (giroValido('tessera', giro)) erroreCarico(dove, err, caricaTessera);
   }
 }
 
@@ -4199,8 +4445,8 @@ function disegnaRicevute(t) {
         <div class="riga ricevuta" role="checkbox" aria-checked="false" tabindex="0" data-ricevuta="${esc(r.id)}" data-anno="${esc(anno)}">
           <span class="spunta" aria-hidden="true"></span>
           <div class="ricevuta-testo">
-            <div><b>${esc(r.tipo)}</b>${r.evento ? ' · ' + esc(r.evento) : ''} · ${euro(r.importo)}</div>
-            <div class="quando">${esc(r.numero)} · ${esc(dataNumerica(r.data))}${r.mese ? ' · ' + esc(meseTesto(r.mese)) : ''}</div>
+            <div><b>${esc(nomeVoce(r.codice, r.tipo))}</b>${r.evento ? ' · ' + esc(r.evento) : ''} · ${euro(r.importo)}</div>
+            <div class="quando">${esc(r.numero)} · ${esc(dataCompleta(r.data))}${r.mese ? ' · ' + esc(meseTesto(r.mese)) : ''}</div>
           </div>
         </div>`).join('')}
       </div>
@@ -4216,14 +4462,17 @@ function disegnaSpese(t) {
   return `<h2>I tuoi contributi ${esc(t.anno)}</h2>` + (spese.length ? `
     <div class="spese">
       <div class="spese-totale">${euro(totale)}</div>
-      ${spese.map(s => `<div class="spesa"><span>${esc(s.tipo)}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
+      ${spese.map(s => `<div class="spesa"><span>${esc(nomeVoce(s.codice, s.tipo))}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
     </div>` : '<p class="nota-pagamento">Ancora niente quest’anno.</p>');
 }
 
 function apriRicevute() {
   mostra('ricevute');
   const dove = el('lista-ricevute');
-  dove.innerHTML = disegnaSpese(tess.dati) + '<h2>Ricevute</h2>' + disegnaRicevute(tess.dati);
+  // Prima di scegliere si sa a cosa serve la spunta.
+  dove.innerHTML = disegnaSpese(tess.dati) + '<h2>Ricevute</h2>' +
+    (tess.dati.ricevute.length ? '<p class="nota-pagamento nota-ricevute">Seleziona le ricevute che ti servono: te le mando in chat, in un PDF unico o una per file.</p>' : '') +
+    disegnaRicevute(tess.dati);
   collegaRicevute(dove);
   window.scrollTo(0, 0);
 }
@@ -4269,8 +4518,8 @@ function disegnaTessera(t) {
 
 // ---------------------------------------------------------------- pagare
 // Si sceglie cosa pagare con pochi tocchi: la voce, poi il giorno (oggi,
-// ieri, o un altro dal calendario) o i mesi. Il pagamento vero arrivera'
-// con Stripe o Satispay: per ora il pulsante resta spento e si paga in sede.
+// ieri, o un altro dal calendario) o i mesi. Il pagamento dall'app arrivera'
+// piu' avanti: per ora al posto del pulsante c'e' il conto, con i modi di pagare.
 // Phosphor (MIT): coin, calendar-check, ticket. Stanno in un angolo del
 // riquadro, sopra lo sfondo, per riconoscere la voce a colpo d'occhio.
 const icona = (d) => `<svg class="voce-icona" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -4284,6 +4533,18 @@ const ICONE_VOCI = {
 const EVENTO_BASE = 5;
 const tess = { dati: null, voce: null, giorno: null, data: '', modoMesi: null, mesi: new Set(), evento: EVENTO_BASE };
 const PAGAMENTO_ATTIVO = false;
+// Dove pagare a distanza. Ancora da riempire: finche' sono vuoti non si vede
+// niente (non si inventa un IBAN o un link). Basta scriverli qui.
+const PAGA_PAYPAL_URL = '';
+const PAGA_CARTA_URL = '';
+const PAGA_IBAN = '';
+function dovePagare() {
+  const link = (url, nome) => /^https:\/\//.test(url)
+    ? html`<a class="link" href="${url}" target="_blank" rel="noopener">${nome} ›</a>` : '';
+  const pezzi = [link(PAGA_PAYPAL_URL, 'Paga con PayPal'), link(PAGA_CARTA_URL, 'Paga con carta'),
+    PAGA_IBAN ? html`<span>Bonifico: IBAN <b>${PAGA_IBAN}</b></span>` : ''].filter(Boolean);
+  return pezzi.length ? String(html`<span class="dove-pagare">${pezzi}</span>`) : '';
+}
 const isoLocale = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 function collegaTessera(dove) {
@@ -4307,9 +4568,8 @@ function collegaTessera(dove) {
 // "smooth" del browser ha una sua curva, diversa da telefono a telefono.
 function mostraDettaglio() {
   const d = el('dettaglio-pagamento');
-  // Il bordo utile e' il pulsante Procedi, che sta sopra il menu.
-  const azione = el('azione');
-  const fine = azione.hidden ? innerHeight - 100 : azione.getBoundingClientRect().top - 16;
+  // Il bordo utile e' sopra quello che galleggia in fondo.
+  const fine = fondoLibero() - 16;
   const manca = d.getBoundingClientRect().bottom - fine;
   if (manca > 0) scorriDi(manca);
 }
@@ -4382,7 +4642,8 @@ function disegnaPagamento() {
   // (sta in fondo, quindi niente si sposta). Senza tessera non c'e'.
   el('mesi-pagati-tessera').hidden = Boolean(v) || !t.tesserato;
   el('tessera').classList.toggle('con-pagamento', Boolean(v));
-  el('apri-quote').classList.toggle('secondo', Boolean(v));
+  // Il tondo sale sopra il pulsante Procedi, quando c'e'.
+  el('apri-quote').classList.toggle('secondo', PAGAMENTO_ATTIVO && Boolean(v));
   if (!v) { d.innerHTML = ''; nascondiAzione(); return; }
   let html = '';
   if (v === 'obolo_giornaliero' || v === 'contributo_evento') {
@@ -4398,7 +4659,7 @@ function disegnaPagamento() {
       <div class="scelte">
         ${giorno(oggi, 'oggi', 'Oggi')}
         ${giorno(ieri, 'ieri', 'Ieri')}
-        <label class="scelta-data" aria-pressed="${tess.giorno === 'data'}">${tess.giorno === 'data' ? esc(dataNumerica(tess.data)) : 'Altro giorno'}
+        <label class="scelta-data" aria-pressed="${tess.giorno === 'data'}">${tess.giorno === 'data' ? esc(dataTesto(tess.data)) : 'Altro giorno'}
           <input type="date" id="data-pagamento" max="${isoLocale(oggi)}" value="${esc(tess.data)}"></label>
       </div>`;
   }
@@ -4411,10 +4672,11 @@ function disegnaPagamento() {
     const questo = meseCorrente();
     const giaQuesto = t.mensilita.includes(questo);
     // Una griglia sola: quella dei mesi pagati, sopra, se ne va e qui i
-    // mesi gia' pagati sono in grigio. I due pulsanti scelgono in fretta.
+    // mesi gia' pagati hanno la spunta verde. I due pulsanti scelgono in fretta.
+    const nomeMese = MESI[Number(questo.slice(5)) - 1].replace(/^./, c => c.toUpperCase());
     html += `<p class="domanda">Quali mesi?</p>
       <div class="scelte">
-        <button type="button" data-mesi="questo" aria-pressed="${tess.modoMesi === 'questo'}" ${giaQuesto ? 'disabled' : ''}>${giaQuesto ? 'Mese pagato' : 'Questo mese'}</button>
+        <button type="button" data-mesi="questo" aria-pressed="${tess.modoMesi === 'questo'}" ${giaQuesto ? 'disabled class="pagato"' : ''}>${giaQuesto ? `${nomeMese} pagato` : 'Questo mese'}</button>
         <button type="button" data-mesi="anno" aria-pressed="${tess.modoMesi === 'anno'}">Tutto l’anno</button>
       </div>`;
     {
@@ -4426,7 +4688,19 @@ function disegnaPagamento() {
       }).join('')}</div>`;
     }
   }
-  if (!PAGAMENTO_ATTIVO) html += '<p class="nota-pagamento">Il pagamento dall’app arriva presto: per ora si paga in sede.</p>';
+  // Finche' dall'app non si paga, al posto di un "Procedi" spento c'e' il
+  // conto: quanto fa quello che si e' scelto, e come si puo' pagare. Chi
+  // rinnova o e' gia' sociə puo' pagare anche a distanza: non gli si dice
+  // che "deve" andare in sede. I canali sono quelli di METODI.
+  const totale = totalePagamento();
+  if (!PAGAMENTO_ATTIVO) {
+    const manca = v === 'contributo_mensile' ? 'Scegli i mesi' : 'Scegli il giorno';
+    html += `<div class="conto-pagamento" role="status">
+      <b>${totale ? `Totale: ${esc(euro(totale))}` : esc(manca)}</b>
+      <span>Puoi pagare in sede in contanti, oppure con PayPal, carta o bonifico.</span>
+      ${dovePagare()}
+    </div>`;
+  }
   ridisegnaTenendo(d, () => { d.innerHTML = html; });
 
   d.querySelectorAll('[data-giorno]').forEach(b => {
@@ -4436,7 +4710,7 @@ function disegnaPagamento() {
   if (campoData) campoData.onchange = () => {
     if (!campoData.value) return;
     if (v === 'obolo_giornaliero' && oboliPagati().has(campoData.value)) {
-      return toast(`L’obolo del ${dataNumerica(campoData.value)} è già pagato.`, false);
+      return toast(`L’obolo del ${dataTesto(campoData.value)} è già pagato.`, false);
     }
     tess.giorno = 'data'; tess.data = campoData.value; disegnaPagamento();
   };
@@ -4463,10 +4737,10 @@ function disegnaPagamento() {
     };
   });
 
-  const totale = totalePagamento();
   azionePrincipale = null;
   // "Procedi": il pagamento vero comincia dopo, non a questo tocco.
-  pulsantePrincipale(totale ? `Procedi · ${euro(totale)}` : 'Procedi', PAGAMENTO_ATTIVO && totale > 0);
+  if (PAGAMENTO_ATTIVO) pulsantePrincipale(totale ? `Procedi · ${euro(totale)}` : 'Procedi', totale > 0);
+  else nascondiAzione();
 }
 
 // Le ricevute si scelgono toccandole, anche un anno intero dalla sua
@@ -4610,11 +4884,12 @@ function attesaTesseramento(iscrizione) {
       <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${new Date().getFullYear()}</span></div>
       <div class="tessera-piede">
         <div class="tessera-nome">${esc(`${r.nome} ${r.cognome}`)}</div>
-        <div class="tessera-dati">Tesseramento in attesa · quota ${euro(iscrizione.quota)} in sede</div>
+        <div class="tessera-dati">Tesseramento in attesa · ${euro(iscrizione.quota)} da pagare in sede</div>
       </div>
     </div>
-    <p>Richiesta inviata al direttivo. Paga la quota alla prossima apertura in sede:
-      quando il direttivo la registra la tessera si attiva, e te lo scrivo in chat.</p>`;
+    <p>Richiesta inviata al direttivo. Il primo tesseramento si fa in sede: passa alla
+      prossima apertura e paga lì la quota. Quando il direttivo la registra la tessera
+      si attiva, e te lo scrivo in chat.</p>`;
 }
 
 // ------------------------------------------------- quote dei soci (direttivo)
@@ -4631,8 +4906,8 @@ const quo = {
   vista: 'persone', periodo: 'mese', da: '', a: '', voceFiltro: 'tutte', pagamenti: null, chiavePagamenti: '',
   socio: null, voce: null, giorno: null, data: '', mesi: new Set(), importo: EVENTO_BASE, metodo: null,
 };
-const METODI = [['contanti', 'Contanti'], ['paypal', 'PayPal'], ['bonifico', 'Bonifico'], ['stripe', 'Stripe']];
-const METODI_TESTO = { contanti: 'in contanti', paypal: 'con PayPal', bonifico: 'con bonifico', stripe: 'con Stripe' };
+const METODI = [['contanti', 'Contanti'], ['paypal', 'PayPal'], ['bonifico', 'Bonifico'], ['stripe', 'Carta']];
+const METODI_TESTO = { contanti: 'in contanti', paypal: 'con PayPal', bonifico: 'con bonifico', stripe: 'con carta' };
 const metodoNome = (k) => METODI.find(([x]) => x === k)?.[1] || k || '';
 const IMPORTO_EVENTO_MAX = 50;
 
@@ -4694,7 +4969,7 @@ async function caricaQuote() {
       quo.soci = soci.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
       quo.annoSoci = anno;
     } catch (err) {
-      if (giroValido('quote', giro)) dove.textContent = err.message;
+      if (giroValido('quote', giro)) erroreCarico(dove, err, caricaQuote);
       return;
     }
   }
@@ -4708,6 +4983,12 @@ const RUOLI = { direttivo: 'Direttivo', staff: 'Staff' };
 // Sta a sinistra del nome.
 const stellina = (ruolo) => RUOLI[ruolo]
   ? `<span class="stellina ${ruolo}" title="${RUOLI[ruolo]}" aria-label="${RUOLI[ruolo]}">★</span> ` : '';
+
+// Quali mesi, per il tooltip del conto: "gennaio, marzo, novembre".
+const mesiPagatiTesto = (mensilita, anno) => {
+  const quali = MESI.filter((_, i) => mensilita.includes(meseKey(anno, i)));
+  return quali.length ? `Pagati: ${quali.join(', ')}` : 'Nessuna mensilità pagata';
+};
 
 const ORDINI_QUOTE = {
   nome: (a, b) => String(a.nome).localeCompare(String(b.nome), 'it'),
@@ -4750,8 +5031,8 @@ function disegnaQuote() {
     <div class="riga socio-quota${s.tesserato ? '' : ' senza-tessera'}" role="button" tabindex="0" data-socio="${esc(s.id)}">
       <span class="numero-tessera" title="${s.tesserato && s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza tessera ' + quo.anno}">${s.tesserato && s.numero_socio ? esc(s.numero_socio) : ''}</span>
       ${stellina(s.ruolo)}<span class="socio-nome">${esc(s.nome)}${s.tesserato ? '' : `<small>senza tessera ${quo.anno}</small>`}</span>
-      <span class="mesi-mini" aria-label="Mensilità pagate: ${esc(s.mensilita.length)} su 12">${MESI_BREVI.map((m, i) =>
-        `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</span>
+      <span class="mesi-conto${adesso >= 0 && s.mensilita.includes(meseKey(quo.anno, adesso)) ? ' ok' : ''}" title="${esc(mesiPagatiTesto(s.mensilita, quo.anno))}"
+        aria-label="Mensilità pagate: ${esc(s.mensilita.length)} su 12"><b>${esc(s.mensilita.length)}</b>/12</span>
     </div>`).join('');
   dove.querySelectorAll('[data-socio]').forEach(r => {
     const apri = () => apriQuota(Number(r.dataset.socio));
@@ -4857,7 +5138,7 @@ async function caricaPagamenti() {
       quo.pagamenti = pagamenti;
       quo.chiavePagamenti = chiave;
     } catch (err) {
-      if (giroValido('pagamenti', giro)) dove.textContent = err.message;
+      if (giroValido('pagamenti', giro)) erroreCarico(dove, err, caricaPagamenti);
       return;
     }
   }
@@ -4893,7 +5174,7 @@ function disegnaPagamenti() {
       <div class="riga pagamento riga-pagamento" role="button" tabindex="0" data-socio-pagamento="${esc(p.partner_id)}">
         <div class="pag-testo">
           <b>${esc(p.socio)}</b>
-          <div class="quando">${esc(p.tipo)}${p.mese ? ' ' + esc(meseTesto(p.mese)) : ''}${p.evento ? ' · ' + esc(p.evento) : ''} · ${esc(p.numero)}</div>
+          <div class="quando">${esc(nomeVoce(p.codice, p.tipo))}${p.mese ? ' ' + esc(meseTesto(p.mese)) : ''}${p.evento ? ' · ' + esc(p.evento) : ''} · ${esc(p.numero)}</div>
         </div>
         <div class="pag-importo"><b>${euro(p.importo)}</b><span>${esc(metodoNome(p.metodo))}</span></div>
       </div>`).join('')}`).join('');
@@ -4920,7 +5201,7 @@ async function apriQuota(partnerId) {
     if (!giroValido('quota', giro)) return;
     quo.socio = { ...tessera, id: tessera.id || partnerId };
   } catch (err) {
-    if (giroValido('quota', giro)) dove.textContent = err.message;
+    if (giroValido('quota', giro)) erroreCarico(dove, err, () => apriQuota(partnerId));
     return;
   }
   disegnaQuota();
@@ -4998,8 +5279,8 @@ function disegnaPagamentiScheda(ricevute) {
   dove.innerHTML = lista.length ? lista.map(r => `
       <div class="riga riga-pagamento">
         <div class="pag-testo">
-          <b>${r.evento ? esc(r.evento) : `${esc(r.tipo)}${r.mese ? ' ' + esc(meseTesto(r.mese)) : ''}`}</b>
-          <div class="quando">${r.evento ? esc(r.tipo) + ' · ' : ''}${esc(dataNumerica(r.data))} · ${esc(r.numero)}</div>
+          <b>${r.evento ? esc(r.evento) : `${esc(nomeVoce(r.codice, r.tipo))}${r.mese ? ' ' + esc(meseTesto(r.mese)) : ''}`}</b>
+          <div class="quando">${r.evento ? esc(nomeVoce(r.codice, r.tipo)) + ' · ' : ''}${esc(dataCompleta(r.data))} · ${esc(r.numero)}</div>
         </div>
         <div class="pag-importo"><b>${euro(r.importo)}</b><span>${esc(metodoNome(r.metodo))}</span></div>
       </div>`).join('') : '<p class="nota-pagamento">Niente di questo tipo quest’anno.</p>';
@@ -5007,8 +5288,7 @@ function disegnaPagamentiScheda(ricevute) {
 
 function mostraDettaglioQuota() {
   const d = el('dettaglio-quota');
-  const azione = el('azione');
-  const fine = azione.hidden ? innerHeight - 100 : azione.getBoundingClientRect().top - 16;
+  const fine = fondoLibero() - 16;
   const manca = d.getBoundingClientRect().bottom - fine;
   if (manca > 0) scorriDi(manca);
 }
@@ -5061,7 +5341,7 @@ function disegnaPagamentoQuota() {
     <div class="scelte">
       <button type="button" data-giorno-quota="${isoLocale(oggi)}" data-nome="oggi" aria-pressed="${quo.giorno === 'oggi'}">Oggi</button>
       <button type="button" data-giorno-quota="${isoLocale(ieri)}" data-nome="ieri" aria-pressed="${quo.giorno === 'ieri'}">Ieri</button>
-      <label class="scelta-data" aria-pressed="${quo.giorno === 'data'}">${quo.giorno === 'data' ? esc(dataNumerica(quo.data)) : 'Altro giorno'}
+      <label class="scelta-data" aria-pressed="${quo.giorno === 'data'}">${quo.giorno === 'data' ? esc(dataTesto(quo.data)) : 'Altro giorno'}
         <input type="date" id="data-quota" max="${isoLocale(oggi)}" value="${esc(quo.data)}"></label>
     </div>
     ${v === 'contributo_evento' ? campoEventoHtml('quota', quo.nomeEvento) : ''}
@@ -5113,8 +5393,8 @@ function descriviQuota() {
   const metodo = METODI_TESTO[quo.metodo];
   const cosa = quo.voce === 'contributo_mensile'
     ? `Mensilità di ${[...quo.mesi].sort().map(k => MESI[Number(k.slice(5)) - 1]).join(', ')}`
-    : `${quo.voce === 'obolo_giornaliero' ? 'Obolo' : `Evento${quo.nomeEvento ? ` “${quo.nomeEvento}”` : ''}`} del ${dataNumerica(quo.data)}`;
-  return `${cosa}: ${euro(totaleQuota())}, ${metodo}${quo.voce === 'contributo_mensile' ? `, il ${dataNumerica(quo.data)}` : ''}.`;
+    : `${quo.voce === 'obolo_giornaliero' ? 'Obolo' : `Evento${quo.nomeEvento ? ` “${quo.nomeEvento}”` : ''}`} del ${dataTesto(quo.data)}`;
+  return `${cosa}: ${euro(totaleQuota())}, ${metodo}${quo.voce === 'contributo_mensile' ? `, il ${dataTesto(quo.data)}` : ''}.`;
 }
 
 async function registraQuota() {
@@ -5190,7 +5470,7 @@ async function apriIncassi() {
       if (tessera) tess.dati = tessera;
       if (elenco) inc.soci = elenco;
     } catch (err) {
-      if (giroValido('incassi', giro)) dove.textContent = err.message;
+      if (giroValido('incassi', giro)) erroreCarico(dove, err, apriIncassi);
       return;
     }
   }
@@ -5234,7 +5514,7 @@ function disegnaIncassi() {
     <div class="scelte">
       <button type="button" data-giorno-incasso="${isoLocale(oggi)}" data-nome="oggi" aria-pressed="${inc.giorno === 'oggi'}">Oggi</button>
       <button type="button" data-giorno-incasso="${isoLocale(ieri)}" data-nome="ieri" aria-pressed="${inc.giorno === 'ieri'}">Ieri</button>
-      <label class="scelta-data" aria-pressed="${inc.giorno === 'data'}">${inc.giorno === 'data' ? esc(dataNumerica(inc.data)) : 'Altro giorno'}
+      <label class="scelta-data" aria-pressed="${inc.giorno === 'data'}">${inc.giorno === 'data' ? esc(dataTesto(inc.data)) : 'Altro giorno'}
         <input type="date" id="data-incasso" max="${isoLocale(oggi)}" value="${esc(inc.data)}"></label>
     </div>
     ${inc.voce === 'contributo_evento' ? campoEventoHtml('incasso', inc.nomeEvento) : ''}
@@ -5403,7 +5683,7 @@ async function registraIncassi() {
   const metodo = METODI_TESTO[inc.metodo];
   const quando = inc.voce === 'contributo_mensile'
     ? [...inc.mesi].sort().map(k => MESI[Number(k.slice(5)) - 1]).join(', ')
-    : `${inc.voce === 'contributo_evento' && inc.nomeEvento ? `“${inc.nomeEvento}” ` : ''}del ${dataNumerica(inc.data)}`;
+    : `${inc.voce === 'contributo_evento' && inc.nomeEvento ? `“${inc.nomeEvento}” ` : ''}del ${dataTesto(inc.data)}`;
   if (!await conferma(`${voce} ${quando}: ${righe.length} ${righe.length === 1 ? 'persona' : 'persone'}, ${euro(totale)} in tutto, ${metodo}.`,
     'Registro i pagamenti?')) return;
   attesaAzione(true);
@@ -5481,7 +5761,7 @@ async function caricaGestione({ silenzioso = false } = {}) {
     if (!giroValido('gestione', giro)) return;
     if (silenzioso) return lamenta(err.message);
     el('filtro-gestione').hidden = true;
-    dove.textContent = err.message;
+    erroreCarico(dove, err, () => caricaGestione());
     return;
   }
   disegnaGestione();
@@ -5609,8 +5889,9 @@ function disegnaGestione() {
       return `
       <div class="riga pren${soloSenza ? ' con-apro' : ''}" data-pren="${esc(p.id)}">
         <div class="corpo-riga">
-          <div class="pren-testa"><b>${esc(p.titolo)}</b>${soloSenza ? '' : chiavi}</div>
+          <div class="pren-testa"><b>${esc(p.titolo)}</b></div>
           <div class="quando">${ora(p.inizio)}-${ora(p.fine)} · ${esc(p.sedeNome)}${p.chi ? ' · ' + esc(p.chi) : ''}${p.serieId ? ' · si ripete' : ''}</div>
+          ${soloSenza ? '' : chiavi}
         </div>
         ${soloSenza ? `<div class="azioni in-vista">
           <button type="button" class="conferma" data-apro="${esc(p.id)}">Apro io</button>
@@ -5751,7 +6032,7 @@ async function apriSerie(sede, serieId) {
   try {
     ({ serie: s } = await chiama('staff/serie', { sede, serieId }));
   } catch (err) {
-    if (giroValido('serie', giro)) dove.textContent = err.message;
+    if (giroValido('serie', giro)) erroreCarico(dove, err, () => apriSerie(sede, serieId));
     return;
   }
   // Mentre arrivava si e' tornati indietro, o si e' aperta un'altra serie:
@@ -6209,7 +6490,7 @@ async function menuDellaRiga(riga) {
   const ordinati = [...altre, ...gravi];
   const voce = (b, i) => html`<button type="button" role="menuitem" tabindex="-1" class="voce-menu${b.classList.contains('grave') ? ' grave' : ''}" data-voce-menu="${i}">
       <span class="icona-menu">${raw(ICONE_MENU[b.dataset.icona] || '')}</span>
-      <span>${b.querySelector('.scritta-azione')?.textContent || b.textContent.trim()}</span></button>`;
+      <span>${b.dataset.menu || b.querySelector('.scritta-azione')?.textContent || b.textContent.trim()}</span></button>`;
   const lista = document.createElement('div');
   lista.className = 'menu-riga';
   lista.setAttribute('role', 'menu');
@@ -6227,9 +6508,8 @@ async function menuDellaRiga(riga) {
   // altro che restava orfano.
   const questo = { lista, velo, riga };
   menuAperto = questo;
-  // Quanto spazio serve sotto la riga, sopra il menu dell'app.
-  const fondo = (el('azione').hidden ? innerHeight : el('azione').getBoundingClientRect().top) -
-    (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--menu')) || 62) - 24;
+  // Quanto spazio serve sotto la riga, sopra quello che galleggia in fondo.
+  const fondo = fondoLibero() - 12;
   const manca = riga.getBoundingClientRect().bottom + 6 + lista.offsetHeight - fondo;
   if (manca > 0) {
     scorriDi(manca, 280);
@@ -6430,7 +6710,7 @@ function mostra(quale) {
   }
   if (quale !== 'prenota') stato.spostando = null;
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
-  // "Segna come prestato" e' del bene scelto in biblioteca: cambiando scheda
+  // "Presta a un’altra persona…" e' del bene scelto in biblioteca: cambiando scheda
   // se ne va, e il pulsante grande torna da solo a tutta larghezza.
   el('azione-a-nome').hidden = true;
   document.body.classList.remove('due-azioni');
@@ -6450,16 +6730,14 @@ function mostra(quale) {
   if (quale === 'prenota') { nascondiAzione(); abilita(stato.prenotabile); }
   else if (quale === 'mie') {
     pulsanteTondo('piu', 'Nuova attività', !stato.bloccato && !stato.senzaTessera, 'Crea');
-    // "Crea" c'e' da subito; se ne va solo con piu' di due attivita',
-    // quando l'elenco arriva in fondo e la scritta finirebbe sopra.
+    // "Crea" c'e' finche' c'e' posto: se ne va solo quando l'elenco
+    // arriverebbe sotto la scritta (lo misura aggiornaEtichette).
     el('azione').classList.add('con-etichetta');
   }
   else nascondiAzione();
   if (quale === 'mie') {
     // Appena vista e senza modifiche nel frattempo: l'elenco e' ancora quello.
-    if (eFresco('mie') && el('elenco-mie').className !== 'vuoto') {
-      el('azione').classList.toggle('con-etichetta', (stato.quanteMie || 0) <= MAX_CON_AGGIUNGI);
-    } else caricaMie();
+    if (!eFresco('mie') || el('elenco-mie').className === 'vuoto') caricaMie();
     controllaChiavi();
   }
   if (quale === 'inventario') apriInventario();
@@ -6482,8 +6760,7 @@ async function avvia() {
     info = await chiama('stato');
   } catch (err) {
     const avviso = document.createElement('div');
-    avviso.className = 'vuoto';
-    avviso.textContent = err.message;
+    erroreCarico(avviso, err, () => location.reload());
     document.body.replaceChildren(avviso);
     return;
   }
@@ -6529,11 +6806,14 @@ async function avvia() {
     const c = info.categorie[i];
     if (c.colore && CSS.supports('color', String(c.colore))) b.style.setProperty('--tinta', String(c.colore));
     const img = b.querySelector('img');
-    img.addEventListener('error', () => { img.style.visibility = 'hidden'; });
+    // Senza icona l'immagine non occupa posto: restava un quadrato vuoto
+    // fra la striscia di colore e il nome.
+    const senza = () => { img.style.visibility = 'hidden'; img.style.display = 'none'; };
+    img.addEventListener('error', senza);
     let src = null;
     try { src = c.icona ? new URL(String(c.icona), location.href) : null; } catch {}
     if (src && ['https:', 'http:'].includes(src.protocol) || src?.protocol === location.protocol) img.src = src.href;
-    else img.style.visibility = 'hidden';
+    else senza();
   });
   // Che nome ci vada non e' la stessa domanda per una campagna di ruolo e per
   // una serata di giochi da tavolo: l'esempio nel campo cambia con la
@@ -6665,6 +6945,17 @@ if (window.matchMedia?.('(pointer: coarse)').matches) {
     }, 100);
   });
 }
+
+// Lo spazio in fondo e le scritte dei tondi si rimisurano da soli: quando si
+// disegna o si nasconde qualcosa, quando i pulsanti in fondo cambiano, e
+// quando cambia la finestra (anche la tastiera che si apre).
+new MutationObserver(chiediFondo).observe(document.body,
+  { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+new MutationObserver(chiediFondo).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+for (const n of document.querySelectorAll(GALLEGGIANTI)) {
+  new MutationObserver(chiediFondo).observe(n, { attributes: true, attributeFilter: ['class', 'style'] });
+}
+addEventListener('resize', chiediFondo);
 
 avvia();
 </script>
