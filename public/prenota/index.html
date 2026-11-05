@@ -1436,9 +1436,13 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <span class="titolo">Generi</span>
     <div class="chips" id="agg-generi"></div>
     <div class="riga-campi" style="margin-top: 8px">
-      <input type="text" id="agg-nuovo-genere" maxlength="60" placeholder="Nuovo genere">
+      <input type="text" id="agg-nuovo-genere" maxlength="60" placeholder="Cerca o aggiungi un genere" autocomplete="off"
+             role="combobox" aria-autocomplete="list" aria-controls="agg-generi-suggeriti" aria-expanded="false">
       <button type="button" class="bottone secondario" id="aggiungi-genere">Aggiungi</button>
     </div>
+    <!-- I generi che esistono gia', anche di altre categorie: si sceglie
+         quello invece di crearne un doppione. -->
+    <div id="agg-generi-suggeriti" class="suggerimenti-soci" role="listbox" aria-label="Generi" hidden></div>
   </div>
 
   <div class="campo" id="campo-sistema" hidden>
@@ -3406,6 +3410,14 @@ function preparaFormBene() {
     el('cerca-isbn').onclick = cercaIsbn;
     el('agg-isbn').addEventListener('keydown', e => { if (e.key === 'Enter') cercaIsbn(); });
     el('aggiungi-genere').onclick = aggiungiGenere;
+    el('agg-nuovo-genere').oninput = suggerisciGeneri;
+    el('agg-nuovo-genere').onkeydown = (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      // Invio: il primo suggerito se c'e', se no il nome scritto.
+      const primo = el('agg-generi-suggeriti').querySelector('[data-genere-esistente]');
+      if (primo && !el('agg-generi-suggeriti').hidden) primo.click(); else aggiungiGenere();
+    };
     el('salva-bene').onclick = salvaBene;
     el('chiudi-aggiungi').onclick = () => mostra('inventario');
     el('annulla-bene').onclick = () => mostra('inventario');
@@ -3506,6 +3518,32 @@ function disegnaGeneri() {
   });
 }
 
+// Scrivendo, i generi gia' nel sistema che contengono quelle lettere (non
+// gia' scelti): toccandone uno si sceglie. "Aggiungi" o Invio con un nome
+// che non c'e' lo crea, come prima.
+function suggerisciGeneri() {
+  const campo = el('agg-nuovo-genere');
+  const dove = el('agg-generi-suggeriti');
+  const t = campo.value.trim().toLowerCase();
+  const lista = !t ? [] : inv.opzioni.generi
+    .filter(g => !inv.generiScelti.has(String(g.id)) && g.nome.toLowerCase().includes(t))
+    .sort((a, b) => Number(!a.nome.toLowerCase().startsWith(t)) - Number(!b.nome.toLowerCase().startsWith(t))
+      || a.nome.localeCompare(b.nome, 'it'))
+    .slice(0, 8);
+  dove.innerHTML = lista.map(g => `<button type="button" role="option" data-genere-esistente="${g.id}"><b>${esc(g.nome)}</b></button>`).join('');
+  dove.hidden = !lista.length;
+  campo.setAttribute('aria-expanded', String(Boolean(lista.length)));
+  dove.querySelectorAll('[data-genere-esistente]').forEach(b => {
+    b.addEventListener('pointerdown', (e) => e.preventDefault());
+    b.onclick = () => {
+      inv.generiScelti.add(b.dataset.genereEsistente);
+      campo.value = '';
+      suggerisciGeneri();
+      disegnaGeneri();
+    };
+  });
+}
+
 function aggiungiGenere() {
   const nome = el('agg-nuovo-genere').value.trim();
   if (!nome) return;
@@ -3518,6 +3556,7 @@ function aggiungiGenere() {
     inv.generiScelti.add('nuovo:' + nome);
   }
   el('agg-nuovo-genere').value = '';
+  suggerisciGeneri();
   disegnaGeneri();
 }
 
