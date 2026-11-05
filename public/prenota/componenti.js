@@ -374,13 +374,13 @@ function collegaScorri(scatola, riga, lati, tocco, menu) {
     const oltre = Boolean(info) && Math.abs(x) > larga;
     const cresce = oltre ? (info.pieno || info.vicino || null) : null;
     // La scritta si allarga con lo swipe: le lettere si stirano in
-    // larghezza, le righe restano quelle. Al limite e' un quarto piu' larga,
+    // larghezza, le righe restano quelle. Al limite e' larga una volta e mezza,
     // e li' si ferma, come la riga.
     const quanto = oltre ? Math.min(1, Math.max(0, (Math.abs(x) - larga) / (limite - larga))) : 0;
     inizio.vuoi = {
       x, lato: info ? lato : null, oltre,
       piena: oltre && Boolean(info.pieno) && Math.abs(x) > inizio.tutta * SCORRI_PIENO,
-      cresce, larghezza: oltre ? `${Math.abs(x)}px` : '', scala: cresce ? `scaleX(${1 + 0.25 * quanto})` : '',
+      cresce, larghezza: oltre ? `${Math.abs(x)}px` : '', scala: cresce ? `scaleX(${1 + 0.5 * quanto})` : '',
     };
     if (!fotogramma) fotogramma = requestAnimationFrame(applica);
   });

@@ -1220,11 +1220,13 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .scorri-azioni.oltre > .azioni { width: 100%; }
 .scorri-azioni.oltre .cresce { flex: 1 1 auto; }
 .scritta-azione { flex: 0 0 68px; width: 68px; text-align: center; }
-.scorri-azioni.destra .scritta-azione { transform-origin: left center; }
-.scorri-azioni.sinistra .scritta-azione { transform-origin: right center; }
-/* Allargandosi, la scritta resta attaccata alla riga che la tira. */
-.scorri-azioni.destra.oltre .cresce { justify-content: flex-start; }
-.scorri-azioni.sinistra.oltre .cresce { justify-content: flex-end; }
+/* Allargandosi il pulsante, la scritta resta ancorata dov'era, verso il bordo
+   dello schermo: non segue la riga. Si stira solo verso la riga che la tira,
+   come un elastico fissato dall'altra parte. */
+.scorri-azioni.destra .scritta-azione { transform-origin: right center; }
+.scorri-azioni.sinistra .scritta-azione { transform-origin: left center; }
+.scorri-azioni.destra.oltre .cresce { justify-content: flex-end; }
+.scorri-azioni.sinistra.oltre .cresce { justify-content: flex-start; }
 .scorri-azioni.piena button:not([data-pieno]) { display: none; }
 .scorri-azioni.piena [data-pieno] { filter: brightness(1.12); }
 .riga.toccabile { cursor: pointer; }
