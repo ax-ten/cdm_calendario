@@ -1,0 +1,1311 @@
+/* Lo stile di tutta l'app di prenotazione. */
+
+/* I colori arrivano da Telegram: l'app deve sembrare parte dell'app che la
+   ospita, e chi la usa col tema scuro non deve prendersi una pagina bianca in
+   faccia. I fallback servono ad aprirla in un browser normale. */
+:root {
+  --sfondo: var(--tg-theme-bg-color, #17212b);
+  --scheda: var(--tg-theme-secondary-bg-color, #232e3c);
+  --testo: var(--tg-theme-text-color, #f5f5f5);
+  --suggerimento: var(--tg-theme-hint-color, #8a9aa9);
+  /* Il grigio dei testi secondari: quello di Telegram da solo, nel tema
+     chiaro, sul grigio delle schede non si legge (2,5:1). Un terzo del
+     colore del testo lo porta sopra 4,5:1 in tutti e due i temi. */
+  --tenue: color-mix(in srgb, var(--suggerimento) 70%, var(--testo));
+  /* Il blu di riserva (fuori da Telegram) e' piu' scuro di quello di prima:
+     il bianco sopra si legge (4,9:1). */
+  --accento-base: var(--tg-theme-button-color, #2a74b8);
+  --accento: var(--accento-base);
+  --su-accento: var(--tg-theme-button-text-color, #fff);
+  /* Il blu usato come colore di una scritta (link, Indietro, la voce scelta
+     del menu): un po' verso il colore del testo, cosi' sullo sfondo si legge
+     anche quando il blu del tema e' pensato per i pulsanti. */
+  --accento-testo: color-mix(in srgb, var(--accento) 65%, var(--testo));
+  /* Gli stati, come scritte e pallini: nel tema scuro chiari, nel chiaro
+     scuri (sotto, .tema-chiaro). Come fondo pieno con il bianco sopra ci
+     sono i -fondo, uguali nei due temi. */
+  --occupato: #e0a92a;
+  --pieno: #ff7a72;
+  --libero: #66cc94;
+  --occupato-fondo: #9a6500;
+  --pieno-fondo: #c4372f;
+  --libero-fondo: #23784a;
+  --stella-direttivo: #f2c14e;
+  --stella-staff: #7cc4ff;
+  /* Nel tema chiaro le schede hanno un filo intorno: #f1f1f1 su bianco non
+     si distingue. Nel tema scuro non serve. */
+  --bordo-scheda: transparent;
+  /* Il menu galleggia in basso: quanto e' alto, quanto sta staccato dal
+     bordo, e quanto spazio occupa in tutto. Le barre fisse ci stanno sopra. */
+  --menu: 62px;
+  --menu-margine: 10px;
+  --azione: 50px;
+  --ingombro-menu: calc(var(--menu) + var(--menu-margine) + env(safe-area-inset-bottom));
+  /* Tutto quello che galleggia in fondo (menu, pulsante d'azione, pulsanti
+     tondi): lo misura aggiornaFondo() e lo scrive qui. Questo e' il valore
+     prima della prima misura. */
+  --ingombro-fondo: calc(var(--ingombro-menu) + 70px);
+}
+/* Fuori da Telegram, con il telefono in tema chiaro: i colori di riserva
+   chiari. Dentro Telegram valgono sempre quelli del suo tema. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --sfondo: var(--tg-theme-bg-color, #ffffff);
+    --scheda: var(--tg-theme-secondary-bg-color, #f1f1f1);
+    --testo: var(--tg-theme-text-color, #000000);
+    --suggerimento: var(--tg-theme-hint-color, #999999);
+  }
+}
+/* Il tema chiaro (di Telegram o del telefono): la classe la mette
+   aggiornaTema() guardando quanto e' chiaro lo sfondo. Gli stati diventano
+   scuri, il blu dei pulsanti un poco piu' scuro (il bianco sopra arriva a
+   4,5:1), le stelline piu' cariche e le schede hanno il loro filo. */
+.tema-chiaro {
+  --accento: color-mix(in srgb, var(--accento-base) 86%, #000);
+  --occupato: #855600;
+  --pieno: #b3261e;
+  --libero: #17693d;
+  --stella-direttivo: #a26c00;
+  --stella-staff: #1f6fb5;
+  --bordo-scheda: color-mix(in srgb, var(--testo) 11%, transparent);
+}
+
+* { box-sizing: border-box; }
+
+/* La pagina non scorre mai di lato. */
+html, body { overflow-x: hidden; }
+/* Dove la barra di scorrimento occupa spazio (Telegram Desktop), c'e'
+   sempre: se no menu e pulsanti tondi saltano di lato appena l'elenco
+   diventa piu' lungo dello schermo. scrollbar-gutter fa lo stesso senza
+   mostrarla, ma la webview di Telegram Desktop non lo conosce. Sui telefoni
+   la barra si sovrappone alla pagina e non cambia niente. */
+html { overflow-y: scroll; scrollbar-gutter: stable; }
+
+body {
+  margin: 0;
+  /* Lo spazio in fondo e' alto quanto quello che galleggia in fondo (menu,
+     pulsante d'azione, pulsanti tondi), misurato: l'ultima riga finisce
+     sempre sopra, e non sotto un pulsante. */
+  padding: 18px 14px calc(var(--ingombro-fondo) + 20px);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--sfondo);
+  color: var(--testo);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ------------------------------------------------------------------- tab */
+.tab {
+  /* Il menu sta in basso, come quello di Telegram: una capsula larga quanto
+     le sue voci, che galleggia sopra la pagina staccata dai bordi, con lo
+     sfondo velato. La voce attiva sta in una capsula piu' chiara. */
+  /* Centrato con left/right a zero e margini automatici, non con left: 50%:
+     cosi' il browser gli lascia tutta la larghezza, invece di meta'
+     schermo, e su un telefono stretto le voci non escono dalla capsula. */
+  position: fixed;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: max-content;
+  bottom: calc(var(--menu-margine) + env(safe-area-inset-bottom));
+  max-width: calc(100% - 24px);
+  height: var(--menu);
+  padding: 5px;
+  display: flex;
+  gap: 2px;
+  border-radius: 999px;
+  /* Fondo pieno, senza sfocatura: sui WebView di Android la sfocatura
+     dietro a una forma arrotondata lascia bordi e pezzi disegnati male. */
+  background: var(--scheda);
+  border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .32);
+  z-index: 25;
+}
+.tab button {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--testo);
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1.1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color .15s, color .15s;
+}
+.tab button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+/* Larghezza scritta sul pulsante, non solo come flex-basis: i Chrome meno
+   recenti (quello di Telegram su Android, per esempio) misurano la capsula
+   sul testo delle voci e non sul flex-basis, e la seconda voce ne usciva. */
+.tab button { flex: none; width: 92px; height: 100%; padding: 0; -webkit-tap-highlight-color: transparent; }
+/* display: flex delle voci vince sull'attributo hidden: senza questa riga la
+   Tessera, ancora in prova, si vedeva anche senza il link debug. */
+.tab button[hidden] { display: none; }
+
+/* ----------------------------------------------------------------- passi */
+.testa-passi { display: flex; justify-content: space-between; align-items: center; min-height: 34px; }
+.link-mie { appearance: none; border: 0; background: none; color: var(--accento-testo);
+  font: inherit; font-size: .88rem; padding: 6px 0; margin-left: auto; cursor: pointer; }
+.link-mie[hidden] { display: none; }
+/* La barra sta ferma in fondo, fra il menu e il pulsante d'azione: si vede
+   sempre quanto manca, anche scorrendo. */
+.avanzamento { position: fixed; left: 50%; transform: translateX(-50%); z-index: 24;
+  bottom: calc(var(--ingombro-menu) + 8px); width: min(440px, calc(100% - 24px));
+  height: 5px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, var(--tenue) 25%, transparent); }
+body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
+.avanzamento-pieno { height: 100%; width: 20%; border-radius: 999px; background: var(--accento);
+  transition: width .3s ease; }
+.passo[hidden] { display: none; }
+.esito-orario { margin: 4px 0 22px; }
+.esito-orario:empty { display: none; }
+.riepilogo { background: var(--scheda); border-radius: 14px; padding: 4px 14px; margin-bottom: 22px; }
+.riepilogo div { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--tenue) 18%, transparent); font-size: .92rem; }
+.riepilogo div:last-child { border-bottom: 0; }
+.riepilogo span { color: var(--tenue); flex: 0 0 auto; }
+.riepilogo b { font-weight: 500; text-align: right; }
+.riepilogo p { margin: 10px 0; font-size: .86rem; color: var(--occupato); }
+.tab button[aria-selected="true"] {
+  color: var(--accento-testo);
+  background: color-mix(in srgb, var(--accento) 11%, transparent);
+  font-weight: 600;
+}
+.tab button svg { width: 24px; height: 24px; flex: 0 0 auto; }
+/* Ogni voce ha due icone di Phosphor (licenza MIT, vendor/phosphor-LICENSE.txt),
+   la versione a linee e quella piena, disegnate apposta: la piena compare
+   quando la voce e' scelta. Riempire a mano quelle a linee faceva macchie. */
+.tab button svg { display: block; }
+.tab button svg.ico-piena,
+.tab button[aria-selected="true"] svg.ico-vuota { display: none; }
+.tab button[aria-selected="true"] svg.ico-piena { display: block; }
+/* Niente contorno dopo un tocco: sul telefono restava attorno alla voce. */
+.tab button:focus { outline: none; }
+.tab button:focus-visible { outline: 2px solid var(--accento); outline-offset: -2px; }
+@media (pointer: coarse) { .tab button:focus-visible { outline: none; } }
+/* Chi deve ancora registrarsi non ha schede da scegliere. */
+.tab[hidden] { display: none; }
+body.senza-menu { --ingombro-menu: calc(env(safe-area-inset-bottom) + 6px); }
+/* Con la tastiera aperta il menu non serve e ruberebbe spazio: sparisce, e
+   la barra dei passi e il pulsante scendono al suo posto, sopra la tastiera. */
+body.tastiera { --ingombro-menu: 6px; }
+body.tastiera .tab { display: none; }
+
+/* Il filo delle schede nel tema chiaro (nel tema scuro e' trasparente). Con
+   :where non pesa niente: chi ha gia' un'ombra sua (la riga col menu aperto)
+   tiene la sua. */
+:where(.riga, .riepilogo, .spese, .interruttore, .sedi button, .categoria, .riassunto-bene, .pista,
+  .segmenti, .ordina, .contatore, .mese button, .anno-quote button, select, textarea,
+  input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="date"],
+  input[type="number"]) { box-shadow: inset 0 0 0 1px var(--bordo-scheda); }
+
+h1 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  /* Lo spazio sotto lo dava il sottotitolo, che non c'e' piu'. */
+  margin: 0 0 18px;
+  font-weight: 600;
+}
+.spiega { color: var(--tenue); font-size: .9rem; margin: 0 0 22px; }
+h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; }
+
+.pannello[hidden] { display: none; }
+
+/* ----------------------------------------------------------------- campi */
+.campo { margin-bottom: 22px; }
+.campo > label,
+.campo > .titolo,
+.riga-campi > div > label {
+  display: block;
+  font-size: .8rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--tenue);
+  margin-bottom: 9px;
+}
+
+/* Le etichette sono maiuscoletto, e una frase intera in maiuscoletto si urla
+   invece di leggersi. Le istruzioni stanno qui sotto, scritte normali. */
+/* "(facoltativa)" dentro l'etichetta: scritto normale, non in maiuscolo. */
+.campo > label small, .riga-campi > div > label small { text-transform: none; letter-spacing: 0; font-size: .95em; }
+.campo > .aiuto.conta { display: flex; justify-content: space-between; gap: 12px; }
+.campo > .aiuto .lungo { color: var(--occupato); }
+#conta-note { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.campo > .aiuto {
+  display: block;
+  font-size: .84rem;
+  line-height: 1.35;
+  color: var(--tenue);
+  margin: -4px 0 9px;
+}
+
+.sedi { display: flex; gap: 8px; }
+.sedi button {
+  flex: 1;
+  padding: 11px 8px;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  background: var(--scheda);
+  color: var(--testo);
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+.sedi small { color: var(--tenue); font-size: .76rem; }
+.sedi button[aria-pressed="true"] small { color: inherit; opacity: .8; }
+.sedi button[aria-pressed="true"] {
+  border-color: var(--accento);
+  color: var(--accento-testo);
+}
+
+/* -------------------------------------------------------------- categorie
+   Icona e colore sono gli stessi del calendario pubblico: chi ha visto
+   l'attivita' li' la riconosce qui senza leggere. */
+.categorie { display: grid; gap: 4px; }
+.categoria {
+  appearance: none;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  background: var(--scheda);
+  color: var(--testo);
+  font: inherit;
+  font-size: .92rem;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  text-align: left;
+  width: 100%;
+  /* Un'altezza definita serve all'icona: e' lei a stirarsi fino ai bordi, e
+     senza un'altezza da cui partire sarebbe la sua dimensione naturale a
+     decidere quanto e' alta la riga. */
+  height: 44px;
+  /* Cosi' la striscia di colore viene tagliata dal raggio dell'angolo invece
+     di sporgere: e' quello che le da' la forma a mezzaluna sul bordo. */
+  overflow: hidden;
+}
+/* Il colore e' lo stesso che quell'attivita' ha sul calendario pubblico: si
+   riconosce prima di leggere il nome. Riempie i primi 14px da bordo a bordo,
+   senza margini. */
+.categoria .tinta {
+  flex: 0 0 14px;
+  align-self: stretch;
+  background: var(--tinta);
+  opacity: .75;
+}
+/* Alta quanto la riga e senza margini: la limita il bordo del pulsante, non
+   uno spazio intorno. Sono immagini quadrate e piene fino al bordo, quindi
+   cover non taglia niente. */
+.categoria img {
+  align-self: stretch;
+  aspect-ratio: 1;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+  flex: 0 0 auto;
+  margin: 0;
+}
+.categoria span.nome { flex: 1; padding: 0 12px 0 12px; }
+.categoria[aria-pressed="true"] {
+  border-color: var(--tinta);
+  background: color-mix(in srgb, var(--tinta) 20%, var(--scheda));
+}
+.categoria[aria-pressed="true"] .tinta { opacity: 1; }
+
+input[type="text"], input[type="email"], input[type="tel"], input[type="date"], textarea {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--scheda);
+  color: var(--testo);
+  font: inherit;
+}
+textarea { resize: vertical; min-height: 62px; }
+/* La data ha l'altezza degli altri campi e il calendarietto nel colore del tema. */
+input[type="date"] { min-height: 46px; color-scheme: dark light; }
+input:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accento);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------ calendario */
+.mese {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.mese strong { font-size: .98rem; font-weight: 600; text-transform: capitalize; }
+.mese button {
+  appearance: none;
+  border: 0;
+  background: var(--scheda);
+  color: var(--testo);
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  position: relative;
+}
+/* Si vedono da 38px, si toccano da 46. */
+.mese button::before, .anno-quote button::before { content: ""; position: absolute; inset: -4px; }
+.mese button:disabled { opacity: .3; cursor: default; }
+
+/* Leggere il calendario di una sede vuol dire chiedere a Google: passa
+   qualche secondo, e senza un segno sembra che l'app si sia piantata. */
+.rotella {
+  width: 15px; height: 15px;
+  border: 2px solid color-mix(in srgb, var(--tenue) 40%, transparent);
+  border-top-color: var(--accento);
+  border-radius: 50%;
+  animation: gira .7s linear infinite;
+  margin-left: 8px;
+}
+.mese strong { display: inline-flex; align-items: center; }
+@keyframes gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .rotella { animation-duration: 2.4s; }
+}
+.griglia.in-attesa { opacity: .45; }
+
+.griglia {
+  display: grid;
+  /* minmax(0, 1fr) e non 1fr: 1fr non scende sotto la larghezza minima del
+     contenuto, e le sette colonne sforavano a destra. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+.griglia .intestazione {
+  text-align: center;
+  font-size: .74rem;
+  color: var(--tenue);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding-bottom: 4px;
+}
+.giorno {
+  appearance: none;
+  border: 1.5px solid transparent;
+  background: none;
+  color: var(--testo);
+  font: inherit;
+  font-size: .92rem;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+}
+.giorno:disabled { color: color-mix(in srgb, var(--tenue) 45%, transparent); cursor: default; }
+.giorno[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
+.giorno .segno {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: transparent;
+}
+.giorno.occupato .segno { background: var(--occupato); }
+.giorno.pieno .segno { background: var(--pieno); }
+.giorno[aria-pressed="true"] .segno { box-shadow: 0 0 0 1.5px var(--su-accento); }
+.giorno.vuoto { visibility: hidden; }
+/* Spostando una data: quella di adesso, col bordo tratteggiato. */
+.giorno.attuale { border: 1.5px dashed var(--accento-testo); }
+.giorno.attuale[aria-pressed="true"] { border-style: solid; border-color: var(--su-accento); }
+.box-sposta { margin: -8px 0 16px; padding: 10px 13px; border-radius: 12px; font-size: .92rem; line-height: 1.4;
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda));
+  border: 1px solid color-mix(in srgb, var(--accento) 30%, transparent); }
+.box-sposta[hidden] { display: none; }
+.box-sposta b { font-weight: 600; }
+
+.legenda {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: .76rem;
+  color: var(--tenue);
+}
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+/* ----------------------------------------------------------------- fascia
+   La stessa forma del calendario pubblico: una riga di ore con sopra le
+   barre di quello che c'e' gia'. Cosi' l'orario non si sceglie alla cieca. */
+.fascia { user-select: none; touch-action: none; }
+
+.ore {
+  display: flex;
+  justify-content: space-between;
+  font-size: .74rem;
+  color: var(--tenue);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.pista {
+  position: relative;
+  height: 58px;
+  background: var(--scheda);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tacca {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: color-mix(in srgb, var(--tenue) 25%, transparent);
+}
+.gia {
+  position: absolute;
+  height: 15px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--occupato) 55%, transparent);
+  font-size: .64rem;
+  line-height: 15px;
+  padding: 0 5px;
+  color: var(--testo);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.scelta {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: color-mix(in srgb, var(--accento) 32%, transparent);
+  border-left: 2px solid var(--accento);
+  border-right: 2px solid var(--accento);
+}
+.maniglia {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 44px;
+  margin-left: -22px;
+  background: none;
+  border: 0;
+  cursor: ew-resize;
+  padding: 0;
+}
+.maniglia::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px; height: 26px;
+  border-radius: 3px;
+  background: var(--accento);
+}
+.quanto {
+  margin-top: 8px;
+  font-size: .9rem;
+  font-variant-numeric: tabular-nums;
+}
+.quanto b { font-weight: 600; }
+.quanto span { color: var(--tenue); }
+
+
+/* ------------------------------------------------------------ interruttore */
+.interruttore {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--scheda); padding: 13px; border-radius: 12px;
+}
+.interruttore input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accento); flex: 0 0 auto; }
+.interruttore label { font-size: .95rem; flex: 1; }
+.interruttore > div { flex: 1; }
+.interruttore small {
+  display: block; color: var(--tenue); font-size: .78rem; margin-top: 3px;
+}
+
+/* Ogni quanto si ripete: si apre sotto la spunta, dentro lo stesso riquadro,
+   perche' e' la stessa domanda detta meglio. */
+.cadenze { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.cadenze[hidden] { display: none; }
+.cadenze button {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
+  border-radius: 10px;
+  background: none;
+  color: var(--testo);
+  font: inherit;
+  font-size: .85rem;
+  cursor: pointer;
+}
+.cadenze button[aria-pressed="true"] { border-color: var(--accento); color: var(--accento-testo); }
+.frase-cadenza { margin: 8px 0 0; font-size: .84rem; line-height: 1.35; color: var(--testo); }
+.frase-cadenza[hidden] { display: none; }
+
+/* ------------------------------------------------------------------ esito
+   Fisso in fondo, appoggiato sopra il pulsante Prenota di Telegram: e' la
+   riga che dice cosa manca ancora, e serve mentre si compila, non dopo aver
+   scorso fino in fondo. */
+/* Sopra il menu, il pulsante d'azione (Avanti e Prenota, Prendi in
+   prestito, Invia richiesta): galleggia come il menu, una capsula staccata,
+   mai sotto di lui. */
+#azione {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--ingombro-menu) + 10px);
+  width: min(440px, calc(100% - 24px));
+  height: var(--azione);
+  border: 0;
+  border-radius: 999px;
+  background: var(--accento);
+  color: var(--su-accento);
+  font: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+  cursor: pointer;
+  z-index: 24;
+}
+#azione[hidden] { display: none; }
+/* Due azioni affiancate: si dividono la stessa larghezza del pulsante da
+   solo, "Presta a un’altra persona…" a sinistra. */
+#azione-a-nome {
+  position: fixed; z-index: 24;
+  left: calc((100% - min(440px, 100% - 24px)) / 2);
+  bottom: calc(var(--ingombro-menu) + 10px);
+  width: calc(min(440px, 100% - 24px) / 2 - 4px); height: var(--azione);
+  border: 1.5px solid var(--accento); border-radius: 999px;
+  background: var(--scheda); color: var(--accento-testo);
+  font: inherit; font-size: .84rem; font-weight: 600; line-height: 1.15; padding: 0 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .3); cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: transform .12s ease, filter .12s ease;
+}
+#azione-a-nome[hidden] { display: none; }
+#azione-a-nome:active { transform: scale(.96); }
+body.due-azioni #azione { left: auto; right: calc((100% - min(440px, 100% - 24px)) / 2);
+  transform: none; width: calc(min(440px, 100% - 24px) / 2 - 4px); font-size: .92rem; }
+body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
+
+/* Al passaggio (col mouse) si schiariscono, alla pressione si abbassano un
+   attimo: si capisce che il tocco e' arrivato. */
+#azione, .tondo, .tab button, .bottone, .riga button, .tipi button, .bene[role="button"] {
+  transition: transform .12s ease, filter .12s ease, background-color .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  #azione:not(:disabled):hover, .tondo:hover, .bottone:not(:disabled):hover { filter: brightness(1.12); }
+  .tab button:not([aria-selected="true"]):hover { background: rgba(255, 255, 255, .06); }
+  .riga button:not(:disabled):hover, .tipi button:hover { filter: brightness(1.2); }
+}
+#azione:not(:disabled):active { transform: translateX(-50%) scale(.96); filter: brightness(.9); }
+#azione.freccia:not(:disabled):active { transform: scale(.9); }
+.tondo:active { transform: scale(.9); filter: brightness(.9); }
+.tab button:active { transform: scale(.94); }
+.bottone:not(:disabled):active, .riga button:not(:disabled):active, .tipi button:active { transform: scale(.95); }
+.bene[role="button"]:active { transform: scale(.985); }
+/* A meta' prenotazione il pulsante e' solo una freccia, a destra: va avanti,
+   ma non occupa la riga. */
+#azione.freccia { left: auto; right: 12px; transform: none; width: var(--azione); align-items: center; justify-content: center; padding: 0; }
+#azione.freccia:not([hidden]) { display: flex; }
+#azione.freccia svg, .tondo svg { width: 24px; height: 24px; }
+/* Il + per aggiungere un bene: tondo, in basso a destra come la freccia. */
+.tondo { position: fixed; right: 12px; bottom: calc(var(--ingombro-menu) + 10px); z-index: 24;
+  width: var(--azione); height: var(--azione); padding: 0; border: 0; border-radius: 999px;
+  background: var(--accento); color: var(--su-accento); box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+  align-items: center; justify-content: center; cursor: pointer;
+  /* Un bottone non eredita il font: senza, le scritte accanto uscivano in
+     Arial e non combaciavano con quella del + delle attivita'. */
+  font: inherit; }
+.tondo:not([hidden]) { display: flex; }
+/* La scritta accanto all'hamburger e al +: sta a sinistra del pulsante, senza
+   sfondo, e si vede solo quando non c'e' nessun filtro (l'elenco e' vuoto e
+   lo spazio c'e'). E' dentro al pulsante solo per seguirlo dove si sposta. */
+/* La scritta accanto ai pulsanti tondi sta sopra l'elenco: una capsula
+   semitrasparente le da' lo stesso contrasto su qualsiasi cosa ci passi sotto. */
+.etichetta-tondo { position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+  margin-right: 8px; white-space: nowrap; padding: 5px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--sfondo) 78%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  color: var(--testo); font-size: .92rem; font-weight: 600;
+  line-height: 1.2; pointer-events: none; display: none; }
+.tondo.con-etichetta .etichetta-tondo, #azione.con-etichetta .etichetta-tondo { display: block; }
+/* Se sotto la scritta finirebbe l'elenco, o c'e' la barra d'azione larga,
+   la scritta non c'e': resta il pulsante col suo nome per il lettore di
+   schermo. Lo decide aggiornaEtichette(). */
+.tondo.etichetta-coperta .etichetta-tondo, #azione.etichetta-coperta .etichetta-tondo { display: none; }
+.tondo.chiaro { background: var(--scheda); color: var(--testo);
+  border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
+.tondo.secondo { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
+#azione:disabled, #azione.spento { cursor: default;
+  background: color-mix(in srgb, var(--scheda) 88%, var(--testo));
+  color: var(--tenue); }
+#azione[aria-busy="true"] { color: transparent; }
+#azione[aria-busy="true"]::after {
+  content: ''; position: absolute; inset: 0; margin: auto; width: 20px; height: 20px;
+  border: 2px solid var(--su-accento); border-right-color: transparent; border-radius: 50%;
+  animation: gira .7s linear infinite;
+}
+@keyframes gira { to { transform: rotate(360deg); } }
+
+
+
+/* Niente cornice ne' riquadro: la barra e' gia' un contenitore suo. Lo stato
+   lo dice il colore della prima riga, che e' l'unica cosa che serve leggere
+   di corsa. */
+.esito { font-size: .88rem; }
+.esito b { display: block; font-size: .95rem; }
+.esito.libero b { color: var(--libero); }
+.esito.pieno b { color: var(--pieno); }
+.esito span { color: var(--tenue); }
+
+/* ------------------------------------------------------------------ toast
+   Il popup di Telegram vuole un tocco per sparire, e per dire "fatto" e'
+   troppo: si fa vedere da solo sopra la barra e se ne va. */
+/* I toast stanno sopra tutto quello che galleggia in fondo, pulsanti tondi
+   compresi: non coprono il + e il + non copre loro. */
+#toast-annulla {
+  position: fixed; z-index: 30;
+  left: 12px; right: 12px;
+  bottom: calc(var(--ingombro-fondo) + 10px);
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 8px 14px 14px; border-radius: 14px; overflow: hidden;
+  background: #2b3036; color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  font-size: .9rem; opacity: 0; transform: translateY(10px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+#toast-annulla.visibile { opacity: 1; transform: none; }
+/* display: flex vince sull'attributo hidden: senza questa riga il toast resta
+   li', trasparente, sopra "Prendi in prestito", e si prende il tocco. */
+#toast-annulla[hidden] { display: none; }
+#toast-annulla:not(.visibile) { pointer-events: none; }
+#toast-annulla span { flex: 1; min-width: 0; }
+#toast-annulla button { appearance: none; border: 0; background: none; color: #8ec5ff;
+  font: inherit; font-weight: 700; padding: 6px 8px; cursor: pointer; }
+#toast-annulla .tempo { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+  background: var(--accento); }
+
+#toast {
+  position: fixed;
+  left: 14px; right: 14px;
+  bottom: calc(var(--ingombro-fondo) + 10px);
+  z-index: 30;
+  padding: 12px 14px;
+  border-radius: 12px;
+  /* Il colore e" tutto il messaggio: verde vuol dire fatto, rosso no, e si
+     capisce prima di aver letto. Verde e rosso scuri, con il bianco sopra:
+     reggono il contrasto a 14px in tutti e due i temi. */
+  background: var(--libero-fondo);
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  font-size: .9rem;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+#toast.visibile { opacity: 1; transform: none; }
+#toast.guasto { background: var(--pieno-fondo); }
+#toast[hidden] { display: none; }
+/* Durante la prenotazione il toast ("manca l'orario") sta accanto alla
+   freccia che si e' appena premuta, alla stessa altezza, non sopra. */
+body.in-passi #toast { right: calc(12px + var(--azione) + 10px); left: 12px;
+  bottom: calc(var(--ingombro-menu) + 22px); min-height: var(--azione);
+  display: flex; align-items: center; padding: 8px 14px; }
+body.in-passi #toast[hidden] { display: none; }
+
+/* Dice cosa succede a questo nome, non come funziona il raggruppamento: la
+   regola non interessa a nessuno, la conseguenza si'. */
+.serie {
+  margin: 6px 0 0;
+  font-size: .84rem;
+  line-height: 1.35;
+  color: var(--tenue);
+}
+.serie[hidden] { display: none; }
+.serie b { color: var(--testo); font-weight: 600; }
+
+/* -------------------------------------------------------------------- mie */
+.riga {
+  background: var(--scheda); border-radius: 12px; padding: 13px; margin-bottom: 10px;
+}
+.riga .quando { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
+.azioni { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.riga button {
+  padding: 7px 12px; border-radius: 9px;
+  background: transparent; color: var(--tenue); font: inherit; font-size: .85rem;
+  cursor: pointer; border: 1px solid color-mix(in srgb, var(--tenue) 55%, transparent);
+}
+/* Rosso solo a quello che non si puo' disfare: se lo sono tutti e due, il
+   colore smette di voler dire "attento". */
+.riga button.grave { color: var(--pieno); border-color: var(--pieno); }
+.riga button:disabled { opacity: .5; cursor: default; }
+.azioni.a-destra { justify-content: flex-end; align-items: center; }
+.azioni[hidden] { display: none; }
+.riga button.conferma { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+.contagiorni { display: flex; align-items: center; border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--tenue) 55%, transparent); overflow: hidden; }
+.contagiorni { flex: 0 0 auto; }
+.riga .contagiorni button { border: 0; border-radius: 0; width: 32px; padding: 7px 0; color: var(--testo); }
+.contagiorni input[type="number"] { width: 38px; flex: 0 0 38px; padding: 6px 0; border: 0; border-radius: 0; text-align: center;
+  background: transparent; color: var(--testo); font: inherit; font-size: .9rem;
+  -moz-appearance: textfield; appearance: textfield; }
+.riga .contagiorni button { flex: 0 0 32px; }
+.contagiorni input::-webkit-inner-spin-button, .contagiorni input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.contagiorni .unita { color: var(--tenue); font-size: .8rem; margin-right: 2px; }
+.azioni.prolunga { gap: 6px; }
+.azioni.prolunga .contagiorni { margin-right: auto; }
+.riga .azioni.prolunga > button { padding: 7px 10px; }
+.vuoto { color: var(--tenue); text-align: center; padding: 34px 8px; }
+.vuoto-testo { margin: 0 0 12px; }
+
+/* ------------------------------------------------------------ inventario */
+input[type="search"], input[type="number"], select {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--scheda);
+  color: var(--testo);
+  font: inherit;
+}
+select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tenue) 50%),
+                    linear-gradient(135deg, var(--tenue) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px; background-repeat: no-repeat; }
+.filtri { display: flex; gap: 8px; margin: 10px 0; }
+.filtri select { flex: 1; min-width: 0; font-size: .88rem; padding: 10px 26px 10px 10px; }
+.filtri select:disabled { opacity: .4; }
+.ordina { position: relative; flex: 0 0 44px; display: flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--scheda); color: var(--testo); }
+.ordina.attivo { color: var(--accento-testo); }
+.ordina svg { width: 20px; height: 20px; display: block; }
+.ordina select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
+  padding: 0; cursor: pointer; }
+/* Le spunte su una riga: alta 44px da toccare, tutta la scritta compresa. */
+.solo-disp { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--tenue); margin: -6px 0 4px;
+  min-height: 44px; cursor: pointer; }
+.solo-disp input { width: 18px; height: 18px; margin: 0; accent-color: var(--accento); }
+.conteggio { color: var(--tenue); font-size: .84rem; margin: 0 0 8px; }
+
+.bene { background: var(--scheda); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px;
+  border: 1.5px solid var(--bordo-scheda); }
+/* Un bene si sceglie toccandolo; il pulsante per prenderlo e' quello grande
+   in fondo, non uno per scheda. */
+.bene[role="button"] { cursor: pointer; -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none; }
+.bene.scelto { border-color: var(--accento);
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda)); }
+.bene:not(.scelto) .solo-scelto { display: none; }
+/* I tipi vanno a capo invece di scorrere: una riga che scorre di lato porta
+   con se' una barra, che il Chrome di Telegram non sa nascondere. */
+.tipi { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.tipi button {
+  position: relative;
+  flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; white-space: nowrap;
+  border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
+  background: none; color: var(--testo); font: inherit; font-size: .86rem; cursor: pointer;
+}
+.tipi button[aria-pressed="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+/* Le chips restano basse a vedersi, ma si toccano per 44px: il resto lo
+   prende un bordo invisibile sopra e sotto. */
+.tipi button::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px;
+  transform: translateY(-50%); }
+.azioni-form { display: flex; gap: 8px; }
+.azioni-form .bottone { flex: 1; padding: 11px 14px; }
+
+.bene-testa { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.bene-testa b { font-weight: 600; }
+.bene-info { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
+.stato { font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; margin-top: 2px; }
+.stato-disponibile { color: var(--libero); background: color-mix(in srgb, var(--libero) 18%, transparent); }
+.stato-in_prestito { color: var(--occupato); background: color-mix(in srgb, var(--occupato) 13%, transparent); }
+.stato-mancante { color: var(--pieno); background: color-mix(in srgb, var(--pieno) 18%, transparent); }
+
+.bottone {
+  appearance: none; border: 1px solid var(--accento); border-radius: 10px;
+  padding: 8px 14px; background: var(--accento); color: var(--su-accento);
+  font: inherit; font-size: .88rem; cursor: pointer;
+}
+.bottone.secondario { background: transparent; color: var(--accento-testo); }
+.bottone:disabled { opacity: .5; cursor: default; }
+.bottone.largo { width: 100%; padding: 11px 14px; }
+.bottone[hidden] { display: none; }
+
+.riga .ritardo { color: var(--pieno); }
+.nessuna-mia p { color: var(--tenue); text-align: center; margin: 34px 0 0; }
+.avviso-foto { margin: 10px 0 -2px; font-size: .84rem; color: var(--tenue); }
+.mio-prestito { padding: 2px 0 16px; margin-bottom: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
+.mio-prestito .scadenza { font-size: .88rem; margin-top: 6px; }
+.mio-prestito.scaduto .scadenza { color: var(--pieno); }
+.nota-prestito { color: var(--tenue); font-size: .84rem; margin: -6px 0 14px; }
+
+/* "‹ Indietro" e simili: alti 44px da toccare, in tutte le pagine uguali. */
+.indietro { appearance: none; border: 0; background: none; color: var(--accento-testo);
+  font: inherit; padding: 6px 12px 2px 0; min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips:empty { display: none; }
+.chips button {
+  padding: 6px 10px; border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
+  border-radius: 999px; background: none; color: var(--testo); font: inherit; font-size: .84rem; cursor: pointer;
+}
+.chips button[aria-pressed="true"] { border-color: var(--accento); color: var(--accento-testo); }
+.riga-campi { display: flex; gap: 8px; }
+.riga-campi > * { flex: 1; min-width: 0; }
+.riga-campi .bottone { flex: 0 0 auto; }
+.esito-isbn { font-size: .84rem; color: var(--tenue); margin: 8px 0 0; }
+.esito-isbn.attento { color: var(--occupato); }
+#foglio-a-nome { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .5); }
+#foglio-a-nome[hidden] { display: none; }
+#foglio-a-nome .foglio { position: absolute; left: 0; right: 0; bottom: 0; background: var(--sfondo);
+  border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+#foglio-a-nome h2 { margin: 0 0 4px; }
+#foglio-a-nome .spiega { margin: 0 0 12px; }
+/* Nel foglio del prestito l'elenco e' gia' aperto e prende meta' schermo. */
+#foglio-a-nome .suggerimenti-soci { height: 50vh; max-height: 50vh; }
+.aiuto-foglio { font-size: .82rem; color: var(--tenue); margin: 8px 0 14px; }
+.suggerimenti-soci { margin-top: 6px; max-height: 34vh; overflow-y: auto; border-radius: 12px;
+  overscroll-behavior: contain;
+  background: var(--scheda); animation: entra .14s ease-out; }
+.suggerimenti-soci[hidden] { display: none; }
+.suggerimenti-soci button { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  width: 100%; padding: 12px 14px; border: 0; background: none; color: var(--testo); font: inherit;
+  text-align: left; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--tenue) 18%, transparent); }
+.suggerimenti-soci button:last-child { border-bottom: 0; }
+.suggerimenti-soci button b { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggerimenti-soci button span { flex: 0 0 auto; color: var(--tenue); font-size: .82rem; }
+.suggerimenti-soci button[aria-selected="true"], .suggerimenti-soci button:active {
+  background: color-mix(in srgb, var(--accento) 14%, transparent); }
+#anteprima-foto { position: fixed; inset: 0; background: var(--sfondo); z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 16px; }
+#anteprima-foto[hidden] { display: none; }
+#anteprima-foto p { margin: 0; text-align: center; color: var(--tenue); font-size: .9rem; }
+#anteprima-foto img { max-width: 100%; max-height: 62vh; border-radius: 12px; object-fit: contain; }
+#scanner { position: fixed; inset: 0; background: #000; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+#scanner[hidden] { display: none; }
+#scanner video { width: 100%; max-height: 70vh; object-fit: cover; }
+#scanner p { color: #fff; margin: 0 16px; text-align: center; font-size: .9rem; }
+
+/* --------------------------------------------------------- registrazione */
+.intro { font-size: 1rem; margin: 0 0 22px; }
+.informativa { margin-top: 8px; font-size: .88rem; }
+.informativa summary { color: var(--accento-testo); cursor: pointer; }
+.informativa > div {
+  margin-top: 10px; padding: 12px; border-radius: 12px;
+  background: var(--scheda); color: var(--tenue);
+  max-height: 45vh; overflow-y: auto;
+}
+.informativa > div > :first-child { margin-top: 0; }
+.informativa > div > :last-child { margin-bottom: 0; }
+/* ---------------------------------------------------------------- tessera */
+/* Le proporzioni di una carta di credito (85,6 x 54 mm): intestazione in
+   alto, nome e numero in basso. */
+.tessera-carta { position: relative; overflow: hidden; border-radius: 16px; padding: 18px 20px;
+  aspect-ratio: 85.6 / 54; max-width: 420px; display: flex; flex-direction: column;
+  justify-content: space-between; margin-bottom: 14px; color: #fff;
+  /* Lo sfondo blu con i cartelli: il colore sotto e' quello medio
+     dell'immagine, per i primi istanti prima che arrivi. */
+  background: #29608c url(sfondo-tessera.jpg) center / cover;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+/* Da rinnovare: lo stesso disegno in bianco e nero. Il filtro sta su un
+   livello sotto, se no spegnerebbe anche le scritte. */
+.tessera-carta.da-rinnovare { background: #4a525b; }
+.tessera-carta.da-rinnovare::before { content: ""; position: absolute; inset: 0;
+  background: url(sfondo-tessera.jpg) center / cover; filter: grayscale(1) brightness(.85); }
+.tessera-carta > * { position: relative; }
+.tessera-testa { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.tessera-nome { font-size: 1.35rem; font-weight: 700; margin-bottom: 2px; }
+.tessera-dati { font-size: .9rem; opacity: .9; }
+.tessera-avviso { margin: 0 0 18px; color: var(--occupato); font-weight: 600; }
+.mensilita { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 0 0 22px; }
+/* I mesi: una spunta vuol dire "pagato", in tutte e due le griglie; il blu
+   pieno vuol dire solo "lo sto scegliendo per pagarlo". Il mese corrente
+   ha un puntino sotto, non un bordo, che sembrerebbe una selezione. */
+.etichetta-mesi { margin: 0 0 8px; color: var(--tenue); font-size: .86rem; }
+.mensilita span, .mensilita button { position: relative; text-align: center; padding: 9px 0; border-radius: 9px;
+  font: inherit; font-size: .86rem; font-weight: 600; background: var(--scheda); color: var(--tenue);
+  border: 1.5px solid transparent; }
+.mensilita .pagato { background: color-mix(in srgb, var(--libero) 18%, var(--scheda)); color: var(--testo); }
+.mensilita .pagato::after { content: "✓"; position: absolute; top: 1px; right: 5px; font-size: .7rem;
+  color: var(--libero); }
+.spese { background: var(--scheda); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.spese-totale { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+.spesa { display: flex; justify-content: space-between; color: var(--tenue); font-size: .92rem; padding: 3px 0; }
+.spesa b { color: var(--testo); font-weight: 600; }
+/* "Le mie ricevute" sta sulla riga del titolo Contribuisci, a destra, come link. */
+.titolo-con-link { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.titolo-con-link .link { font-size: .92rem; white-space: nowrap; padding: 12px 0 12px 12px; margin: -12px 0; }
+.voci { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.voce { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 2px; padding: 14px 12px;
+  border-radius: 14px; background: var(--scheda); border: 1.5px solid var(--bordo-scheda); color: var(--testo);
+  font: inherit; cursor: pointer; text-align: left; transition: border-color .15s ease, background-color .15s ease; }
+.voce b, .voce span { position: relative; z-index: 1; }
+.voce span { color: var(--tenue); font-size: .88rem; }
+.voce-icona { position: absolute; right: -6px; bottom: -6px; width: 46px; height: 46px;
+  color: var(--testo); opacity: .14; }
+.voce[aria-pressed="true"] .voce-icona { color: var(--accento); opacity: .45; }
+.voce[aria-pressed="true"] { border-color: var(--accento); background: color-mix(in srgb, var(--accento) 12%, var(--scheda)); }
+#dettaglio-pagamento:not(:empty) { margin-bottom: 18px; }
+/* Il conto, in fondo alle scelte: quanto fa, e come si paga per ora. Un
+   riquadro da leggere, non un pulsante spento. */
+.conto-pagamento { margin: 4px 0 0; padding: 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda));
+  border: 1px solid color-mix(in srgb, var(--accento) 30%, transparent); }
+.conto-pagamento b { display: block; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.conto-pagamento span { display: block; margin-top: 2px; color: var(--tenue); font-size: .88rem; line-height: 1.35; }
+.conto-pagamento .dove-pagare { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
+.conto-pagamento a.link { color: var(--accento-testo); font-weight: 600; text-decoration: none; }
+.conto-pagamento .dove-pagare b { color: var(--testo); font-weight: 600; overflow-wrap: anywhere; }
+.domanda { margin: 4px 0 0; font-weight: 600; }
+.scelte { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
+.scelte button, .scelta-data { position: relative; padding: 10px 13px; border-radius: 999px; background: none;
+  border: 1.5px solid color-mix(in srgb, var(--tenue) 45%, transparent); color: var(--testo);
+  font: inherit; font-size: .9rem; white-space: nowrap; cursor: pointer; }
+.scelte [aria-pressed="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+.scelte button:disabled { opacity: .45; cursor: default; }
+/* Il calendario del telefono si apre toccando "Altro giorno": il campo data
+   e' invisibile sopra la scritta. */
+.scelta-data input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.contatore { display: inline-flex; align-items: center; gap: 14px; background: var(--scheda);
+  border-radius: 999px; padding: 4px; margin: 8px 0 16px; }
+.contatore button { width: 40px; height: 40px; border-radius: 50%; border: 0; font-size: 1.2rem; cursor: pointer;
+  background: color-mix(in srgb, var(--tenue) 18%, transparent); color: var(--testo); }
+.nota-pagamento { color: var(--tenue); font-size: .88rem; margin: 4px 0 0; }
+.mensilita button { color: var(--testo); cursor: pointer; }
+.mensilita button.pagato { cursor: default; }
+/* Nella scelta i mesi gia' pagati sono come nella griglia dei pagati: verdi
+   con la spunta, e non si toccano. Il blu pieno e' solo la scelta. Prima
+   erano grigi e spenti, e sembravano loro quelli da pagare. */
+.mensilita.scegli button.pagato:disabled { opacity: 1; }
+/* "Novembre pagato": uno stato, non un pulsante spento. */
+.scelte button.pagato:disabled { opacity: 1; border-color: transparent;
+  background: color-mix(in srgb, var(--libero) 18%, var(--scheda)); color: var(--testo); }
+.scelte button.pagato::before { content: "✓ "; color: var(--libero); font-weight: 700; }
+#mesi-pagati-tessera[hidden], #mesi-pagati-quota[hidden] { display: none; }
+.mensilita button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
+.nota-ricevute { margin: -4px 0 12px; }
+.ricevute-anno { margin-bottom: 12px; padding: 4px 8px; border-radius: 16px;
+  background: color-mix(in srgb, var(--scheda) 45%, var(--sfondo)); }
+.testa-anno { display: flex; align-items: center; gap: 10px; padding: 6px 4px 6px 5px; }
+/* Il quadratino dell'anno si tocca per 44px: il resto e' margine trasparente. */
+.scegli-anno { display: flex; cursor: pointer; padding: 10px; margin: -10px; }
+.apri-anno { flex: 1; display: flex; align-items: baseline; gap: 10px; padding: 10px 2px; min-height: 44px; border: 0; background: none;
+  color: var(--testo); font: inherit; cursor: pointer; text-align: left; }
+.apri-anno b { font-size: 1.05rem; }
+.apri-anno span { color: var(--tenue); font-size: .86rem; flex: 1; }
+.apri-anno .chevron { width: 20px; height: 20px; align-self: center; color: var(--tenue); transition: transform .2s ease; }
+.apri-anno[aria-expanded="false"] .chevron { transform: rotate(-90deg); }
+.ricevute-dentro { padding: 2px 0 4px 14px; }
+.ricevute-dentro[hidden] { display: none; }
+.ricevute-dentro .riga { margin-bottom: 8px; }
+/* ---- quote dei soci (direttivo) */
+.titolo-con-anno { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.titolo-con-anno h1 { margin: 0; }
+.segmenti { display: flex; gap: 4px; padding: 4px; margin: 0 0 14px; border-radius: 999px; background: var(--scheda); }
+.segmenti button { flex: 1; padding: 8px 10px; border: 0; border-radius: 999px; background: none; color: var(--tenue);
+  font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
+.segmenti button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
+#vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden] { display: none; }
+.date-pagamenti { display: flex; gap: 8px; margin: 0 0 12px; }
+.date-pagamenti label { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; color: var(--tenue); font-size: .88rem; }
+.date-pagamenti input { flex: 1 1 0; width: 100%; min-width: 0; padding: 9px 8px; font-size: .88rem; }
+.totale-giorno { float: right; color: var(--tenue); font-size: .9rem; font-weight: 500; }
+.riga.pagamento { cursor: pointer; }
+/* Pagamenti: a sinistra cosa e quando, a destra l'importo incolonnato e,
+   sotto, il metodo. */
+.riga-pagamento { display: flex; align-items: center; gap: 12px; }
+.pag-testo { flex: 1; min-width: 0; }
+.pag-testo b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pag-importo { flex: 0 0 auto; min-width: 72px; display: flex; flex-direction: column; align-items: flex-end;
+  font-variant-numeric: tabular-nums; }
+.pag-importo span { color: var(--tenue); font-size: .78rem; margin-top: 1px; }
+.socio-quota { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 13px; }
+/* Nella lista la stellina sta a sinistra del numero, fuori dal flusso: il
+   numero e il nome restano dove sono. */
+/* Il disegno della stellina sta piu' in alto del suo riquadro: +2px la
+   mette alla meta' delle cifre. */
+.socio-quota > .stellina { position: absolute; left: 13px; top: 50%; transform: translateY(calc(-50% + 2px)); }
+.numero-tessera { flex: 0 0 2.4em; text-align: right; color: var(--tenue); font-variant-numeric: tabular-nums; }
+/* Il nome si legge sempre intero: se non ci sta va a capo. */
+.socio-nome { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.stellina { font-size: .85em; }
+.stellina.direttivo { color: var(--stella-direttivo); }
+.stellina.staff { color: var(--stella-staff); }
+/* Sulla tessera lo sfondo e' sempre il blu scuro della carta: colori fissi. */
+.tessera-nome .stellina.staff { color: #cfe9ff; }
+.tessera-nome .stellina.direttivo { color: #f2c14e; }
+/* Sulla tessera la stellina sta sopra il nome, come un fregio. */
+.tessera-nome .stellina { display: block; font-size: 1.05rem; line-height: 1; margin-bottom: 4px; }
+.socio-nome small { display: block; font-weight: 400; font-size: .78rem; color: var(--tenue); }
+/* Nell'elenco, delle mensilita' solo quante: "8/12". La griglia dei mesi
+   (con le iniziali, che si confondevano: G F M A M G...) toglieva spazio al
+   nome; i mesi uno per uno stanno nella scheda della persona. Verde se il
+   mese in corso e' pagato. */
+.mesi-conto { flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; font-size: .85rem; color: var(--testo);
+  font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--tenue) 14%, transparent); }
+.mesi-conto b { font-weight: 700; }
+.mesi-conto.ok { background: color-mix(in srgb, var(--libero) 18%, transparent); }
+.mese-coperto { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+  color: var(--tenue); font-size: .88rem; white-space: nowrap; }
+.mese-coperto select { flex: 1; min-width: 0; }
+#vista-persone .filtri { align-items: center; }
+#vista-persone .ordina { align-self: stretch; min-height: 38px; }
+.anno-quote { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.anno-quote button { position: relative; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center; background: var(--scheda); color: var(--testo); }
+.anno-quote button svg { width: 18px; height: 18px; display: block; }
+.anno-quote button:disabled { opacity: .35; cursor: default; }
+.filtro-quote { margin-top: 10px; }
+.socio-quota { cursor: pointer; }
+.socio-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.socio-testa b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bollino { flex: 0 0 auto; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  color: var(--pieno); background: color-mix(in srgb, var(--pieno) 14%, transparent); }
+.bollino.ok { color: var(--libero); background: color-mix(in srgb, var(--libero) 16%, transparent); }
+.nome-quota { margin-bottom: 2px; }
+.quando-quota { color: var(--tenue); margin: 0 0 14px; }
+.ricorda-quota { margin: -12px 0 18px; font-size: .92rem; }
+.voce:disabled { opacity: .45; cursor: default; filter: grayscale(1); }
+.nota-voci { margin: -4px 0 16px; }
+.nota-pagamento.attento { color: var(--occupato); }
+.campo-cerca-incasso { margin: 8px 0 12px; }
+.suggerimenti-soci .senza-tessera, .quando.attento { color: var(--occupato); }
+.scelto-incasso .testa-prestito { align-items: center; }
+.scelto-incasso .testa-prestito b { flex: 1; min-width: 0; }
+.importo-incasso { color: var(--tenue); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.riga .togli-incasso { flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%;
+  font-size: 1.15rem; line-height: 1; color: var(--tenue); background: color-mix(in srgb, var(--tenue) 16%, transparent); }
+.scelto-incasso.spento b { color: var(--tenue); }
+/* I giorni negli elenchi: titoli leggeri, separano senza pesare. */
+.giorno-gestione { margin-top: 20px; font-size: 1rem; font-weight: 400; }
+/* Righe di filtri: a sinistra la categoria, a destra le scelte.
+   Se le scelte non ci stanno vanno a capo, sotto la prima: scorrendo di
+   lato, sui telefoni stretti "Altro…" ed "Eventi" restavano fuori dallo
+   schermo senza che niente lo dicesse. Il nome resta in alto a sinistra. */
+.filtro-riga { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 8px; }
+.filtro-riga:has(> .tipi[hidden]) { display: none; }
+.filtro-nome { flex: 0 0 auto; color: var(--tenue); font-size: .84rem; }
+.filtro-riga > .filtro-nome { padding-top: 7px; }
+.filtro-riga > .tipi { gap: 4px; }
+.filtro-riga > .tipi button { padding: 6px 9px; font-size: .84rem; }
+.filtro-riga > .tipi .conta { margin-left: 2px; }
+.filtro-riga > .tipi { flex: 1; min-width: 0; margin: 0; flex-wrap: wrap; row-gap: 8px; }
+.filtro-riga + :not(.filtro-riga) { margin-top: 14px; }
+#sede-gestione[hidden] { display: none; }
+/* Il numero accanto al nome del filtro: piu' piccolo e leggero, ma non
+   piu' chiaro (era al 70%, e non si leggeva) ne' sotto i 12px. */
+.tipi .conta { margin-left: 3px; font-size: .75rem; font-weight: 400; font-variant-numeric: tabular-nums; }
+.riga.pren { padding: 11px 13px; }
+.pren-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.pren-testa b { min-width: 0; overflow-wrap: anywhere; }
+.pren .quando { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Chi apre sta su una riga sua, sotto: in testa toglieva posto al titolo,
+   che a 320px finiva tagliato. */
+.chiavi { display: block; margin-top: 2px; font-size: .84rem; font-weight: 600; }
+.chiavi.ok { color: var(--libero); }
+.chiavi.no { color: var(--pieno); }
+.riga.con-apro { display: flex; align-items: center; gap: 12px; }
+.con-apro > .corpo-riga { flex: 1; min-width: 0; }
+.con-apro > .azioni.in-vista { margin: 0; flex: 0 0 auto; }
+.azioni.in-vista button { padding: 10px 16px; }
+.senza-entrata .riga, .senza-entrata .scorri { animation: none !important; }
+.avviso-tessera { background: color-mix(in srgb, var(--occupato) 14%, var(--scheda)); border-radius: 16px;
+  padding: 22px 18px; margin: 8px 0 14px; line-height: 1.4; text-align: center; font-size: 1.08rem; font-weight: 600; }
+.avviso-tessera .link { display: block; margin: 10px auto 0; font-size: 1rem; }
+#sede-prestiti[hidden] { display: none; }
+#filtro-prestiti[hidden] { display: none; }
+.testa-prestito { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.riga .icona-chat { position: relative; flex: 0 0 auto; width: 40px; height: 40px; margin: -9px -8px -9px 0; border-radius: 50%; border: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  background: color-mix(in srgb, var(--accento) 16%, transparent); color: var(--accento-testo); }
+.riga .icona-chat svg { width: 18px; height: 18px; }
+.riga .icona-chat::before { content: ""; position: absolute; inset: -2px; }
+/* Senza username Telegram la chat non si apre: l'icona c'e' lo stesso,
+   barrata e grigia, e toccandola dice perche'. */
+.riga .icona-chat.spenta { background: color-mix(in srgb, var(--tenue) 14%, transparent); color: var(--tenue); cursor: help; }
+/* Il pallino rosso sul tasto Prenotazioni: date senza chiavi non ancora viste. */
+.tondo .pallino { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: 999px; background: var(--pieno-fondo); color: #fff; font-size: .75rem; font-weight: 700;
+  line-height: 20px; text-align: center; box-shadow: 0 0 0 2px var(--sfondo, #17202a); pointer-events: none; }
+.tondo .pallino[hidden] { display: none; }
+#filtro-gestione[hidden] { display: none; }
+#azione.grave { background: var(--pieno-fondo); color: #fff; }
+.riga.data-serie { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 11px 13px; margin-bottom: 6px; }
+.giorno-serie::first-letter { text-transform: uppercase; }
+.nota-serie { color: var(--tenue); font-size: .9rem; margin: 14px 0 18px; }
+.giorno-gestione::first-letter { text-transform: uppercase; }
+.anno-ricevute { display: flex; align-items: center; gap: 12px; padding: 4px 13px 10px;
+  font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none; }
+.riga.ricevuta { display: flex; align-items: center; gap: 12px; cursor: pointer;
+  -webkit-user-select: none; user-select: none; border: 1.5px solid var(--bordo-scheda);
+  transition: border-color .15s ease, background-color .15s ease; }
+.riga.ricevuta[aria-checked="true"] { border-color: var(--accento);
+  background: color-mix(in srgb, var(--accento) 10%, var(--scheda)); }
+.ricevuta-testo { flex: 1; min-width: 0; }
+/* Il cerchietto a sinistra: vuoto, con la spunta, o con un trattino quando
+   di un anno ne sono scelte solo alcune. */
+.spunta { flex: 0 0 24px; height: 24px; border-radius: 6px; display: flex; align-items: center;
+  justify-content: center; border: 2px solid color-mix(in srgb, var(--tenue) 70%, transparent);
+  transition: background-color .15s ease, border-color .15s ease; }
+[aria-checked="true"] > .spunta { background: var(--accento); border-color: var(--accento); }
+[aria-checked="true"] > .spunta::after { content: ""; width: 6px; height: 11px;
+  border: solid var(--su-accento); border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+[aria-checked="mixed"] > .spunta { border-color: var(--accento); }
+[aria-checked="mixed"] > .spunta::after { content: ""; width: 10px; height: 2.5px;
+  border-radius: 2px; background: var(--accento); }
+.vai-iscrizione { margin: 10px 0 0 4px; color: var(--tenue); }
+button.link { appearance: none; border: 0; background: none; padding: 0; font: inherit;
+  color: var(--accento-testo); font-weight: 600; cursor: pointer; }
+
+/* ---- piccole animazioni ----
+   Brevi, e solo su quello che compare: niente che faccia aspettare. I
+   pannelli sfumano soltanto: un transform li renderebbe il riferimento dei
+   pulsanti fissi che hanno dentro, che salterebbero per un attimo. */
+@keyframes entra { from { opacity: 0; } }
+@keyframes entra-su { from { opacity: 0; transform: translateY(8px); } }
+@keyframes spunta { from { opacity: 0; transform: scale(.6); } }
+@keyframes sale { from { transform: translateY(100%); } }
+.pannello:not([hidden]) { animation: entra .2s ease-out; }
+.passo:not([hidden]) { animation: entra-su .22s ease-out; }
+.bene, .riga, .mio-prestito, .tessera-carta { animation: entra-su .24s ease-out backwards; }
+.bene:nth-child(2), .riga:nth-child(2) { animation-delay: .03s; }
+.bene:nth-child(3), .riga:nth-child(3) { animation-delay: .06s; }
+.bene:nth-child(4), .riga:nth-child(4) { animation-delay: .09s; }
+.bene:nth-child(5), .riga:nth-child(5) { animation-delay: .12s; }
+.bene:nth-child(n+6), .riga:nth-child(n+6) { animation-delay: .15s; }
+.bene { transition: border-color .15s ease, background-color .15s ease, transform .12s ease; }
+.tondo:not([hidden]), #azione.freccia:not([hidden]) {
+  animation: spunta .22s cubic-bezier(.3, 1.4, .6, 1); }
+#azione:not(.freccia):not([hidden]), #azione-a-nome:not([hidden]) { animation: entra .18s ease-out; }
+.tondo.con-etichetta .etichetta-tondo, #azione.con-etichetta .etichetta-tondo { animation: entra .25s ease-out; }
+.tab button[aria-selected="true"] svg.ico-piena { animation: spunta .25s cubic-bezier(.3, 1.4, .6, 1); }
+#foglio-a-nome:not([hidden]) { animation: entra .18s ease-out; }
+#foglio-a-nome:not([hidden]) .foglio { animation: sale .24s cubic-bezier(.2, .8, .3, 1); }
+/* ---- righe da scorrere: le azioni stanno dietro, da uno o due lati */
+.scorri { animation: entra-su .24s ease-out backwards;
+  position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 10px; }
+.scorri > .riga, .scorri > .bene { animation: none; position: relative; z-index: 1; margin: 0; cursor: pointer; touch-action: pan-y;
+  -webkit-user-select: none; user-select: none;
+  transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
+.scorri > .riga:focus:not(:focus-visible), .scorri > .bene:focus:not(:focus-visible) { outline: none; }
+.scorri.di-bene { margin-bottom: 8px; }
+.scorri.trascina > .riga { transition: none; }
+.scorri-azioni { position: absolute; top: 0; bottom: 0; display: flex; visibility: hidden; }
+.scorri-azioni::before { content: ""; position: absolute; top: 0; bottom: 0; width: 16px;
+  background: var(--colore-accanto, transparent); }
+.scorri-azioni.destra::before { right: 100%; margin-right: -2px; }
+.scorri-azioni.sinistra::before { left: 100%; margin-left: -2px; }
+.scorri-azioni.destra { right: 0; }
+.scorri-azioni.sinistra { left: 0; }
+.scorri[data-lato="destra"] > .scorri-azioni.destra, .scorri[data-lato="sinistra"] > .scorri-azioni.sinistra { visibility: visible; }
+.scorri-azioni > .azioni { margin: 0; gap: 0; flex-wrap: nowrap; height: 100%; align-items: stretch; }
+.scorri-azioni button { flex: 0 0 auto; width: 84px; border: 0; border-radius: 0; padding: 0 8px;
+  display: flex; align-items: center; justify-content: center;
+  font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.2; white-space: normal; cursor: pointer;
+  color: var(--testo); background: color-mix(in srgb, var(--tenue) 30%, var(--scheda)); }
+.scorri-azioni button.grave { background: var(--pieno-fondo); color: #fff; }
+.scorri-azioni button.arancio { background: var(--occupato-fondo); color: #fff; }
+.scorri-azioni button.libero { background: var(--libero-fondo); color: #fff; }
+.scorri-azioni button.conferma { background: var(--accento); color: var(--su-accento); }
+.scorri-azioni button:disabled { opacity: .6; cursor: default; }
+.scorri-azioni button:active:not(:disabled) { filter: brightness(.9); }
+/* Swipe oltre i pulsanti: l'azione piena si allarga, e a meta' riga resta
+   solo lei. */
+.scorri-azioni.oltre > .azioni { width: 100%; }
+.scorri-azioni.oltre .cresce { flex: 1 1 auto; }
+.scritta-azione { flex: 0 0 68px; width: 68px; text-align: center; }
+.scorri-azioni.destra .scritta-azione { transform-origin: left center; }
+.scorri-azioni.sinistra .scritta-azione { transform-origin: right center; }
+/* Allargandosi, la scritta resta attaccata alla riga che la tira. */
+.scorri-azioni.destra.oltre .cresce { justify-content: flex-start; }
+.scorri-azioni.sinistra.oltre .cresce { justify-content: flex-end; }
+.scorri-azioni.piena button:not([data-pieno]) { display: none; }
+.scorri-azioni.piena [data-pieno] { filter: brightness(1.12); }
+.riga.toccabile { cursor: pointer; }
+/* Il foglio dal basso */
+.foglio-velo { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .5); }
+.foglio-velo[hidden] { display: none; }
+/* Il foglio prende il fuoco per farci entrare la tastiera: non serve il bordo. */
+.foglio:focus { outline: none; }
+.foglio-velo .foglio { position: absolute; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow-y: auto;
+  background: var(--sfondo); border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+.foglio-velo:not([hidden]) { animation: entra .18s ease-out; }
+.foglio-velo:not([hidden]) .foglio { animation: sale .24s cubic-bezier(.2, .8, .3, 1); }
+.foglio h2 { margin: 0 0 4px; }
+.foglio .spiega { margin: 0 0 14px; color: var(--tenue); }
+.foglio .riepilogo { margin-bottom: 14px; }
+.velo-menu { position: fixed; inset: 0; z-index: 40; }
+.menu-riga { position: absolute; z-index: 41; padding: 6px; border-radius: 14px; background: var(--scheda);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45), 0 0 0 1px color-mix(in srgb, var(--tenue) 18%, transparent);
+  transform-origin: top right; animation: apri-menu .14s ease-out; }
+@keyframes apri-menu { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
+.voce-menu { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 0; border-radius: 10px; background: none; color: var(--testo); font: inherit; font-size: .95rem;
+  text-align: left; cursor: pointer; }
+.voce-menu:hover, .voce-menu:focus-visible { background: color-mix(in srgb, var(--tenue) 16%, transparent); outline: none; }
+.voce-menu.grave { color: var(--pieno); }
+.icona-menu { flex: 0 0 20px; width: 20px; height: 20px; display: flex; color: var(--tenue); }
+.voce-menu.grave .icona-menu { color: var(--pieno); }
+.icona-menu svg { width: 20px; height: 20px; }
+.separa-menu { height: 1px; margin: 4px 8px; background: color-mix(in srgb, var(--tenue) 22%, transparent); }
+.riga.con-menu { box-shadow: 0 0 0 1.5px var(--accento) inset; }
+@media (prefers-reduced-motion: reduce) { .menu-riga { animation: none; } }
+.solo-menu[hidden] { display: none; }
+.griglia-azioni { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin: 8px 0 14px; }
+.griglia-azioni .bottone { width: 100%; padding: 12px 10px; font-size: .92rem; }
+/* Nella serie: a sinistra cosa (Apro io / Annulla), a destra le due scelte. */
+.griglia-azioni.con-nomi { grid-auto-flow: row; grid-template-columns: auto 1fr 1fr; align-items: center; }
+.nome-azione { color: var(--tenue); font-size: .88rem; padding-right: 2px; }
+.titolo-foglio { margin-bottom: 12px !important; }
+.bottone.grave { background: transparent; color: var(--pieno); border-color: var(--pieno); }
+.bottone.arancio { background: transparent; color: var(--occupato); border-color: var(--occupato); }
+.bottone.pieno-grave { background: var(--pieno-fondo); border-color: var(--pieno-fondo); color: #fff; }
+/* "Segna un pagamento" e' un'azione, non un elenco: sta in un riquadro suo,
+   tinto, cosi' non si confonde con i pagamenti sotto. */
+.blocco-segna { margin: 6px 0 24px; padding: 14px 12px 4px; border-radius: 16px;
+  background: color-mix(in srgb, var(--accento) 9%, var(--sfondo));
+  border: 1px solid color-mix(in srgb, var(--accento) 28%, transparent); }
+.blocco-segna h2 { margin-top: 0; }
+.blocco-segna .voce { background: var(--sfondo); }
+#dettaglio-quota:not(:empty) { padding-bottom: 8px; }
+.campo-evento { width: 100%; margin: 6px 0 8px; }
+/* Aggiungi un bene: i due passi */
+.passo-bene[hidden] { display: none; }
+.riassunto-bene { margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: var(--scheda); }
+.riassunto-bene b { display: block; }
+.riassunto-bene span { color: var(--tenue); font-size: .86rem; }
+/* Il codice a barre e' la scorciatoia del primo passo: sta in un riquadro. */
+.riquadro-isbn { padding: 12px 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--accento) 9%, var(--sfondo));
+  border: 1px solid color-mix(in srgb, var(--accento) 28%, transparent); }
+.riquadro-isbn[hidden] { display: none; }
+.aiuto-isbn { margin: -2px 0 10px; color: var(--tenue); font-size: .84rem; line-height: 1.35; }
+.eventi-giorno { margin-top: 0; }
+.eventi-giorno:empty { display: none; }
+.eventi-giorno small { color: inherit; opacity: .7; margin-left: 2px; }
+.date-serie { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.date-serie span { font-size: .82rem; padding: 4px 9px; border-radius: 999px; background: var(--scheda); color: var(--tenue); }
+.date-serie span.apre { color: var(--libero); }
+/* Il suggerimento: la riga fa capolino a sinistra e torna. */
+@keyframes capolino {
+  0% { transform: none; }
+  35%, 55% { transform: translateX(-64px); }
+  100% { transform: none; }
+}
+.scorri > .riga.capolino { animation: capolino 1.1s cubic-bezier(.45, 0, .25, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .pannello, .passo, .bene, .riga, .scorri, .mio-prestito, .tondo, #azione, #azione-a-nome, .tessera-carta,
+  .etichetta-tondo, .tab button svg, #foglio-a-nome, #foglio-a-nome .foglio, .foglio-velo, .foglio-velo .foglio { animation: none !important; }
+}
