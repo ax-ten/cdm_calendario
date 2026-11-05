@@ -1692,14 +1692,34 @@ app.post('/prenota/api/tessera', (req, res) => conUtente(req, res, async (utente
   res.json({ tessera: await odoo.miniapp('tessera', utente.id) });
 }));
 
-// Se ne possono chiedere tante insieme (un anno intero): arrivano una per
-// messaggio, nell'ordine scelto. Il tetto evita di inondare la chat.
+// Se ne possono chiedere tante insieme (un anno intero): o un PDF unico, una
+// ricevuta per pagina, o un file per ricevuta, una per messaggio,
+// nell'ordine scelto. Il tetto sui file separati evita di inondare la chat.
 const RICEVUTE_PER_VOLTA = 30;
+const RICEVUTE_IN_UN_PDF = 200;
 app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, async (utente) => {
   const ids = [...new Set((req.body?.ricevutaIds || [req.body?.ricevutaId]).map(Number).filter(Boolean))];
   if (!ids.length) return res.status(400).json({ errore: 'Quali ricevute?' });
+  if (req.body?.unico && ids.length > 1) {
+    if (ids.length > RICEVUTE_IN_UN_PDF) {
+      return res.status(400).json({ errore: `Al massimo ${RICEVUTE_IN_UN_PDF} ricevute in un file.` });
+    }
+    // Odoo rende il report di tutte insieme: un PDF, una ricevuta per pagina.
+    const r = await odoo.miniapp('ricevute_pdf', utente.id, ids);
+    const form = new FormData();
+    form.append('chat_id', String(utente.id));
+    form.append('caption', `${ids.length} ricevute`);
+    form.append('document', new Blob([Buffer.from(r.pdf, 'base64')], { type: 'application/pdf' }), r.nome_file);
+    const esito = await (await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
+      { method: 'POST', body: form })).json();
+    if (!esito.ok) {
+      console.error('ricevute: sendDocument:', esito.description);
+      return res.status(502).json({ errore: 'Non riesco a mandartele in chat: apri la chat con il bot e premi Avvia.' });
+    }
+    return res.json({ ok: true, mandate: ids.length, file: 1 });
+  }
   if (ids.length > RICEVUTE_PER_VOLTA) {
-    return res.status(400).json({ errore: `Al massimo ${RICEVUTE_PER_VOLTA} ricevute per volta.` });
+    return res.status(400).json({ errore: `Al massimo ${RICEVUTE_PER_VOLTA} file separati per volta: per più ricevute scegli il PDF unico.` });
   }
   let mandate = 0;
   for (const id of ids) {
@@ -1730,6 +1750,9 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
 // in chat a chi ha Telegram collegato.
 //
 // In Odoo (crocevia.miniapp) servono:
+//   ricevute_pdf(telegram_id, ricevuta_ids) -> { pdf (base64), nome_file }
+//                          un PDF solo con le ricevute scelte (solo le sue),
+//                          una per pagina, nell'ordine dato
 //   pagamenti(da, a)  -> [{ id, numero, data, partner_id, socio, codice, tipo,
 //                          importo, mese, metodo }]  le ricevute del periodo,
 //                          annullate escluse, dalla piu' recente

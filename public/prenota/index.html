@@ -4026,12 +4026,23 @@ function aggiornaRicevute(dove) {
   pulsantePrincipale(`Mostra in chat (${ricevuteScelte.size})`, true);
 }
 
+// Con piu' ricevute si sceglie: un PDF solo (una per pagina, dalla piu'
+// vecchia) o un file per ricevuta.
 async function mandaRicevute() {
-  const ids = [...ricevuteScelte];
+  const ordine = new Map(tess.dati.ricevute.map(r => [r.id, r.data]));
+  const ids = [...ricevuteScelte].sort((a, b) => String(ordine.get(a)).localeCompare(String(ordine.get(b))) || a - b);
+  let unico = false;
+  if (ids.length > 1) {
+    const scelta = await scegli(`${ids.length} ricevute in chat`, 'Come le vuoi?',
+      [['unico', 'Un PDF unico'], ['separati', 'File separati']]);
+    if (!scelta) return;
+    unico = scelta === 'unico';
+  }
   attesaAzione(true);
   try {
-    await chiama('tessera/ricevuta', { ricevutaIds: ids });
-    toast(ids.length === 1 ? 'Te l’ho mandata in chat.' : `Te le ho mandate in chat: ${ids.length}.`);
+    await chiama('tessera/ricevuta', { ricevutaIds: ids, unico });
+    toast(ids.length === 1 ? 'Te l’ho mandata in chat.'
+      : unico ? `Te le ho mandate in chat in un PDF: ${ids.length}.` : `Te le ho mandate in chat: ${ids.length}.`);
     ricevuteScelte.clear();
     aggiornaRicevute(el('lista-ricevute'));
   } catch (err) {
