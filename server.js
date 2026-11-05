@@ -597,6 +597,21 @@ function normalizeEvent(ev, zone = 'Europe/Rome', sedeCalendario = null) {
 // che servono a registrarsi, controlla che chi chiama sia un socio
 // confermato in Odoo. Nascondere le schede nella pagina non basterebbe:
 // l'API si chiama anche senza pagina.
+// Direttivo o staff: lo dicono i gruppi Telegram, come per l'app. Per un
+// elenco intero sono tante domande a Telegram: la risposta si tiene un'ora.
+const RUOLI_VALIDI_PER_MS = 60 * 60 * 1000;
+const ruoliVisti = new Map();
+async function ruoloDi(telegramId) {
+  const visto = ruoliVisti.get(String(telegramId));
+  if (visto && Date.now() - visto.quando < RUOLI_VALIDI_PER_MS) return visto.ruolo;
+  let ruolo = null;
+  try {
+    ruolo = await eDirettivo(telegramId) ? 'direttivo' : await eStaff(telegramId) ? 'staff' : null;
+  } catch { /* senza risposta, senza stellina */ }
+  ruoliVisti.set(String(telegramId), { ruolo, quando: Date.now() });
+  return ruolo;
+}
+
 // Lo username Telegram di una persona, per aprirle la chat (t.me/<username>).
 // Lo sa Telegram (getChat), se la persona ha avviato il bot; si tiene un
 // giorno, e chi non ne ha uno resta senza pulsante.
@@ -1766,10 +1781,12 @@ app.post('/prenota/api/tessere/elenco', (req, res) => conUtente(req, res, async 
   if (!await soloAdminTessere(utente, res)) return;
   const anno = annoQuote(req.body?.anno);
   const soci = await odoo.miniapp('quote_soci', anno);
-  // Il numero di Telegram resta qui: alla pagina basta sapere se c'e'.
+  // Il numero di Telegram resta qui: alla pagina basta sapere se c'e', e
+  // se la persona sta nel direttivo o nello staff (la stellina).
   res.json({
     anno,
-    soci: soci.map(({ telegram_id: tg, ...s }) => ({ ...s, telegram: Boolean(tg) })),
+    soci: await Promise.all(soci.map(async ({ telegram_id: tg, ...s }) =>
+      ({ ...s, telegram: Boolean(tg), ruolo: tg ? await ruoloDi(tg) : null }))),
   });
 }));
 
@@ -2051,6 +2068,10 @@ app.post('/prenota/api/staff/prenotazioni', (req, res) => conUtente(req, res, as
         apre: priv.apre || null,
         fissa: priv.fissa === 'si' || Boolean(ev.recurringEventId),
         serieId: ev.recurringEventId || null,
+        // "Ogni giovedi'": per i dettagli di una serie nell'app.
+        cadenza: ev.recurringEventId ? prenotazioni.testoRicorrenza(priv.ricorrenza || 'settimanale',
+          DateTime.fromISO(ev.start.dateTime).setZone('Europe/Rome')) : null,
+        note: noteDallEvento(ev.description).slice(0, 300),
       };
     });
   }));
@@ -2093,6 +2114,8 @@ app.post('/prenota/api/staff/annulla', (req, res) => conUtente(req, res, async (
   const { sede, eventId } = req.body || {};
   const calendarId = calendarioDi(sede);
   if (!calendarId || !eventId) return res.status(400).json({ errore: 'Quale prenotazione?' });
+  // Due righe dello staff per chi aveva prenotato: il perche', se c'e'.
+  const messaggio = String(req.body?.messaggio || '').trim().slice(0, 500);
   const auth = await getAuthScrittura();
   const evento = await prenotazioni.leggiPrenotazione(auth, calendarId, eventId);
   await prenotazioni.annullaPrenotazione(auth, calendarId, eventId);
@@ -2103,7 +2126,9 @@ app.post('/prenota/api/staff/annulla', (req, res) => conUtente(req, res, async (
       chat_id: telegramId,
       text: `Lo staff ha annullato “${evento.summary || 'la tua prenotazione'}” di ` +
             `${quando.toFormat('cccc d MMMM')} alle ${quando.toFormat('HH:mm')} ` +
-            `a ${SEDI_NOMI.get(sede) || sede}. Per sapere perché, scrivi a ${nomeTelegram(utente)}.`,
+            `a ${SEDI_NOMI.get(sede) || sede}.` +
+            (messaggio ? `\n\n${nomeTelegram(utente)} scrive: ${messaggio}`
+              : ` Per sapere perché, scrivi a ${nomeTelegram(utente)}.`),
     }).catch(err => console.error('annulla staff: messaggio non mandato:', err.message));
   }
   res.json({ ok: true });
