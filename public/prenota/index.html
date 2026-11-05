@@ -935,7 +935,10 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .pag-importo { flex: 0 0 auto; min-width: 72px; display: flex; flex-direction: column; align-items: flex-end;
   font-variant-numeric: tabular-nums; }
 .pag-importo span { color: var(--tenue); font-size: .78rem; margin-top: 1px; }
-.socio-quota { display: flex; align-items: center; gap: 12px; padding: 10px 13px; }
+.socio-quota { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 13px; }
+/* Nella lista la stellina sta a sinistra del numero, fuori dal flusso: il
+   numero e il nome restano dove sono. */
+.socio-quota > .stellina { position: absolute; left: 7px; top: 50%; transform: translateY(-50%); }
 .numero-tessera { flex: 0 0 2.4em; text-align: right; color: var(--tenue); font-variant-numeric: tabular-nums; }
 .socio-nome { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stellina { font-size: .85em; }
@@ -4239,7 +4242,7 @@ function disegnaQuote() {
   dove.innerHTML = lista.map(s => `
     <div class="riga socio-quota${s.tesserato ? '' : ' senza-tessera'}" role="button" tabindex="0" data-socio="${s.id}">
       <span class="numero-tessera" title="${s.tesserato && s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza tessera ' + quo.anno}">${s.tesserato && s.numero_socio ? esc(s.numero_socio) : ''}</span>
-      <span class="socio-nome">${stellina(s.ruolo)}${esc(s.nome)}${s.tesserato ? '' : `<small>senza tessera ${quo.anno}</small>`}</span>
+      ${stellina(s.ruolo)}<span class="socio-nome">${esc(s.nome)}${s.tesserato ? '' : `<small>senza tessera ${quo.anno}</small>`}</span>
       <span class="mesi-mini" aria-label="Mensilità pagate: ${s.mensilita.length} su 12">${MESI_BREVI.map((m, i) =>
         `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</span>
     </div>`).join('');
