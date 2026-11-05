@@ -1540,7 +1540,8 @@ app.post('/prenota/api/inventario/admin/presta', (req, res) => conUtente(req, re
 app.post('/prenota/api/inventario/admin/soci', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdmin(utente, res)) return;
   const testo = String(req.body?.testo || '').trim().slice(0, 60);
-  res.json({ soci: testo.length < 2 ? [] : await odoo.miniapp('cerca_soci', testo) });
+  // Dalla prima lettera: con una sola i nomi sono tanti, se ne mandano i primi.
+  res.json({ soci: !testo ? [] : (await odoo.miniapp('cerca_soci', testo)).slice(0, 8) });
 }));
 
 app.post('/prenota/api/inventario/admin/chiudi', (req, res) => conUtente(req, res, async (utente) => {

@@ -3029,7 +3029,7 @@ el('a-nome').addEventListener('input', () => {
   if (aNome.scelto && aNome.scelto.nome !== testo) aNome.scelto = null;
   // Le risposte che arrivano dopo una lettera nuova non valgono piu'.
   const giro = ++aNome.giro;
-  if (testo.length < 2) return mostraSuggerimentiSoci([]);
+  if (!testo) return mostraSuggerimentiSoci([]);
   aNome.attesa = setTimeout(async () => {
     try {
       const { soci } = await chiama('inventario/admin/soci', { testo });
