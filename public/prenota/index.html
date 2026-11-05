@@ -988,7 +988,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .riga .togli-incasso { flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%;
   font-size: 1.15rem; line-height: 1; color: var(--tenue); background: color-mix(in srgb, var(--tenue) 16%, transparent); }
 .scelto-incasso.spento b { color: var(--tenue); }
-.giorno-gestione { margin-top: 22px; }
+/* I giorni negli elenchi: titoli leggeri, separano senza pesare. */
+.giorno-gestione { margin-top: 20px; font-size: 1rem; font-weight: 400; }
 /* Righe di filtri: a sinistra la categoria, a destra le scelte.
    Se le scelte non ci stanno si scorrono di lato, senza andare a capo. */
 .filtro-riga { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
