@@ -128,10 +128,10 @@ function disegnaGestione() {
   });
   const righe = primeDelleSerie(tutti.prenotazioni).filter(dellaSede);
   const senza = righe.filter(senzaChiApre);
-  const filtri = [['tutte', 'Tutte', righe.length], ['senza-apre', 'Senza chiavi', senza.length]];
+  const filtri = [['tutte', 'Tutte'], ['senza-apre', 'Senza chiavi']];
   el('filtro-gestione').hidden = false;
-  el('filtro-gestione').innerHTML = filtri.map(([k, nome, n]) =>
-    `<button type="button" data-filtro-gestione="${k}" aria-pressed="${k === gestione.filtro}">${nome}${conta(n)}</button>`).join('');
+  el('filtro-gestione').innerHTML = filtri.map(([k, nome]) =>
+    `<button type="button" data-filtro-gestione="${k}" aria-pressed="${k === gestione.filtro}">${nome}</button>`).join('');
   el('filtro-gestione').querySelectorAll('[data-filtro-gestione]').forEach(b => {
     b.onclick = () => { gestione.filtro = b.dataset.filtroGestione; disegnaGestione(); };
   });

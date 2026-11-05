@@ -1098,13 +1098,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .filtro-riga > .filtro-nome { padding-top: 7px; }
 .filtro-riga > .tipi { gap: 4px; }
 .filtro-riga > .tipi button { padding: 6px 9px; font-size: .84rem; }
-.filtro-riga > .tipi .conta { margin-left: 2px; }
 .filtro-riga > .tipi { flex: 1; min-width: 0; margin: 0; flex-wrap: wrap; row-gap: 8px; }
 .filtro-riga + :not(.filtro-riga) { margin-top: 14px; }
 #sede-gestione[hidden] { display: none; }
-/* Il numero accanto al nome del filtro: piu' piccolo e leggero, ma non
-   piu' chiaro (era al 70%, e non si leggeva) ne' sotto i 12px. */
-.tipi .conta { margin-left: 3px; font-size: .75rem; font-weight: 400; font-variant-numeric: tabular-nums; }
 .riga.pren { padding: 11px 13px; }
 .pren-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .pren-testa b { min-width: 0; overflow-wrap: anywhere; }

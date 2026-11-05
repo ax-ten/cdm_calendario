@@ -721,6 +721,3 @@ async function suggerisciScorri(dove) {
   }, 700);
 }
 
-// Il numero accanto al nome di un filtro: piu' piccolo e tenue, senza
-// puntino in mezzo.
-const conta = (n) => ` <span class="conta">${n}</span>`;

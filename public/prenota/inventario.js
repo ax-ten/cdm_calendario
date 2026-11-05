@@ -612,8 +612,8 @@ function disegnaPrestitiAdmin() {
     || String(p.sede).toLowerCase() === nomeScelta.toLowerCase());
   const inRitardo = tutti.filter(p => p.giorni_ritardo);
   el('filtro-prestiti').hidden = !tutti.length;
-  el('filtro-prestiti').innerHTML = [['tutti', 'Tutti', tutti.length], ['ritardo', 'In ritardo', inRitardo.length]]
-    .map(([k, nome, n]) => `<button type="button" data-filtro-prestiti="${k}" aria-pressed="${k === prestitiAdmin.filtro}">${nome}${conta(n)}</button>`).join('');
+  el('filtro-prestiti').innerHTML = [['tutti', 'Tutti'], ['ritardo', 'In ritardo']]
+    .map(([k, nome]) => `<button type="button" data-filtro-prestiti="${k}" aria-pressed="${k === prestitiAdmin.filtro}">${nome}</button>`).join('');
   el('filtro-prestiti').querySelectorAll('[data-filtro-prestiti]').forEach(b => {
     b.onclick = () => { prestitiAdmin.filtro = b.dataset.filtroPrestiti; disegnaPrestitiAdmin(); };
   });

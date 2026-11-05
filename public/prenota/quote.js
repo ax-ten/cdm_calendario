@@ -255,10 +255,8 @@ async function caricaPagamenti() {
 
 function disegnaPagamenti() {
   const tutti = quo.pagamenti;
-  el('voce-pagamenti').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
-    const n = k === 'tutte' ? null : tutti.filter(p => p.codice === k).length;
-    return `<button type="button" data-voce-cronologia="${k}" aria-pressed="${k === quo.voceFiltro}">${nome}${n === null ? '' : conta(n)}</button>`;
-  }).join('');
+  el('voce-pagamenti').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) =>
+    `<button type="button" data-voce-cronologia="${k}" aria-pressed="${k === quo.voceFiltro}">${nome}</button>`).join('');
   el('voce-pagamenti').querySelectorAll('[data-voce-cronologia]').forEach(b => {
     b.onclick = () => { quo.voceFiltro = b.dataset.voceCronologia; disegnaPagamenti(); };
   });
@@ -375,10 +373,8 @@ function disegnaQuota() {
 // oboli, eventi. Annullare o correggere una ricevuta si fa in Odoo.
 function disegnaPagamentiScheda(ricevute) {
   if (!VOCI_CRONOLOGIA.some(([k]) => k === quo.voceScheda)) quo.voceScheda = 'tutte';
-  el('voce-scheda').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
-    const n = k === 'tutte' ? null : ricevute.filter(r => r.codice === k).length;
-    return `<button type="button" data-voce-scheda="${k}" aria-pressed="${k === quo.voceScheda}">${nome}${n === null ? '' : conta(n)}</button>`;
-  }).join('');
+  el('voce-scheda').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) =>
+    `<button type="button" data-voce-scheda="${k}" aria-pressed="${k === quo.voceScheda}">${nome}</button>`).join('');
   el('voce-scheda').querySelectorAll('[data-voce-scheda]').forEach(b => {
     b.onclick = () => { quo.voceScheda = b.dataset.voceScheda; disegnaPagamentiScheda(ricevute); };
   });
