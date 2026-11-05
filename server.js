@@ -1706,7 +1706,10 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
 // in chat a chi ha Telegram collegato.
 //
 // In Odoo (crocevia.miniapp) servono:
-//   quote_soci(anno) -> [{ id, nome, numero_socio, categoria, tesserato,
+//   pagamenti(da, a)  -> [{ id, numero, data, partner_id, socio, codice, tipo,
+//                          importo, mese, metodo }]  le ricevute del periodo,
+//                          annullate escluse, dalla piu' recente
+//   quote_soci(anno) -> [{ id, nome, numero_socio, categoria, tesserato, oboli,
 //                          mensilita: ['2026-01', ...], telegram_id }]
 //   tessera_socio(partner_id, anno) -> come tessera(), piu' id, telegram_id
 //                          e importi.tesseramento
@@ -1739,7 +1742,7 @@ const VOCI_QUOTA = {
   obolo_giornaliero: 'Obolo',
   contributo_evento: 'Contributo evento',
 };
-const METODI_QUOTA = { contanti: 'in contanti', satispay: 'con Satispay', bonifico: 'con bonifico' };
+const METODI_QUOTA = { contanti: 'in contanti', paypal: 'con PayPal', bonifico: 'con bonifico', stripe: 'con Stripe' };
 const IMPORTO_EVENTO_MAX = 50;
 const euroTesto = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 })} €`;
 const nomeMese = (k) => DateTime.fromISO(`${k}-01`).setLocale('it').toFormat('LLLL yyyy');
@@ -1760,6 +1763,18 @@ app.post('/prenota/api/tessere/elenco', (req, res) => conUtente(req, res, async 
     anno,
     soci: soci.map(({ telegram_id: tg, ...s }) => ({ ...s, telegram: Boolean(tg) })),
   });
+}));
+
+// La cronologia: tutti i pagamenti fra due date, di tutte le persone. Un
+// anno al massimo per volta, che e' gia' tanto da scorrere.
+app.post('/prenota/api/tessere/pagamenti', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const zona = 'Europe/Rome';
+  const da = DateTime.fromISO(String(req.body?.da || ''), { zone: zona });
+  const a = DateTime.fromISO(String(req.body?.a || ''), { zone: zona });
+  if (!da.isValid || !a.isValid || a < da) return res.status(400).json({ errore: 'Che periodo?' });
+  if (a.diff(da, 'days').days > 366) return res.status(400).json({ errore: 'Al massimo un anno per volta.' });
+  res.json({ pagamenti: await odoo.miniapp('pagamenti', da.toISODate(), a.toISODate()) });
 }));
 
 app.post('/prenota/api/tessere/socio', (req, res) => conUtente(req, res, async (utente) => {

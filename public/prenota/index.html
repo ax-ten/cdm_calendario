@@ -851,8 +851,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .mensilita .pagato { background: color-mix(in srgb, var(--libero) 18%, var(--scheda)); color: var(--testo); }
 .mensilita .pagato::after { content: "✓"; position: absolute; top: 1px; right: 5px; font-size: .7rem;
   color: var(--libero); }
-.mensilita .adesso::before { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px;
-  margin-left: -2px; border-radius: 50%; background: var(--accento); }
 .spese { background: var(--scheda); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
 .spese-totale { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
 .spesa { display: flex; justify-content: space-between; color: var(--tenue); font-size: .92rem; padding: 3px 0; }
@@ -893,11 +891,41 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .mensilita button { color: var(--testo); cursor: pointer; }
 .mensilita button.pagato { cursor: default; }
 .mensilita button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
-.mensilita button[aria-pressed="true"].adesso::before { background: var(--su-accento); }
-.ricevute-anno { margin-bottom: 14px; }
+.ricevute-anno { margin-bottom: 12px; padding: 4px 8px; border-radius: 16px;
+  background: color-mix(in srgb, var(--scheda) 45%, var(--sfondo)); }
+.testa-anno { display: flex; align-items: center; gap: 10px; padding: 6px 4px 6px 5px; }
+.scegli-anno { display: flex; cursor: pointer; }
+.apri-anno { flex: 1; display: flex; align-items: baseline; gap: 10px; padding: 6px 2px; border: 0; background: none;
+  color: var(--testo); font: inherit; cursor: pointer; text-align: left; }
+.apri-anno b { font-size: 1.05rem; }
+.apri-anno span { color: var(--tenue); font-size: .86rem; flex: 1; }
+.apri-anno .chevron { width: 20px; height: 20px; align-self: center; color: var(--tenue); transition: transform .2s ease; }
+.apri-anno[aria-expanded="false"] .chevron { transform: rotate(-90deg); }
+.ricevute-dentro { padding: 2px 0 4px 14px; }
+.ricevute-dentro[hidden] { display: none; }
+.ricevute-dentro .riga { margin-bottom: 8px; }
 /* ---- quote dei soci (direttivo) */
-.titolo-con-anno { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.titolo-con-anno h1 { margin-bottom: 8px; }
+.titolo-con-anno { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.titolo-con-anno h1 { margin: 0; }
+.segmenti { display: flex; gap: 4px; padding: 4px; margin: 0 0 14px; border-radius: 999px; background: var(--scheda); }
+.segmenti button { flex: 1; padding: 8px 10px; border: 0; border-radius: 999px; background: none; color: var(--tenue);
+  font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
+.segmenti button[aria-selected="true"] { background: var(--accento); color: var(--su-accento); }
+#vista-persone, #vista-pagamenti { padding-bottom: calc(var(--azione) + 24px); }
+#vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden], #totale-pagamenti[hidden] { display: none; }
+#periodo-pagamenti, #voce-pagamenti { margin-bottom: 10px; }
+.date-pagamenti { display: flex; gap: 8px; margin: 0 0 12px; }
+.date-pagamenti label { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--tenue); font-size: .88rem; }
+.date-pagamenti input { flex: 1; min-width: 0; padding: 9px 10px; }
+.totale-giorno { float: right; color: var(--tenue); font-size: .9rem; font-weight: 500; }
+.riga.pagamento { cursor: pointer; }
+.socio-quota { display: flex; align-items: center; gap: 12px; }
+.socio-corpo { flex: 1; min-width: 0; }
+.socio-corpo > b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.numero-tessera { flex: 0 0 auto; min-width: 42px; height: 42px; padding: 0 6px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.05rem;
+  font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--accento) 16%, transparent); color: var(--accento); }
+.numero-tessera.senza { background: color-mix(in srgb, var(--tenue) 16%, transparent); color: var(--tenue); }
 .anno-quote { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .anno-quote button { width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; font: inherit;
   font-size: 1.1rem; background: var(--scheda); color: var(--testo); }
@@ -914,10 +942,13 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .mesi-mini span { position: relative; text-align: center; font-size: .68rem; padding: 3px 0; border-radius: 5px;
   color: var(--tenue); background: color-mix(in srgb, var(--tenue) 12%, transparent); }
 .mesi-mini .pagato { color: var(--testo); background: color-mix(in srgb, var(--libero) 40%, var(--scheda)); }
-.mesi-mini .adesso { box-shadow: inset 0 0 0 1.5px var(--accento); }
 .nome-quota { margin-bottom: 2px; }
 .quando-quota { color: var(--tenue); margin: 0 0 14px; }
 .ricorda-quota { margin: -12px 0 18px; font-size: .92rem; }
+/* Senza tessera la voce che conta e' il Tesseramento: prima, larga tutta
+   la riga; obolo ed evento sotto, meta' per uno. */
+.voci.senza-tessera { grid-template-columns: repeat(2, 1fr); }
+.voci.senza-tessera .voce.lunga { grid-column: 1 / -1; order: -1; }
 .voce:disabled { opacity: .45; cursor: default; filter: grayscale(1); }
 .nota-voci { margin: -4px 0 16px; }
 .nota-pagamento.attento { color: var(--occupato); }
@@ -935,7 +966,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .giorno-gestione { margin-top: 22px; }
 #filtro-gestione { margin: 2px 0 18px; }
 .tipi .conta { margin-left: 3px; font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
-.azioni.in-vista { margin-top: 10px; }
+.azioni.in-vista { margin-top: 12px; justify-content: center; }
+.azioni.in-vista button { min-width: 50%; padding: 9px 16px; }
 #filtro-prestiti { margin: 0 0 14px; }
 #filtro-prestiti[hidden] { display: none; }
 .tipi .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
@@ -1391,18 +1423,35 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <button type="button" class="indietro" id="chiudi-quote">‹ Tessera</button>
   <div class="titolo-con-anno">
     <h1>Quote</h1>
-    <div class="anno-quote">
+    <div class="anno-quote" id="anno-quote-nav">
       <button type="button" id="anno-prima" aria-label="Anno precedente">‹</button>
       <b id="anno-quote">…</b>
       <button type="button" id="anno-dopo" aria-label="Anno successivo">›</button>
     </div>
   </div>
-  <div class="campo ricerca" style="margin: 0">
-    <input type="search" id="cerca-quote" placeholder="Nome o numero di tessera" autocomplete="off">
+  <!-- Due viste: chi ha pagato cosa, e la cronologia dei pagamenti. -->
+  <div class="segmenti" id="vista-quote" role="tablist" aria-label="Vista">
+    <button type="button" role="tab" data-vista="persone" aria-selected="true">Persone</button>
+    <button type="button" role="tab" data-vista="pagamenti" aria-selected="false">Pagamenti</button>
   </div>
-  <div class="tipi filtro-quote" id="filtro-quote" role="tablist" aria-label="Quali soci"></div>
-  <p class="riepilogo-quote" id="riepilogo-quote"></p>
-  <div id="elenco-quote" class="vuoto">…</div>
+  <div id="vista-persone">
+    <div class="campo ricerca" style="margin: 0">
+      <input type="search" id="cerca-quote" placeholder="Nome o numero di tessera" autocomplete="off">
+    </div>
+    <div class="tipi filtro-quote" id="filtro-quote" role="tablist" aria-label="Quali persone"></div>
+    <p class="riepilogo-quote" id="riepilogo-quote"></p>
+    <div id="elenco-quote" class="vuoto">…</div>
+  </div>
+  <div id="vista-pagamenti" hidden>
+    <div class="tipi" id="periodo-pagamenti" role="tablist" aria-label="Periodo"></div>
+    <div class="date-pagamenti" id="date-pagamenti" hidden>
+      <label>Dal <input type="date" id="pagamenti-da"></label>
+      <label>al <input type="date" id="pagamenti-a"></label>
+    </div>
+    <div class="tipi" id="voce-pagamenti" role="tablist" aria-label="Voce"></div>
+    <div class="spese" id="totale-pagamenti" hidden></div>
+    <div id="elenco-pagamenti" class="vuoto">…</div>
+  </div>
 </section>
 
 <!-- Lo stesso pagamento per tante persone: l'obolo di una serata. -->
@@ -3478,26 +3527,36 @@ async function caricaTessera() {
 // resta solo quanto si e' speso quest'anno.
 function disegnaRicevute(t) {
   // Per anno, dal piu' recente. Le ricevute arrivano gia' in ordine di data.
+  // Ogni anno e' un gruppo a tendina: aperto il piu' recente, chiusi gli
+  // altri. Il quadratino dell'anno sceglie tutte le sue ricevute.
   const perAnno = new Map();
   for (const r of t.ricevute) {
     const anno = r.data.slice(0, 4);
     perAnno.set(anno, [...(perAnno.get(anno) || []), r]);
   }
-  const ricevute = perAnno.size ? [...perAnno].map(([anno, lista]) => `
-    <div class="ricevute-anno">
-      <div class="anno-ricevute" role="checkbox" aria-checked="false" tabindex="0" data-anno-tutte="${anno}">
-        <span class="spunta" aria-hidden="true"></span><span>${anno}</span>
+  const chevron = '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  return perAnno.size ? [...perAnno].map(([anno, lista], i) => {
+    const totale = lista.reduce((n, r) => n + Number(r.importo || 0), 0);
+    return `
+    <div class="ricevute-anno" data-gruppo="${anno}">
+      <div class="testa-anno">
+        <span class="scegli-anno" role="checkbox" aria-checked="false" tabindex="0" data-anno-tutte="${anno}" aria-label="Tutte le ricevute del ${anno}"><span class="spunta" aria-hidden="true"></span></span>
+        <button type="button" class="apri-anno" data-apri-anno="${anno}" aria-expanded="${i === 0}">
+          <b>${anno}</b><span>${lista.length} ${lista.length === 1 ? 'ricevuta' : 'ricevute'} · ${euro(totale)}</span>${chevron}
+        </button>
       </div>
+      <div class="ricevute-dentro" data-dentro="${anno}"${i === 0 ? '' : ' hidden'}>
       ${lista.map(r => `
-      <div class="riga ricevuta" role="checkbox" aria-checked="false" tabindex="0" data-ricevuta="${r.id}" data-anno="${anno}">
-        <span class="spunta" aria-hidden="true"></span>
-        <div class="ricevuta-testo">
-          <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
-          <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}</div>
-        </div>
-      </div>`).join('')}
-    </div>`).join('') : '<p class="vuoto">Ancora nessuna ricevuta.</p>';
-  return ricevute;
+        <div class="riga ricevuta" role="checkbox" aria-checked="false" tabindex="0" data-ricevuta="${r.id}" data-anno="${anno}">
+          <span class="spunta" aria-hidden="true"></span>
+          <div class="ricevuta-testo">
+            <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
+            <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('') : '<p class="vuoto">Ancora nessuna ricevuta.</p>';
 }
 
 // In cima alla pagina delle ricevute, quanto si e' speso quest'anno.
@@ -3525,7 +3584,8 @@ function disegnaTessera(t) {
   const adesso = new Date().getMonth() + 1;
   const voci = [
     ['obolo_giornaliero', 'Obolo', euro(t.importi.obolo_giornaliero)],
-    ['contributo_mensile', 'Mensilità', euro(t.importi.contributo_mensile)],
+    // Senza tessera la prima mensilita' e' il tesseramento: si chiama cosi'.
+    ['contributo_mensile', t.tesserato ? 'Mensilità' : 'Tesseramento', euro(t.importi.contributo_mensile)],
     ['contributo_evento', 'Evento', ''],
   ];
   return `
@@ -3544,13 +3604,13 @@ function disegnaTessera(t) {
       <h2>Contribuisci</h2>
       <button type="button" class="link" id="vai-ricevute">Le mie ricevute ›</button>
     </div>
-    <div class="voci">${voci.map(([k, nome, prezzo]) => {
+    <div class="voci${t.tesserato ? '' : ' senza-tessera'}">${voci.map(([k, nome, prezzo]) => {
       // Senza la tessera dell'anno si paga solo la mensilita': la prima fa
       // anche da tesseramento. Obolo ed evento restano visibili, spenti.
       const spenta = !t.tesserato && k !== 'contributo_mensile';
-      return `<button type="button" class="voce" data-voce="${k}" aria-pressed="false"${spenta ? ' disabled' : ''}><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`;
+      return `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce="${k}" aria-pressed="false"${spenta ? ' disabled' : ''}><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`;
     }).join('')}</div>
-    ${t.tesserato ? '' : `<p class="nota-pagamento nota-voci">Obolo ed evento sono per chi ha la tessera ${t.anno}. Paga una mensilità: la prima vale anche come tesseramento.</p>`}
+    ${t.tesserato ? '' : '<p class="nota-pagamento nota-voci">Per partecipare alle nostre attività ed eventi serve la tessera. Tesserandoti copri anche gli ingressi alle attività di tutto il primo mese.</p>'}
     <div id="dettaglio-pagamento"></div>`;
 }
 
@@ -3778,6 +3838,13 @@ function collegaRicevute(dove) {
     ids.forEach(id => tutte ? ricevuteScelte.delete(id) : ricevuteScelte.add(id));
     aggiornaRicevute(dove);
   }));
+  dove.querySelectorAll('[data-apri-anno]').forEach(b => {
+    b.onclick = () => {
+      const aperto = b.getAttribute('aria-expanded') !== 'true';
+      b.setAttribute('aria-expanded', String(aperto));
+      dove.querySelector(`[data-dentro="${b.dataset.apriAnno}"]`).hidden = !aperto;
+    };
+  });
   aggiornaRicevute(dove);
 }
 
@@ -3891,15 +3958,26 @@ function attesaTesseramento(iscrizione) {
 // ancora pagato, poi decide chi guarda.
 const quo = {
   anno: new Date().getFullYear(), filtro: 'mese', testo: '', soci: null,
+  vista: 'persone', periodo: 'mese', da: '', a: '', voceFiltro: 'tutte', pagamenti: null, chiavePagamenti: '',
   socio: null, voce: null, giorno: null, data: '', mesi: new Set(), importo: EVENTO_BASE, metodo: null,
 };
-const METODI = [['contanti', 'Contanti'], ['satispay', 'Satispay'], ['bonifico', 'Bonifico']];
+const METODI = [['contanti', 'Contanti'], ['paypal', 'PayPal'], ['bonifico', 'Bonifico'], ['stripe', 'Stripe']];
+const METODI_TESTO = { contanti: 'in contanti', paypal: 'con PayPal', bonifico: 'con bonifico', stripe: 'con Stripe' };
+const metodoNome = (k) => METODI.find(([x]) => x === k)?.[1] || k || '';
 const IMPORTO_EVENTO_MAX = 50;
 
 const annoCorrente = () => new Date().getFullYear();
 const meseKey = (anno, i) => `${anno}-${String(i + 1).padStart(2, '0')}`;
 
 function collegaQuote() {
+  el('vista-quote').querySelectorAll('[data-vista]').forEach(b => {
+    b.onclick = () => { quo.vista = b.dataset.vista; caricaQuote(); };
+  });
+  el('pagamenti-da').onchange = el('pagamenti-a').onchange = () => {
+    quo.da = el('pagamenti-da').value;
+    quo.a = el('pagamenti-a').value;
+    caricaPagamenti();
+  };
   el('anno-prima').onclick = () => cambiaAnnoQuote(-1);
   el('anno-dopo').onclick = () => cambiaAnnoQuote(1);
   el('cerca-quote').addEventListener('input', () => {
@@ -3917,6 +3995,13 @@ function cambiaAnnoQuote(delta) {
 }
 
 async function caricaQuote() {
+  // L'anno vale per la vista delle persone; i pagamenti hanno il loro periodo.
+  el('vista-quote').querySelectorAll('[data-vista]').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.vista === quo.vista)));
+  el('vista-persone').hidden = quo.vista !== 'persone';
+  el('vista-pagamenti').hidden = quo.vista !== 'pagamenti';
+  el('anno-quote-nav').style.visibility = quo.vista === 'persone' ? '' : 'hidden';
+  if (quo.vista === 'pagamenti') return caricaPagamenti();
   el('anno-quote').textContent = quo.anno;
   el('anno-dopo').disabled = quo.anno >= annoCorrente();
   const dove = el('elenco-quote');
@@ -3980,16 +4065,123 @@ function disegnaQuote() {
   dove.className = '';
   dove.innerHTML = lista.map(s => `
     <div class="riga socio-quota" role="button" tabindex="0" data-socio="${s.id}">
-      <div class="socio-testa">
+      <div class="numero-tessera${s.tesserato ? '' : ' senza'}" title="${s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza numero'}${s.tesserato ? '' : ' · tessera ' + quo.anno + ' da fare'}">${s.numero_socio ? esc(s.numero_socio) : '-'}</div>
+      <div class="socio-corpo">
         <b>${esc(s.nome)}</b>
-        <span class="bollino${s.tesserato ? ' ok' : ''}">${s.tesserato ? 'Rinnovata' : 'Da rinnovare'}</span>
+        <div class="quando">${[s.categoria ? esc(s.categoria) : '',
+          Number.isFinite(s.oboli) ? `${s.oboli} ${s.oboli === 1 ? 'obolo' : 'oboli'}` : '',
+          s.telegram ? '' : 'senza Telegram'].filter(Boolean).join(' · ')}</div>
+        <div class="mesi-mini" aria-label="Mensilità pagate: ${s.mensilita.length} su 12">${MESI_BREVI.map((m, i) =>
+          `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}${i === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</div>
       </div>
-      <div class="quando">${s.numero_socio ? `Tessera n. ${esc(s.numero_socio)}` : 'Senza numero'}${s.categoria ? ' · ' + esc(s.categoria) : ''}${s.telegram ? '' : ' · senza Telegram'}</div>
-      <div class="mesi-mini" aria-label="Mensilità pagate: ${s.mensilita.length} su 12">${MESI_BREVI.map((m, i) =>
-        `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}${i === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</div>
     </div>`).join('');
   dove.querySelectorAll('[data-socio]').forEach(r => {
     const apri = () => apriQuota(Number(r.dataset.socio));
+    r.onclick = apri;
+    r.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apri(); } };
+  });
+}
+
+// ---- la cronologia: i pagamenti di tutte le persone in un periodo
+// Si sceglie il periodo (oggi, sette giorni, questo mese, quest'anno, o due
+// date), poi volendo una voce sola: cosi' si vedono anche i singoli oboli di
+// una serata. In cima il totale e quanti per voce; sotto, giorno per giorno.
+// Toccare un pagamento apre la scheda della persona.
+const PERIODI = [['oggi', 'Oggi'], ['settimana', '7 giorni'], ['mese', 'Questo mese'], ['anno', 'Quest’anno'], ['scegli', 'Dal… al…']];
+const VOCI_CRONOLOGIA = [['tutte', 'Tutte'], ['obolo_giornaliero', 'Oboli'], ['contributo_mensile', 'Mensilità'], ['contributo_evento', 'Eventi']];
+
+function estremiPeriodo() {
+  const oggi = new Date();
+  const iso = isoLocale(oggi);
+  if (quo.periodo === 'oggi') return [iso, iso];
+  if (quo.periodo === 'settimana') { const d = new Date(oggi); d.setDate(d.getDate() - 6); return [isoLocale(d), iso]; }
+  if (quo.periodo === 'mese') return [`${iso.slice(0, 7)}-01`, iso];
+  if (quo.periodo === 'anno') return [`${iso.slice(0, 4)}-01-01`, iso];
+  return [quo.da, quo.a];
+}
+
+async function caricaPagamenti() {
+  el('periodo-pagamenti').innerHTML = PERIODI.map(([k, nome]) =>
+    `<button type="button" role="tab" data-periodo="${k}" aria-selected="${k === quo.periodo}">${nome}</button>`).join('');
+  el('periodo-pagamenti').querySelectorAll('[data-periodo]').forEach(b => {
+    b.onclick = () => {
+      quo.periodo = b.dataset.periodo;
+      // "Dal... al..." parte dal mese in corso: si cambia una data sola.
+      if (quo.periodo === 'scegli' && !quo.da) {
+        const oggi = isoLocale(new Date());
+        Object.assign(quo, { da: `${oggi.slice(0, 7)}-01`, a: oggi });
+      }
+      caricaPagamenti();
+    };
+  });
+  el('date-pagamenti').hidden = quo.periodo !== 'scegli';
+  const [da, a] = estremiPeriodo();
+  el('pagamenti-da').value = da;
+  el('pagamenti-a').value = a;
+  el('pagamenti-da').max = el('pagamenti-a').max = isoLocale(new Date());
+  const dove = el('elenco-pagamenti');
+  if (!da || !a || a < da) {
+    dove.className = 'vuoto';
+    dove.textContent = 'Scegli due date, la prima prima della seconda.';
+    el('voce-pagamenti').innerHTML = '';
+    el('totale-pagamenti').hidden = true;
+    return;
+  }
+  const chiave = `${da}|${a}`;
+  if (!quo.pagamenti || quo.chiavePagamenti !== chiave) {
+    dove.className = 'vuoto';
+    dove.textContent = 'Carico…';
+    try {
+      quo.pagamenti = (await chiama('tessere/pagamenti', { da, a })).pagamenti;
+      quo.chiavePagamenti = chiave;
+    } catch (err) {
+      dove.textContent = err.message;
+      return;
+    }
+  }
+  disegnaPagamenti();
+}
+
+function disegnaPagamenti() {
+  const tutti = quo.pagamenti;
+  el('voce-pagamenti').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
+    const n = k === 'tutte' ? tutti.length : tutti.filter(p => p.codice === k).length;
+    return `<button type="button" role="tab" data-voce-cronologia="${k}" aria-selected="${k === quo.voceFiltro}">${nome}${conta(n)}</button>`;
+  }).join('');
+  el('voce-pagamenti').querySelectorAll('[data-voce-cronologia]').forEach(b => {
+    b.onclick = () => { quo.voceFiltro = b.dataset.voceCronologia; disegnaPagamenti(); };
+  });
+  const lista = quo.voceFiltro === 'tutte' ? tutti : tutti.filter(p => p.codice === quo.voceFiltro);
+  const totale = lista.reduce((n, p) => n + Number(p.importo || 0), 0);
+  const perMetodo = new Map();
+  for (const p of lista) perMetodo.set(metodoNome(p.metodo), (perMetodo.get(metodoNome(p.metodo)) || 0) + Number(p.importo || 0));
+  el('totale-pagamenti').hidden = !lista.length;
+  el('totale-pagamenti').innerHTML = `
+    <div class="spese-totale">${euro(totale)}</div>
+    <div class="spesa"><span>${lista.length} ${lista.length === 1 ? 'pagamento' : 'pagamenti'}</span></div>
+    ${[...perMetodo].map(([m, n]) => `<div class="spesa"><span>${esc(m || 'Metodo non indicato')}</span><b>${euro(n)}</b></div>`).join('')}`;
+  const dove = el('elenco-pagamenti');
+  if (!lista.length) {
+    dove.className = 'vuoto';
+    dove.textContent = 'Nessun pagamento in questo periodo.';
+    return;
+  }
+  const perGiorno = new Map();
+  for (const p of lista) perGiorno.set(p.data, [...(perGiorno.get(p.data) || []), p]);
+  const oggi = isoLocale(new Date());
+  const ieri = isoLocale(new Date(Date.now() - 864e5));
+  const nomeGiorno = (g) => g === oggi ? 'Oggi' : g === ieri ? 'Ieri'
+    : new Date(`${g}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  dove.className = '';
+  dove.innerHTML = [...perGiorno].map(([g, righe]) => `
+    <h2 class="giorno-gestione">${nomeGiorno(g)} <span class="totale-giorno">${euro(righe.reduce((n, p) => n + Number(p.importo || 0), 0))}</span></h2>
+    ${righe.map(p => `
+      <div class="riga pagamento" role="button" tabindex="0" data-socio-pagamento="${p.partner_id}">
+        <div class="testa-prestito"><b>${esc(p.socio)}</b><span class="importo-incasso">${euro(p.importo)}</span></div>
+        <div class="quando">${esc(p.tipo)}${p.mese ? ' ' + meseTesto(p.mese) : ''} · ${esc(metodoNome(p.metodo))} · ${esc(p.numero)}</div>
+      </div>`).join('')}`).join('');
+  dove.querySelectorAll('[data-socio-pagamento]').forEach(r => {
+    const apri = () => apriQuota(Number(r.dataset.socioPagamento));
     r.onclick = apri;
     r.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apri(); } };
   });
@@ -4018,7 +4210,7 @@ function disegnaQuota() {
   const adesso = t.anno === annoCorrente() ? new Date().getMonth() : -1;
   const importi = t.importi || {};
   const voci = [
-    ['contributo_mensile', 'Mensilità', importi.contributo_mensile ? euro(importi.contributo_mensile) : ''],
+    ['contributo_mensile', t.tesserato ? 'Mensilità' : 'Tesseramento', importi.contributo_mensile ? euro(importi.contributo_mensile) : ''],
     ['obolo_giornaliero', 'Obolo', importi.obolo_giornaliero ? euro(importi.obolo_giornaliero) : ''],
     ['contributo_evento', 'Evento', ''],
   ];
@@ -4036,10 +4228,10 @@ function disegnaQuota() {
     ${t.telegram && t.anno === annoCorrente()
       ? '<p class="ricorda-quota"><button type="button" class="link" id="ricorda-quota">Manda un promemoria in chat ›</button></p>' : ''}
     <h2>Segna un pagamento</h2>
-    <div class="voci">${voci.map(([k, nome, prezzo]) =>
-      `<button type="button" class="voce" data-voce-quota="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
+    <div class="voci${t.tesserato ? '' : ' senza-tessera'}">${voci.map(([k, nome, prezzo]) =>
+      `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce-quota="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
     <div id="dettaglio-quota"></div>
-    <h2>Ricevute ${t.anno}</h2>
+    <h2>Pagamenti ${t.anno}</h2>
     ${ricevute.length ? ricevute.map(r => `
       <div class="riga">
         <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
@@ -4121,7 +4313,7 @@ function disegnaPagamentoQuota() {
     html += `<p class="nota-pagamento attento">Non ha ancora la tessera ${t.anno}: ricordaglielo.</p>`;
   }
   if (!t.tesserato && v === 'contributo_mensile') {
-    html += `<p class="nota-pagamento">La prima mensilità vale anche come tesseramento ${t.anno}.</p>`;
+    html += `<p class="nota-pagamento">Il primo mese scelto è il tesseramento ${t.anno}: copre gli ingressi di tutto quel mese.</p>`;
   }
   html += `<p class="domanda">${v === 'obolo_giornaliero' || v === 'contributo_evento' ? 'Per che giorno?' : 'Quando ha pagato?'}</p>`;
   html += `
@@ -4175,7 +4367,7 @@ function disegnaPagamentoQuota() {
 }
 
 function descriviQuota() {
-  const metodo = METODI.find(([k]) => k === quo.metodo)[1].toLowerCase();
+  const metodo = METODI_TESTO[quo.metodo];
   const cosa = quo.voce === 'contributo_mensile'
     ? `Mensilità di ${[...quo.mesi].sort().map(k => MESI[Number(k.slice(5)) - 1]).join(', ')}`
     : `${quo.voce === 'obolo_giornaliero' ? 'Obolo' : 'Evento'} del ${dataNumerica(quo.data)}`;
@@ -4195,6 +4387,7 @@ async function registraQuota() {
     const numero = esito?.ricevute?.[0]?.numero;
     toast(numero ? `Registrato: ricevuta ${numero}.` : 'Pagamento registrato.');
     quo.soci = null;
+    quo.pagamenti = null;
     attesaAzione(false);
     nascondiAzione();
     apriQuota(t.id);
@@ -4212,6 +4405,7 @@ async function annullaRicevuta(ricevutaId, numero, tipo, bottone) {
     await chiama('tessere/annulla', { ricevutaId });
     toast('Ricevuta annullata.');
     quo.soci = null;
+    quo.pagamenti = null;
     nascondiAzione();
     apriQuota(quo.socio.id);
   } catch (err) {
@@ -4423,7 +4617,7 @@ function disegnaSceltiIncasso() {
     let nota = '';
     if (errore) nota = `<div class="quando ritardo">${esc(errore)}</div>`;
     else if (p.gia) nota = '<div class="quando">Ha già pagato i mesi scelti: non paga di nuovo.</div>';
-    else if (!s.tesserato && inc.voce === 'contributo_mensile') nota = `<div class="quando">La prima mensilità vale anche come tesseramento ${anno}.</div>`;
+    else if (!s.tesserato && inc.voce === 'contributo_mensile') nota = `<div class="quando">Per questa persona vale come tesseramento ${anno}.</div>`;
     else if (!s.tesserato) nota = `<div class="quando attento">Senza tessera ${anno}: ricordaglielo.</div>`;
     return `
       <div class="riga scelto-incasso${p.gia ? ' spento' : ''}">
@@ -4466,7 +4660,7 @@ async function registraIncassi() {
   const righe = righeIncasso();
   const totale = righe.reduce((n, r) => n + r.p.totale, 0);
   const voce = VOCI_INCASSO.find(([k]) => k === inc.voce)[1];
-  const metodo = METODI.find(([k]) => k === inc.metodo)[1].toLowerCase();
+  const metodo = METODI_TESTO[inc.metodo];
   const quando = inc.voce === 'contributo_mensile'
     ? [...inc.mesi].sort().map(k => MESI[Number(k.slice(5)) - 1]).join(', ')
     : `del ${dataNumerica(inc.data)}`;
@@ -4484,6 +4678,7 @@ async function registraIncassi() {
     inc.scelti = inc.scelti.filter(id => !ok.has(id));
     inc.soci = null;
     quo.soci = null;
+    quo.pagamenti = null;
     attesaAzione(false);
     toast(inc.errori.size
       ? `Registrati ${ok.size}, ${inc.errori.size} no: vedi i nomi rimasti.`
@@ -4630,7 +4825,7 @@ function disegnaGestione() {
         ${p.chi ? `<div class="quando">Prenotata da ${esc(p.chi)}</div>` : ''}
         ${p.serveApertura ? (p.apre ? `<div class="quando">Apre ${esc(p.apre)}</div>`
           : '<div class="quando ritardo">Ancora senza chiavi</div>') : ''}
-        ${soloSenza ? `<div class="azioni a-destra in-vista">
+        ${soloSenza ? `<div class="azioni in-vista">
           <button type="button" class="conferma" data-apro="${esc(p.id)}" data-sede="${esc(p.sede)}">Apro io</button>
         </div>` : ''}
         <div class="azioni a-destra">
