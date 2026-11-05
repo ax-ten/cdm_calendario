@@ -3901,7 +3901,7 @@ function disegnaTessera(t) {
     }).join('')}</div>
     ${t.tesserato ? '' : '<p class="nota-pagamento nota-voci">Per partecipare alle nostre attività ed eventi serve la tessera. Tesserandoti copri anche gli ingressi alle attività del mese corrente.</p>'}
     <div id="dettaglio-pagamento"></div>
-    <!-- In fondo: scegliendo la mensilita' se ne va senza spostare il resto.
+    <!-- In fondo: scegliendo una voce se ne va senza spostare il resto.
          Senza la tessera dell'anno non c'e'. -->
     <div id="mesi-pagati-tessera"${t.tesserato ? '' : ' hidden'}>
     <p class="etichetta-mesi">Mensilità pagate nel ${t.anno}</p>
@@ -4021,7 +4021,9 @@ function disegnaPagamento() {
   el('tessera').querySelectorAll('[data-voce]').forEach(b =>
     b.setAttribute('aria-pressed', String(b.dataset.voce === v)));
   const d = el('dettaglio-pagamento');
-  el('mesi-pagati-tessera').hidden = v === 'contributo_mensile' || !t.tesserato;
+  // Con una voce scelta la griglia dei mesi pagati non serve: si nasconde
+  // (sta in fondo, quindi niente si sposta). Senza tessera non c'e'.
+  el('mesi-pagati-tessera').hidden = Boolean(v) || !t.tesserato;
   el('tessera').classList.toggle('con-pagamento', Boolean(v));
   el('apri-quote').classList.toggle('secondo', Boolean(v));
   if (!v) { d.innerHTML = ''; nascondiAzione(); return; }
