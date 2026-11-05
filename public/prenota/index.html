@@ -1112,6 +1112,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .scorri-azioni.oltre > .azioni { width: 100%; }
 .scorri-azioni.oltre .cresce { flex: 1 1 auto; }
 .scritta-azione { flex: 0 0 68px; width: 68px; text-align: center; }
+.scorri-azioni.destra .scritta-azione { transform-origin: left center; }
+.scorri-azioni.sinistra .scritta-azione { transform-origin: right center; }
 /* Allargandosi, la scritta resta attaccata alla riga che la tira. */
 .scorri-azioni.destra.oltre .cresce { justify-content: flex-start; }
 .scorri-azioni.sinistra.oltre .cresce { justify-content: flex-end; }
@@ -5360,6 +5362,7 @@ function chiudiPieno(scatola) {
     s.classList.remove('oltre', 'piena');
     s.style.width = '';
     s.querySelectorAll('.cresce').forEach(b => b.classList.remove('cresce'));
+    s.querySelectorAll('.scritta-azione').forEach(t => { t.style.transform = ''; });
   });
 }
 
@@ -5404,8 +5407,13 @@ function collegaScorri(scatola, riga, lati, tocco) {
       // se c'e', se no quella accanto. A meta' riga resta solo la piena.
       strato.classList.add('oltre');
       strato.classList.toggle('piena', Boolean(pieno) && Math.abs(x) > inizio.tutta * SCORRI_PIENO);
-      (pieno || accanto(strato, lato))?.classList.add('cresce');
+      const cresce = pieno || accanto(strato, lato);
+      cresce?.classList.add('cresce');
       strato.style.width = `${Math.abs(x)}px`;
+      // La scritta si allarga con il pulsante: le lettere si stirano in
+      // larghezza, le righe restano quelle. Fino a poco piu' del doppio.
+      const scritta = cresce?.querySelector('.scritta-azione');
+      if (scritta) scritta.style.transform = `scaleX(${Math.min(2.2, Math.max(1, (cresce.offsetWidth - 16) / 68))})`;
     }
     mostraLato(scatola, strato ? lato : null);
   });
