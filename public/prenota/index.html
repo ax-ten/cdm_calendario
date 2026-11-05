@@ -924,7 +924,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
 .segmenti button[aria-selected="true"] { background: var(--accento); color: var(--su-accento); }
 #vista-persone, #vista-pagamenti { padding-bottom: calc(var(--azione) + 24px); }
-#vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden], #totale-pagamenti[hidden] { display: none; }
+#vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden] { display: none; }
 /* Il periodo sta su una riga anche sui telefoni stretti. */
 #periodo-pagamenti { flex-wrap: nowrap; }
 .date-pagamenti { display: flex; gap: 8px; margin: 0 0 12px; }
@@ -943,7 +943,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .socio-quota { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 13px; }
 /* Nella lista la stellina sta a sinistra del numero, fuori dal flusso: il
    numero e il nome restano dove sono. */
-.socio-quota > .stellina { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); }
+/* Il disegno della stellina sta piu' in alto del suo riquadro: +2px la
+   mette alla meta' delle cifre. */
+.socio-quota > .stellina { position: absolute; left: 13px; top: 50%; transform: translateY(calc(-50% + 2px)); }
 .numero-tessera { flex: 0 0 2.4em; text-align: right; color: var(--tenue); font-variant-numeric: tabular-nums; }
 .socio-nome { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stellina { font-size: .85em; }
@@ -1144,6 +1146,10 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .foglio .riepilogo { margin-bottom: 14px; }
 .griglia-azioni { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin: 8px 0 14px; }
 .griglia-azioni .bottone { width: 100%; padding: 12px 10px; font-size: .92rem; }
+/* Nella serie: a sinistra cosa (Apro io / Annulla), a destra le due scelte. */
+.griglia-azioni.con-nomi { grid-auto-flow: row; grid-template-columns: auto 1fr 1fr; align-items: center; }
+.nome-azione { color: var(--tenue); font-size: .88rem; padding-right: 2px; }
+.titolo-foglio { margin-bottom: 12px !important; }
 .bottone.grave { background: transparent; color: var(--pieno); border-color: var(--pieno); }
 .bottone.arancio { background: transparent; color: var(--occupato); border-color: var(--occupato); }
 .bottone.pieno-grave { background: var(--pieno); border-color: var(--pieno); color: #fff; }
@@ -1380,7 +1386,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     </label>
   </div>
   <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
-  <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Solo quelli disponibili</label>
+  <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Disponibili ora</label>
   <!-- lucide: plus -->
   <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta sopra il +
        quando c'e' anche quello. -->
@@ -1448,7 +1454,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     </div>
     <div style="flex: 0 0 96px">
       <label for="agg-anno">Anno</label>
-      <input type="number" id="agg-anno" inputmode="numeric" min="1500" max="2100">
+      <!-- Si scrive, senza frecce: l'anno in corso fa da esempio. -->
+      <input type="text" id="agg-anno" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off">
     </div>
   </div>
 
@@ -1601,7 +1608,6 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
       <label>al <input type="date" id="pagamenti-a"></label>
     </div>
     <div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-pagamenti" role="tablist" aria-label="Voce"></div></div>
-    <div class="spese" id="totale-pagamenti" hidden></div>
     <div id="elenco-pagamenti" class="vuoto">…</div>
   </div>
 </section>
@@ -3320,7 +3326,7 @@ function disegnaPrestitiAdmin() {
     || String(p.sede).toLowerCase() === nomeScelta.toLowerCase());
   const inRitardo = tutti.filter(p => p.giorni_ritardo);
   el('filtro-prestiti').hidden = !tutti.length;
-  el('filtro-prestiti').innerHTML = [['ritardo', 'In ritardo', inRitardo.length], ['tutti', 'Tutti', tutti.length]]
+  el('filtro-prestiti').innerHTML = [['tutti', 'Tutti', tutti.length], ['ritardo', 'In ritardo', inRitardo.length]]
     .map(([k, nome, n]) => `<button type="button" role="tab" data-filtro-prestiti="${k}" aria-selected="${k === prestitiAdmin.filtro}"${k === 'ritardo' && n ? ' class="avviso"' : ''}>${nome}${conta(n)}</button>`).join('');
   el('filtro-prestiti').querySelectorAll('[data-filtro-prestiti]').forEach(b => {
     b.onclick = () => { prestitiAdmin.filtro = b.dataset.filtroPrestiti; disegnaPrestitiAdmin(); };
@@ -3477,7 +3483,7 @@ function passoBene(n) {
     pulsanteTondo('freccia', 'Avanti');
   } else {
     azionePrincipale = salvaBene;
-    pulsantePrincipale(inv.modifica ? 'Salva le modifiche' : 'Aggiungi il bene', true);
+    pulsantePrincipale(inv.modifica ? 'Salva' : 'Aggiungi', true);
   }
   if (n === 2) {
     const sede = el('agg-sede').selectedOptions[0]?.textContent || '';
@@ -3496,6 +3502,13 @@ function modalitaForm(beneId) {
   // Passando da una modifica a un'aggiunta il form non deve tenere il bene di prima.
   if (prima || beneId) svuotaFormBene();
 }
+
+// Nell'anno solo cifre, al massimo quattro; l'anno in corso fa da esempio.
+el('agg-anno').placeholder = String(new Date().getFullYear());
+el('agg-anno').addEventListener('input', () => {
+  const pulito = el('agg-anno').value.replace(/\D/g, '').slice(0, 4);
+  if (pulito !== el('agg-anno').value) el('agg-anno').value = pulito;
+});
 
 async function apriModifica(beneId) {
   let v;
@@ -3554,7 +3567,7 @@ function disegnaGeneri() {
     ...inv.opzioni.generi
       .filter(g => generiDi([c]).includes(g) || inv.generiScelti.has(String(g.id)))
       .map(g => ({ chiave: String(g.id), nome: g.nome })),
-    ...inv.nuoviGeneri.map(n => ({ chiave: 'nuovo:' + n, nome: n + ' (nuovo)' })),
+    ...inv.nuoviGeneri.map(n => ({ chiave: 'nuovo:' + n, nome: n })),
   ];
   el('agg-generi').innerHTML = tutti.map(g =>
     `<button type="button" data-genere="${esc(g.chiave)}" aria-pressed="${inv.generiScelti.has(g.chiave)}">${esc(g.nome)}</button>`
@@ -3595,7 +3608,9 @@ function suggerisciGeneri() {
 }
 
 function aggiungiGenere() {
-  const nome = el('agg-nuovo-genere').value.trim();
+  // La maiuscola iniziale, come quelli che ci sono gia'.
+  const scritto = el('agg-nuovo-genere').value.trim().replace(/\s+/g, ' ');
+  const nome = scritto.charAt(0).toLocaleUpperCase('it-IT') + scritto.slice(1);
   if (!nome) return;
   // Se c'e' gia', a meno delle maiuscole, si sceglie quello.
   const esistente = inv.opzioni.generi.find(g => g.nome.toLowerCase() === nome.toLowerCase());
@@ -4475,7 +4490,6 @@ async function caricaPagamenti() {
     dove.className = 'vuoto';
     dove.textContent = 'Scegli due date, la prima prima della seconda.';
     el('voce-pagamenti').innerHTML = '';
-    el('totale-pagamenti').hidden = true;
     return;
   }
   const chiave = `${da}|${a}`;
@@ -4503,13 +4517,6 @@ function disegnaPagamenti() {
     b.onclick = () => { quo.voceFiltro = b.dataset.voceCronologia; disegnaPagamenti(); };
   });
   const lista = quo.voceFiltro === 'tutte' ? tutti : tutti.filter(p => p.codice === quo.voceFiltro);
-  const totale = lista.reduce((n, p) => n + Number(p.importo || 0), 0);
-  const perMetodo = new Map();
-  for (const p of lista) perMetodo.set(metodoNome(p.metodo), (perMetodo.get(metodoNome(p.metodo)) || 0) + Number(p.importo || 0));
-  el('totale-pagamenti').hidden = !lista.length;
-  el('totale-pagamenti').innerHTML = `
-    <div class="spese-totale">${euro(totale)}</div>
-    ${[...perMetodo].map(([m, n]) => `<div class="spesa"><span>${esc(m || 'Metodo non indicato')}</span><b>${euro(n)}</b></div>`).join('')}`;
   const dove = el('elenco-pagamenti');
   if (!lista.length) {
     dove.className = 'vuoto';
@@ -5268,7 +5275,7 @@ async function azioneGestione(bottone, percorso, dati, fatto) {
 }
 
 const giornoLungo = (iso) => new Date(iso).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-const giornoBreve = (iso) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+const giornoBreve = (iso) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 const oraBreve = (iso) => new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
 // Apro io: di un'attivita' periodica, solo questa data o tutte.
@@ -5311,7 +5318,7 @@ function dettaglioPrenotazione(p) {
   if (!p) return;
   const date = p.serieId ? gestione.dati.prenotazioni.filter(x => x.serieId === p.serieId) : [];
   const righe = [
-    ['Quando', `${oraBreve(p.inizio)}-${oraBreve(p.fine)}`],
+    ['Quando', `${giornoLungo(p.inizio).replace(/^./, c => c.toUpperCase())}, ${oraBreve(p.inizio)}-${oraBreve(p.fine)}`],
     ['Sede', esc(p.sedeNome)],
     ...(p.chi ? [['Prenotata da', esc(p.chi)]] : []),
     ...(p.serieId ? [['Si ripete', esc(p.cadenza || 'sì')]] : []),
@@ -5320,19 +5327,16 @@ function dettaglioPrenotazione(p) {
   ];
   const scoperta = p.serveApertura && !p.apre;
   const corpo = apriFoglio(`
-    <h2>${esc(p.titolo)}</h2>
-    <p class="spiega">${giornoLungo(p.inizio).replace(/^./, c => c.toUpperCase())}</p>
+    <h2 class="titolo-foglio">${esc(p.titolo)}</h2>
     <div class="riepilogo">${righe.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
     ${date.length > 1 ? `<p class="domanda">Nei prossimi quattordici giorni</p>
       <div class="date-serie">${date.map(d => `<span class="${d.apre ? 'apre' : ''}">${new Date(d.inizio).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })}${d.apre ? ' · ' + esc(d.apre) : ''}</span>`).join('')}</div>` : ''}
     ${p.serieId ? `
-      ${scoperta ? `<p class="domanda">Apro io</p>
-      <div class="griglia-azioni">
+      <div class="griglia-azioni con-nomi">
+        ${scoperta ? `<span class="nome-azione">Apro io</span>
         <button type="button" class="bottone" data-apro-una>Solo ${giornoBreve(p.inizio)}</button>
-        <button type="button" class="bottone secondario" data-apro-tutte>Sempre</button>
-      </div>` : ''}
-      <p class="domanda">Annulla</p>
-      <div class="griglia-azioni">
+        <button type="button" class="bottone secondario" data-apro-tutte>Sempre</button>` : ''}
+        <span class="nome-azione">Annulla</span>
         <button type="button" class="bottone arancio" data-annulla-data>Solo ${giornoBreve(p.inizio)}</button>
         <button type="button" class="bottone grave" data-annulla-serie>Tutta la serie…</button>
       </div>` : `
