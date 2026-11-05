@@ -737,7 +737,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   border: 1.5px solid color-mix(in srgb, var(--tenue) 35%, transparent);
   background: none; color: var(--testo); font: inherit; font-size: .86rem; cursor: pointer;
 }
-.tipi button[aria-selected="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
+.tipi button[aria-pressed="true"] { background: var(--accento); border-color: var(--accento); color: var(--su-accento); }
 .azioni-form { display: flex; gap: 8px; }
 .azioni-form .bottone { flex: 1; padding: 11px 14px; }
 
@@ -922,7 +922,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .segmenti { display: flex; gap: 4px; padding: 4px; margin: 0 0 14px; border-radius: 999px; background: var(--scheda); }
 .segmenti button { flex: 1; padding: 8px 10px; border: 0; border-radius: 999px; background: none; color: var(--tenue);
   font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
-.segmenti button[aria-selected="true"] { background: var(--accento); color: var(--su-accento); }
+.segmenti button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }
 #vista-persone, #vista-pagamenti { padding-bottom: calc(var(--azione) + 24px); }
 #vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden] { display: none; }
 /* Il periodo sta su una riga anche sui telefoni stretti. */
@@ -1136,6 +1136,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 /* Il foglio dal basso */
 .foglio-velo { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .5); }
 .foglio-velo[hidden] { display: none; }
+/* Il foglio prende il fuoco per farci entrare la tastiera: non serve il bordo. */
+.foglio:focus { outline: none; }
 .foglio-velo .foglio { position: absolute; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow-y: auto;
   background: var(--sfondo); border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
 .foglio-velo:not([hidden]) { animation: entra .18s ease-out; }
@@ -1366,8 +1368,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <button type="button" class="indietro" id="chiudi-gestione">‹ Attività</button>
   <h1>Prenotazioni</h1>
   <!-- Il filtro veloce: le date in cui nessuno ha ancora detto che apre. -->
-  <div class="filtro-riga"><span class="filtro-nome">Sede</span><div class="tipi" id="sede-gestione" role="tablist" aria-label="Sede" hidden></div></div>
-  <div class="filtro-riga"><span class="filtro-nome">Mostra</span><div class="tipi" id="filtro-gestione" role="tablist" aria-label="Quali prenotazioni" hidden></div></div>
+  <div class="filtro-riga"><span class="filtro-nome">Sede</span><div class="tipi" id="sede-gestione" role="group" aria-label="Sede" hidden></div></div>
+  <div class="filtro-riga"><span class="filtro-nome">Mostra</span><div class="tipi" id="filtro-gestione" role="group" aria-label="Quali prenotazioni" hidden></div></div>
   <div id="elenco-gestione" class="vuoto">…</div>
 </section>
 
@@ -1401,7 +1403,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
       </select>
     </label>
   </div>
-  <div class="tipi" id="tipi-beni" role="tablist" aria-label="Tipo"></div>
+  <div class="tipi" id="tipi-beni" role="group" aria-label="Tipo"></div>
   <label class="solo-disp"><input type="checkbox" id="filtro-disponibili"> Disponibili ora</label>
   <!-- lucide: plus -->
   <!-- lucide: menu. Per chi amministra: i prestiti in corso. Sta sopra il +
@@ -1416,8 +1418,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-prestiti" hidden>
   <button type="button" class="indietro" id="chiudi-prestiti">‹ Biblioteca</button>
   <h1>Prestiti in corso</h1>
-  <div class="filtro-riga"><span class="filtro-nome">Sede</span><div class="tipi" id="sede-prestiti" role="tablist" aria-label="Sede" hidden></div></div>
-  <div class="filtro-riga"><span class="filtro-nome">Mostra</span><div class="tipi" id="filtro-prestiti" role="tablist" aria-label="Quali prestiti" hidden></div></div>
+  <div class="filtro-riga"><span class="filtro-nome">Sede</span><div class="tipi" id="sede-prestiti" role="group" aria-label="Sede" hidden></div></div>
+  <div class="filtro-riga"><span class="filtro-nome">Mostra</span><div class="tipi" id="filtro-prestiti" role="group" aria-label="Quali prestiti" hidden></div></div>
   <div id="elenco-prestiti" class="vuoto">…</div>
 </section>
 
@@ -1541,8 +1543,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 </div>
 
 <div id="foglio-a-nome" hidden>
-  <div class="foglio">
-    <h2>Chi l’ha preso?</h2>
+  <div class="foglio" role="dialog" aria-modal="true" aria-labelledby="a-nome-domanda" tabindex="-1">
+    <h2 id="a-nome-domanda">Chi l’ha preso?</h2>
     <p class="spiega" id="a-nome-titolo"></p>
     <!-- I suggerimenti si aprono da soli mentre si scrive: il menu del
          browser (datalist) dentro Telegram si apre solo toccando la freccia. -->
@@ -1593,9 +1595,9 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     </div>
   </div>
   <!-- Due viste: chi ha pagato cosa, e la cronologia dei pagamenti. -->
-  <div class="segmenti" id="vista-quote" role="tablist" aria-label="Vista">
-    <button type="button" role="tab" data-vista="persone" aria-selected="true">Persone</button>
-    <button type="button" role="tab" data-vista="pagamenti" aria-selected="false">Pagamenti</button>
+  <div class="segmenti" id="vista-quote" role="group" aria-label="Vista">
+    <button type="button" data-vista="persone" aria-pressed="true" aria-controls="vista-persone">Persone</button>
+    <button type="button" data-vista="pagamenti" aria-pressed="false" aria-controls="vista-pagamenti">Pagamenti</button>
   </div>
   <div id="vista-persone">
     <div class="campo ricerca" style="margin: 0">
@@ -1617,12 +1619,12 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <div id="elenco-quote" class="vuoto">…</div>
   </div>
   <div id="vista-pagamenti" hidden>
-    <div class="filtro-riga"><span class="filtro-nome">Periodo</span><div class="tipi" id="periodo-pagamenti" role="tablist" aria-label="Periodo"></div></div>
+    <div class="filtro-riga"><span class="filtro-nome">Periodo</span><div class="tipi" id="periodo-pagamenti" role="group" aria-label="Periodo"></div></div>
     <div class="date-pagamenti" id="date-pagamenti" hidden>
       <label>Dal <input type="date" id="pagamenti-da"></label>
       <label>al <input type="date" id="pagamenti-a"></label>
     </div>
-    <div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-pagamenti" role="tablist" aria-label="Voce"></div></div>
+    <div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-pagamenti" role="group" aria-label="Voce"></div></div>
     <div id="elenco-pagamenti" class="vuoto">…</div>
   </div>
 </section>
@@ -1807,6 +1809,78 @@ const ESEMPIO_GENERICO = 'Giochi da tavolo, il nome della tua campagna gdr…';
 const el = (id) => document.getElementById(id);
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
+// Titoli, nomi e note li scrivono le persone (o chi amministra Odoo):
+// finiscono nella pagina come testo, mai come HTML.
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// html`...`: come una stringa fra apici inversi, ma quello che ci finisce
+// dentro con ${} e' testo, gia' passato da esc(). Un pezzo di HTML nostro
+// (un'icona, un altro html`...`) si mette con raw(), o e' gia' sicuro.
+// Le liste si mettono intere: i pezzi si uniscono da soli.
+class PezzoHtml {
+  constructor(s) { this.s = s; }
+  toString() { return this.s; }
+}
+const raw = (s) => new PezzoHtml(String(s ?? ''));
+const dentroHtml = (v) => v instanceof PezzoHtml ? v.s
+  : Array.isArray(v) ? v.map(dentroHtml).join('')
+  : v === null || v === undefined || v === false ? '' : esc(v);
+const html = (pezzi, ...valori) =>
+  new PezzoHtml(pezzi.reduce((tutto, p, i) => tutto + dentroHtml(valori[i - 1]) + p));
+
+// Un pezzo di pagina rifatto da capo perde il fuoco e quello che si stava
+// scrivendo. Qui si ricorda chi aveva il fuoco (per id, o per il suo primo
+// attributo data-) e cosa c'era nei campi di testo con un id; rifatto il
+// pezzo, i campi rimasti vuoti si riempiono e il fuoco torna dov'era.
+function chiaveNodo(n) {
+  if (n.id) return `#${CSS.escape(n.id)}`;
+  const a = [...n.attributes].find(x => x.name.startsWith('data-'));
+  return a ? `[${a.name}="${CSS.escape(a.value)}"]` : null;
+}
+
+function ridisegnaTenendo(dove, ridisegna) {
+  const attivo = dove.contains(document.activeElement) ? document.activeElement : null;
+  const chiave = attivo && chiaveNodo(attivo);
+  const scritti = [...dove.querySelectorAll('input[id]:not([type="date"]):not([type="checkbox"]), textarea[id]')]
+    .map(c => ({ id: c.id, valore: c.value, sel: c === attivo ? [c.selectionStart, c.selectionEnd] : null }));
+  ridisegna();
+  for (const { id, valore } of scritti) {
+    const c = dove.querySelector(`#${CSS.escape(id)}`);
+    if (c && !c.value && valore) c.value = valore;
+  }
+  const n = chiave && dove.querySelector(chiave);
+  if (!n) return null;
+  n.focus({ preventScroll: true });
+  const sel = scritti.find(x => x.sel && `#${CSS.escape(x.id)}` === chiave)?.sel;
+  if (sel) try { n.setSelectionRange(sel[0], sel[1]); } catch {}
+  return n;
+}
+
+// ---- risposte vecchie
+// Ogni caricamento ha il suo numero di giro: quando la risposta arriva, se
+// nel frattempo ne e' partito un altro (o si e' cambiata pagina) non vale
+// piu' e non si disegna. Senza, una risposta lenta per una persona poteva
+// finire sulla scheda di un'altra.
+const giri = {};
+const nuovoGiro = (k) => (giri[k] = (giri[k] || 0) + 1);
+const giroValido = (k, n) => giri[k] === n;
+
+// ---- dati freschi
+// Tornando su una scheda appena vista non si richiede tutto al server:
+// per un po' i dati valgono. Qualsiasi modifica (prenotare, pagare,
+// prendere un libro...) li fa scadere tutti.
+const FRESCO_MS = 45 * 1000;
+const fresco = {};
+const eFresco = (k) => Date.now() - (fresco[k] || 0) < FRESCO_MS;
+const segnaFresco = (k) => { fresco[k] = Date.now(); };
+const scadiTutto = () => { for (const k of Object.keys(fresco)) delete fresco[k]; };
+// Le chiamate che leggono e basta: tutte le altre cambiano qualcosa.
+const SOLO_LETTURA = new Set(['stato', 'mese', 'mie', 'serie', 'tessera', 'inventario/opzioni',
+  'inventario/catalogo', 'inventario/admin/soci', 'inventario/admin/prestiti', 'inventario/admin/bene',
+  'inventario/isbn', 'inventario/miei', 'tessere/elenco', 'tessere/socio', 'tessere/pagamenti',
+  'staff/prenotazioni', 'staff/serie', 'eventi-del-giorno']);
+
 async function chiama(percorso, dati = {}) {
   let risposta;
   try {
@@ -1820,6 +1894,7 @@ async function chiama(percorso, dati = {}) {
   }
   const esito = await risposta.json().catch(() => ({}));
   if (!risposta.ok) throw new Error(esito.errore || 'Qualcosa non ha funzionato, riprova.');
+  if (!SOLO_LETTURA.has(percorso)) scadiTutto();
   return esito;
 }
 
@@ -1843,24 +1918,44 @@ function attesaMese(si) {
   }
 }
 
+// Una richiesta sola per sede e mese, anche toccando due volte la freccia:
+// la seconda aspetta la prima. Se nel frattempo si e' passati a un altro
+// mese (o sede), la risposta resta in memoria ma il calendario non si
+// ridisegna: quello giusto lo disegna la richiesta del mese nuovo.
+const meseInVolo = new Map();
+
+// Dopo una prenotazione o un annullo i giorni sono cambiati: si dimentica
+// tutto, anche le richieste ancora in viaggio (la loro risposta e' vecchia).
+function dimenticaMesi() {
+  Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+  meseInVolo.clear();
+}
+
 async function caricaMese() {
   const chiave = chiaveMese();
   if (!stato.occupazione[chiave]) {
-    attesaMese(true);
-    try {
-      const { giorni } = await chiama('mese', {
-        sede: stato.sede, anno: stato.mese.anno, mese: stato.mese.mese,
-      });
-      stato.occupazione[chiave] = giorni;
-    } catch {
-      // Senza i dati il calendario si disegna lo stesso: meglio poter
-      // scegliere un giorno che una griglia vuota.
-      stato.occupazione[chiave] = {};
-    } finally {
-      attesaMese(false);
+    if (!meseInVolo.has(chiave)) {
+      const richiesta = chiama('mese', { sede: stato.sede, anno: stato.mese.anno, mese: stato.mese.mese })
+        .then(r => r.giorni || {})
+        // Senza i dati il calendario si disegna lo stesso: meglio poter
+        // scegliere un giorno che una griglia vuota.
+        .catch(() => ({}))
+        .then(giorni => {
+          if (meseInVolo.get(chiave) !== richiesta) return;   // dimenticata nel frattempo
+          meseInVolo.delete(chiave);
+          stato.occupazione[chiave] = giorni;
+        });
+      meseInVolo.set(chiave, richiesta);
     }
+    attesaMese(true);
+    await meseInVolo.get(chiave);
+    if (chiaveMese() !== chiave) return false;
+    // Dimenticata mentre arrivava: si richiede.
+    if (!stato.occupazione[chiave]) return caricaMese();
   }
+  attesaMese(false);
   disegnaCalendario();
+  return true;
 }
 
 function disegnaCalendario() {
@@ -1887,11 +1982,15 @@ function disegnaCalendario() {
     const classe = ['giorno'];
     if (info.pieno) classe.push('pieno');
     else if (info.occupati > 0) classe.push('occupato');
+    // Per chi non vede i colori: il giorno per esteso, e com'e' messo.
+    const nome = data.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+    const come = info.pieno ? ', pieno' : info.occupati > 0 ? ', occupato' : '';
     pezzi.push(
       `<button class="${classe.join(' ')}" data-data="${chiave}"` +
       `${fuori || info.pieno ? ' disabled' : ''}` +
+      ` aria-label="${esc(nome + come)}"` +
       ` aria-pressed="${stato.giorno === chiave}">` +
-      `<span>${g}</span><span class="segno"></span></button>`
+      `<span aria-hidden="true">${g}</span><span class="segno"></span></button>`
     );
   }
   el('calendario').innerHTML = pezzi.join('');
@@ -1971,7 +2070,7 @@ function disegnaFascia() {
   const { oraMinima: a, oraMassima: b } = stato.limiti;
 
   el('ore').innerHTML = '';
-  for (let h = a; h <= b; h++) el('ore').insertAdjacentHTML('beforeend', `<span>${h}</span>`);
+  for (let h = a; h <= b; h++) el('ore').insertAdjacentHTML('beforeend', html`<span>${h}</span>`);
 
   const pista = el('pista');
   pista.querySelectorAll('.tacca, .gia').forEach(n => n.remove());
@@ -2008,6 +2107,9 @@ function aggiornaManiglie() {
   el('maniglia-fine').style.left = percentuale(stato.aOra) + '%';
   el('maniglia-inizio').setAttribute('aria-valuenow', stato.daOra);
   el('maniglia-fine').setAttribute('aria-valuenow', stato.aOra);
+  // Il lettore di schermo legge "18:30", non "18.5".
+  el('maniglia-inizio').setAttribute('aria-valuetext', oraTesto(stato.daOra));
+  el('maniglia-fine').setAttribute('aria-valuetext', oraTesto(stato.aOra));
 
   const durata = stato.aOra - stato.daOra;
   const ore = Math.floor(durata);
@@ -2017,22 +2119,29 @@ function aggiornaManiglie() {
     `<span>· ${ore ? ore + 'h' : ''}${minuti ? ' 30′' : ''}</span>`;
 }
 
-function oraDaPosizione(clientX) {
+// La pista si misura una volta, quando si prende la maniglia: misurarla a
+// ogni movimento, subito dopo aver spostato le maniglie, costringeva il
+// browser a ricalcolare la pagina a ogni pixel.
+function oraDaPosizione(clientX, r) {
   const { oraMinima: a, oraMassima: b } = stato.limiti;
-  const r = el('pista').getBoundingClientRect();
   const frazione = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
   return Math.round((a + frazione * (b - a)) * 2) / 2;   // scatti di mezz'ora
 }
 
 function trascina(maniglia, quale) {
+  let pista = null;
   const muovi = (ev) => {
-    const h = oraDaPosizione(ev.clientX);
+    const h = oraDaPosizione(ev.clientX, pista);
+    const prima = [stato.daOra, stato.aOra];
     if (quale === 'inizio') stato.daOra = Math.min(h, stato.aOra - 0.5);
     else stato.aOra = Math.max(h, stato.daOra + 0.5);
+    // Si ridisegna solo quando l'orario cambia davvero (ogni mezz'ora).
+    if (prima[0] === stato.daOra && prima[1] === stato.aOra) return;
     aggiornaManiglie();
     aggiornaEsito();
   };
   maniglia.addEventListener('pointerdown', (ev) => {
+    pista = el('pista').getBoundingClientRect();
     maniglia.setPointerCapture(ev.pointerId);
     maniglia.addEventListener('pointermove', muovi);
   });
@@ -2060,6 +2169,17 @@ function trascina(maniglia, quale) {
 }
 
 // ------------------------------------------------------------------ esito
+// Spostando una data, la data stessa non conta: non ci si sovrappone a se'.
+// Il server (mese) per ora non manda l'id degli eventi: se c'e' si usa
+// quello, se no si riconosce dal nome, dal giorno e dall'orario di prima.
+function eLaDataSpostata(ev) {
+  const s = stato.spostando;
+  if (!s) return false;
+  if (ev.id !== undefined) return String(ev.id) === String(s.id);
+  return stato.sede === s.sede && stato.giorno === s.giorno &&
+    ev.nome === s.nome && ev.da === s.da && ev.a === s.a;
+}
+
 // Se nella fascia scelta c'e' posto, detto sotto l'orario (passo Quando?). Il
 // resto lo chiede un passo per volta.
 function aggiornaEsito() {
@@ -2067,6 +2187,7 @@ function aggiornaEsito() {
   let libero = false;
   if (stato.sede && stato.giorno) {
     const sovrapposti = eventiDelGiorno()
+      .filter(ev => !eLaDataSpostata(ev))
       .filter(ev => ev.a > stato.daOra && ev.da < stato.aOra);
     if (sovrapposti.length >= stato.limiti.maxContemporanei) {
       dove.innerHTML = `<div class="esito pieno"><b>In quelle ore non c'è più posto</b>
@@ -2142,7 +2263,9 @@ function azionePrenota() {
 // tue prenotazioni.
 function indietro() {
   if (menuAperto) return chiudiMenuRiga();
+  if (scannerAperto) return fermaScanner();
   if (!el('foglio').hidden) return chiudiFoglio();
+  if (!el('foglio-a-nome').hidden) return chiudiPrestatoA();
   if (!el('pannello-aggiungi').hidden && inv.passoBene === 2) return passoBene(1);
   if (!el('pannello-aggiungi').hidden || !el('pannello-prestiti').hidden) return mostra('inventario');
   if (!el('pannello-ricevute').hidden) return mostra('tessera');
@@ -2157,25 +2280,62 @@ function indietro() {
 }
 
 // Da Le tue prenotazioni si comincia una prenotazione nuova.
+// Dove e quando si scelgono da capo a ogni prenotazione nuova: senza, dopo
+// aver spostato una data si ripartiva con la sua sede, il suo giorno e il
+// suo orario. Nome, categoria e descrizione restano (dopo una prenotazione
+// riuscita sono gia' vuoti).
+function azzeraDoveQuando() {
+  const oggi = new Date();
+  stato.sede = null;
+  stato.giorno = null;
+  stato.daOra = 18;
+  stato.aOra = 21;
+  stato.fasciaLibera = false;
+  stato.mese = { anno: oggi.getFullYear(), mese: oggi.getMonth() + 1 };
+  el('sedi').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  el('dopo-giorno').hidden = true;
+  disegnaCalendario();
+  disegnaFascia();
+  aggiornaCadenza();
+  aggiornaEsito();
+}
+
+// Da Le tue prenotazioni si comincia una prenotazione nuova.
 function nuovaPrenotazione() {
   if (stato.bloccato || stato.senzaTessera) return;
   stato.spostando = null;
   stato.passo = 1;
+  azzeraDoveQuando();
   mostra('prenota');
   vaiAPasso(1);
 }
 
+// Ore decimali (18.5 e' 18:30), come la fascia e i dati del mese.
+const oreDecimali = (d) => d.getHours() + d.getMinutes() / 60;
+
 // Modifica la data di una data di serie: si parte dal calendario della sede
-// della data, con la stessa scelta di giorno e orario di una prenotazione nuova.
-// Si puo' cambiare anche sede, che qui e' la stanza.
-function apriSposta(sede, id, nome) {
+// della data, sul mese della data, con l'orario che aveva, e la stessa
+// scelta di giorno e orario di una prenotazione nuova. Si puo' cambiare
+// anche sede, che qui e' la stanza.
+function apriSposta(sede, id, nome, inizio, fine) {
   if (stato.bloccato || stato.senzaTessera) return;
-  stato.spostando = { sede, id, nome };
+  const a = inizio ? new Date(inizio) : null;
+  const b = fine ? new Date(fine) : null;
+  const valida = a && !isNaN(a) && b && !isNaN(b);
+  const da = valida ? oreDecimali(a) : null;
+  const fino = valida ? oreDecimali(b) + (iso(b) !== iso(a) ? 24 : 0) : null;
+  stato.spostando = { sede, id, nome, giorno: valida ? iso(a) : null, da, a: fino };
   stato.sede = sede;
   stato.giorno = null;
-  Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+  if (valida) {
+    stato.mese = { anno: a.getFullYear(), mese: a.getMonth() + 1 };
+    const { oraMinima, oraMassima } = stato.limiti;
+    if (da >= oraMinima && fino <= oraMassima && fino > da) { stato.daOra = da; stato.aOra = fino; }
+  }
+  dimenticaMesi();
   el('sedi').querySelectorAll('button')
     .forEach(x => x.setAttribute('aria-pressed', String(x.dataset.slug === sede)));
+  disegnaFascia();
   mostra('prenota');
   stato.passo = 1;
   vaiAPasso(2);
@@ -2299,27 +2459,33 @@ function attesaAzione(si) {
 }
 
 // ------------------------------------------------------------------ toast
-let toastVia;
+// Due tempi: quando comincia a sparire, e quando e' sparito. Un toast nuovo
+// li ferma tutti e due: senza, uno arrivato in quel quarto di secondo veniva
+// nascosto dal vecchio.
+let toastVia, toastNascosto;
 function toast(testo, ok = true) {
   const t = el('toast');
   t.textContent = testo;
   t.classList.toggle('guasto', !ok);
+  clearTimeout(toastVia);
+  clearTimeout(toastNascosto);
   t.hidden = false;
   requestAnimationFrame(() => t.classList.add('visibile'));
-  clearTimeout(toastVia);
   toastVia = setTimeout(() => {
     t.classList.remove('visibile');
-    setTimeout(() => { t.hidden = true; }, 250);
+    toastNascosto = setTimeout(() => { t.hidden = true; }, 250);
   }, ok ? 4000 : 6000);
 }
 
 // Il toast con "Annulla": dieci secondi per ripensarci, con la barra che si
 // accorcia. Se si preme, fa `azione`.
 const DURATA_ANNULLA_MS = 10 * 1000;
-let annullaVia;
+let annullaVia, annullaParte, annullaNascosto;
 function toastAnnulla(testo, azione) {
   const t = el('toast-annulla');
   const barra = t.querySelector('.tempo');
+  clearTimeout(annullaParte);
+  clearTimeout(annullaNascosto);
   el('toast-annulla-testo').textContent = testo;
   barra.style.transition = 'none';
   barra.style.width = '100%';
@@ -2327,15 +2493,17 @@ function toastAnnulla(testo, azione) {
   // Un attimo dopo, non al prossimo fotogramma: se la pagina e' in secondo
   // piano i fotogrammi tardano, e la barra partiva in ritardo.
   void barra.offsetWidth;
-  setTimeout(() => {
+  annullaParte = setTimeout(() => {
     barra.style.transition = `width ${DURATA_ANNULLA_MS}ms linear`;
     barra.style.width = '0%';
     t.classList.add('visibile');
   }, 20);
   const chiudi = () => {
     clearTimeout(annullaVia);
+    clearTimeout(annullaParte);
     t.classList.remove('visibile');
-    setTimeout(() => { t.hidden = true; }, 250);
+    clearTimeout(annullaNascosto);
+    annullaNascosto = setTimeout(() => { t.hidden = true; }, 250);
   };
   clearTimeout(annullaVia);
   annullaVia = setTimeout(chiudi, DURATA_ANNULLA_MS);
@@ -2455,7 +2623,7 @@ async function sposta() {
     tg?.HapticFeedback?.notificationOccurred('success');
     toast('Data spostata.');
     stato.spostando = null;
-    Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+    dimenticaMesi();
     stato.passo = 1;
     mostra('mie');
   } catch (err) {
@@ -2534,7 +2702,7 @@ async function prenota() {
     // La tessera appena creata cambia i suggerimenti: si rileggono.
     delete stato.serie;
     sincronizzaVetrina();
-    delete stato.occupazione[chiaveMese()];   // il giorno adesso e' diverso
+    dimenticaMesi();   // il giorno adesso e' diverso
     await caricaMese();
     await scegliGiorno(stato.giorno);
     stato.passo = 1;
@@ -2553,13 +2721,21 @@ const NESSUNA_MIA = `
     <p>Non hai attività in programma.</p>
   </div>`;
 
+// Mentre si aspetta l'elenco si puo' annullare o saltare una data, o
+// cambiare pagina: conta solo l'ultima richiesta, cosi' una risposta lenta
+// non rimette in elenco una data appena saltata.
 async function caricaMie() {
+  const giro = nuovoGiro('mie');
   const dove = el('elenco-mie');
   dove.className = 'vuoto';
   dove.textContent = 'Carico…';
   try {
     // Di un'attivita' periodica si mostra solo la prossima data.
-    const prenotazioni = primeDelleSerie((await chiama('mie')).prenotazioni);
+    const lette = (await chiama('mie')).prenotazioni;
+    if (!giroValido('mie', giro)) return;
+    segnaFresco('mie');
+    const prenotazioni = primeDelleSerie(lette);
+    stato.quanteMie = prenotazioni.length;
     el('azione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
     el('apri-gestione').classList.toggle('con-etichetta', prenotazioni.length <= MAX_CON_AGGIUNGI);
     const avviso = stato.senzaTessera ? AVVISO_SENZA_TESSERA : '';
@@ -2571,36 +2747,36 @@ async function caricaMie() {
       return;
     }
     dove.className = '';
-    dove.innerHTML = avviso + prenotazioni.map(p => `
+    dove.innerHTML = html`${raw(avviso)}${prenotazioni.map(p => html`
       <div class="riga">
         <div>${p.nome || 'senza titolo'}${p.fissa ? ' · ' + (CADENZE[p.ricorrenza] || CADENZE.settimanale) : ''}</div>
-        <div class="quando">${p.fissa ? 'Prossima: ' : ''}${quandoTesto(p.inizio, p.fine)} · ${esc(nomeSede(p.sede))}</div>
+        <div class="quando">${p.fissa ? 'Prossima: ' : ''}${quandoTesto(p.inizio, p.fine)} · ${nomeSede(p.sede)}</div>
         <div class="azioni">
           ${p.fissa
-            ? `<button class="grave" data-pieno data-icona="salta" data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>`
-            : `<button class="grave" data-pieno data-icona="annulla" data-sede="${p.sede}" data-id="${p.id}" data-cosa="una">Annulla</button>`}
+            ? html`<button class="grave" data-pieno data-icona="salta" data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>`
+            : html`<button class="grave" data-pieno data-icona="annulla" data-sede="${p.sede}" data-id="${p.id}" data-cosa="una">Annulla</button>`}
         </div>
-        ${p.fissa ? '' : `<div class="azioni sinistra">
+        ${p.fissa ? '' : html`<div class="azioni sinistra">
           <button class="conferma" data-pieno data-icona="ricorrente" data-sede="${p.sede}" data-id="${p.id}" data-cosa="settimanale">Rendi ricorrente</button>
         </div>`}
-        ${p.fissa ? `<div class="azioni sinistra">
-          <button class="conferma" data-pieno data-icona="modifica" data-sede="${p.sede}" data-id="${p.id}" data-nome="${esc(p.nome || '')}" data-cosa="sposta">Modifica la data</button>
+        ${p.fissa ? html`<div class="azioni sinistra">
+          <button class="conferma" data-pieno data-icona="modifica" data-sede="${p.sede}" data-id="${p.id}" data-nome="${p.nome || ''}" data-inizio="${p.inizio}" data-fine="${p.fine}" data-cosa="sposta">Modifica la data</button>
         </div>` : ''}
-        ${p.fissa && p.serieId ? `<div class="azioni solo-menu" hidden>
+        ${p.fissa && p.serieId ? html`<div class="azioni solo-menu" hidden>
           <button class="grave" data-icona="elimina" data-sede="${p.sede}" data-id="${p.serieId}" data-cosa="serie">Elimina la serie</button>
         </div>` : ''}
-      </div>`).join('');
+      </div>`)}`;
     dove.querySelectorAll('button').forEach(b => {
       b.onclick = b.dataset.cosa === 'settimanale'
         ? () => rendiSettimanale(b.dataset.sede, b.dataset.id, b)
         : b.dataset.cosa === 'sposta'
-          ? () => apriSposta(b.dataset.sede, b.dataset.id, b.dataset.nome)
+          ? () => apriSposta(b.dataset.sede, b.dataset.id, b.dataset.nome, b.dataset.inizio, b.dataset.fine)
           : () => annulla(b.dataset.sede, b.dataset.id, b, b.dataset.cosa);
     });
     collegaAvvisoTessera(dove);
     scorrevoli(dove, '.riga', { tocco: menuDellaRiga, menu: menuDellaRiga });
   } catch (err) {
-    dove.textContent = err.message;
+    if (giroValido('mie', giro)) dove.textContent = err.message;
   }
 }
 
@@ -2660,7 +2836,7 @@ function annulla(sede, id, bottone, cosa = 'una') {
       tg?.HapticFeedback?.notificationOccurred('success');
       // Saltata una data di una serie, la riga mostra la prossima: si rilegge.
       if (cosa === 'volta') {
-        Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+        dimenticaMesi();
         return caricaMie();
       }
       riga.remove();
@@ -2673,15 +2849,15 @@ function annulla(sede, id, bottone, cosa = 'una') {
         el('azione').classList.add('con-etichetta');
       }
       // Il giorno adesso e' piu' libero: la prossima volta si rilegge.
-      Object.keys(stato.occupazione).forEach(k => delete stato.occupazione[k]);
+      dimenticaMesi();
     } catch (err) {
       riga.querySelectorAll('button').forEach(b => b.disabled = false);
       bottone.textContent = prima;
-      tg?.showAlert(err.message);
+      lamenta(err.message);
     }
   };
-  if (tg?.showConfirm) tg.showConfirm(domanda, (si) => si && fai());
-  else fai();
+  // Fuori da Telegram chiede il browser: senza conferma non si annulla niente.
+  conferma(domanda).then(si => si && fai());
 }
 
 // Ripeterla ogni settimana non e' una modifica alla propria prenotazione: e'
@@ -2709,8 +2885,8 @@ function rendiSettimanale(sede, id, bottone) {
   };
   const domanda = 'Chiedo allo staff di ripeterla ogni settimana, '
     + 'stesso giorno e stessa ora?';
-  if (tg?.showConfirm) tg.showConfirm(domanda, (si) => si && fai());
-  else fai();
+  // Fuori da Telegram chiede il browser: senza conferma non si annulla niente.
+  conferma(domanda).then(si => si && fai());
 }
 
 
@@ -2736,15 +2912,7 @@ function mostraRegistrazione(info) {
     `oppure riprova dal ${info.rifiutatoFinoA}.`);
 
   if (info.informativa) {
-    // Il testo lo scrive chi amministra Odoo, ma passa da una pagina che
-    // gira dentro Telegram: niente script e niente gestori di eventi.
-    const t = document.createElement('template');
-    t.innerHTML = info.informativa;
-    t.content.querySelectorAll('script, iframe, object, embed, link, style').forEach(n => n.remove());
-    t.content.querySelectorAll('*').forEach(n => [...n.attributes]
-      .filter(a => a.name.startsWith('on') || /^\s*javascript:/i.test(a.value))
-      .forEach(a => n.removeAttribute(a.name)));
-    el('informativa').replaceChildren(t.content);
+    el('informativa').replaceChildren(pulisciHtml(info.informativa));
   } else {
     el('informativa').textContent = 'Il testo completo lo trovi in sede.';
   }
@@ -2754,6 +2922,48 @@ function mostraRegistrazione(info) {
   document.body.classList.add('senza-menu');
   azionePrincipale = registrati;
   aggiornaRegistrazione();
+}
+
+// Il testo dell'informativa lo scrive chi amministra Odoo, ma passa da una
+// pagina che gira dentro Telegram. Togliere quello che e' pericoloso non
+// basta (c'e' sempre un modo nuovo: java&#9;script:, <base>, <form>...):
+// si tiene solo quello che serve a un testo, e tutto il resto diventa
+// testo semplice. Il documento di DOMParser non esegue niente e non carica
+// niente; i nodi buoni si rifanno da capo in questa pagina.
+const TAG_INFORMATIVA = new Set(['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'A']);
+// Di questi non resta neanche il testo: non e' testo da leggere.
+const TAG_SENZA_TESTO = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT', 'TITLE', 'HEAD', 'IFRAME',
+  'OBJECT', 'EMBED', 'SVG', 'MATH', 'TEXTAREA', 'SELECT']);
+
+function pulisciHtml(testo) {
+  const sorgente = new DOMParser().parseFromString(String(testo), 'text/html');
+  const fuori = document.createDocumentFragment();
+  const copia = (da, a) => {
+    for (const n of da.childNodes) {
+      if (n.nodeType === Node.TEXT_NODE) { a.append(n.data); continue; }
+      if (n.nodeType !== Node.ELEMENT_NODE) continue;
+      const tag = n.tagName.toUpperCase();
+      if (TAG_SENZA_TESTO.has(tag)) continue;
+      if (!TAG_INFORMATIVA.has(tag)) { copia(n, a); continue; }
+      const nuovo = document.createElement(tag.toLowerCase());
+      if (tag === 'A') {
+        // Solo link veri: https, http, mailto. L'indirizzo lo legge URL,
+        // che toglie tabulazioni e a capo come fa il browser.
+        let indirizzo = null;
+        try { indirizzo = new URL(n.getAttribute('href') || '', 'https://invalido.invalid/'); } catch {}
+        if (indirizzo && ['https:', 'http:', 'mailto:'].includes(indirizzo.protocol)
+            && indirizzo.hostname !== 'invalido.invalid') {
+          nuovo.href = indirizzo.href;
+          nuovo.target = '_blank';
+          nuovo.rel = 'noopener noreferrer';
+        }
+      }
+      copia(n, nuovo);
+      a.append(nuovo);
+    }
+  };
+  copia(sorgente.body, fuori);
+  return fuori;
 }
 
 function registrazioneCompleta() {
@@ -2809,10 +3019,7 @@ const inv = {
   nuoviGeneri: [],
 };
 
-// Titoli e autori li scrive chi aggiunge i beni: finiscono nella pagina come
-// testo, mai come HTML.
-const esc = (t) => String(t ?? '').replace(/[&<>"']/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Titoli e autori li scrive chi aggiunge i beni: passano da esc() (in cima).
 const STATI_BENE = { disponibile: 'Disponibile', in_prestito: 'In prestito', mancante: 'Mancante' };
 
 function dataTesto(iso) {
@@ -2862,14 +3069,20 @@ function conferma(testo, titolo = '') {
 
 async function apriInventario() {
   if (!inv.pronto) {
+    // Due tocchi veloci sulla scheda non devono collegare tutto due volte
+    // (e mettere due volte le sedi nel filtro): il secondo aspetta il primo.
+    if (inv.caricando) return;
     el('elenco-beni').className = 'vuoto';
     el('elenco-beni').textContent = 'Carico…';
     let o;
+    inv.caricando = true;
     try {
       o = await chiama('inventario/opzioni');
     } catch (err) {
       el('elenco-beni').textContent = err.message;
       return;
+    } finally {
+      inv.caricando = false;
     }
     inv.pronto = true;
     inv.staff = o.staff;
@@ -2910,6 +3123,9 @@ async function apriInventario() {
   }
   if (inv.tipoIniziale) { const t = inv.tipoIniziale; inv.tipoIniziale = null; return scegliTipo(t); }
   aggiornaFiltroGeneri();
+  // Tornando dalla biblioteca appena vista l'elenco e' ancora quello: si
+  // tiene, con il bene scelto e il suo pulsante.
+  if (eFresco('inventario') && inv.filtriCercati === JSON.stringify(filtriBeni())) return aggiornaPrestito();
   cercaBeni(true);
 }
 
@@ -2951,7 +3167,7 @@ function disegnaMioPrestito() {
           : `Da riportare a ${esc(p.sede)} entro il ${dataTesto(p.scadenza)}.`}</div>
         <p class="avviso-foto">Per restituirlo manda una foto del bene rimesso al suo posto.</p>
         <div class="azioni">
-          <button type="button" class="bottone" data-restituisci="${p.id}">L’ho restituito</button>
+          <button type="button" class="bottone" data-restituisci="${esc(p.id)}">L’ho restituito</button>
         </div>
       </div>`;
   }).join('');
@@ -3028,6 +3244,7 @@ async function cercaBeni(daCapo) {
       { filtri: f, offset: inv.offset, ordine: el('ordine-beni').value, seme: inv.seme || 0 });
     // Chi scrive veloce manda piu' ricerche: conta solo l'ultima.
     if (mio !== ricercaInCorso) return;
+    if (daCapo) { segnaFresco('inventario'); inv.filtriCercati = JSON.stringify(f); }
     inv.totale = totale;
     inv.offset += beni.length;
     if (daCapo) { dove.className = ''; dove.innerHTML = ''; inv.beni = new Map(); sceglieBene(null); }
@@ -3054,7 +3271,7 @@ const TIPI = [
 function disegnaTipi() {
   inv.tipo = inv.tipo || null;
   el('tipi-beni').innerHTML = TIPI.map(t =>
-    `<button type="button" role="tab" data-tipo="${t.chiave}" aria-selected="${t.chiave === inv.tipo}">${t.nome}</button>`
+    `<button type="button" data-tipo="${t.chiave}" aria-pressed="${t.chiave === inv.tipo}">${t.nome}</button>`
   ).join('');
   // Toccare la categoria gia' scelta la toglie, e l'elenco torna vuoto.
   el('tipi-beni').querySelectorAll('button').forEach(b => {
@@ -3067,7 +3284,7 @@ function scegliTipo(chiave, cerca = true) {
   aggiornaFiltroGeneri();
   el('tipi-beni').querySelectorAll('button').forEach(b => {
     const si = b.dataset.tipo === chiave;
-    b.setAttribute('aria-selected', String(si));
+    b.setAttribute('aria-pressed', String(si));
     if (si) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
   if (cerca) cercaBeni(true);
@@ -3078,7 +3295,7 @@ function schedaBene(b) {
   const riga2 = [inv.tipo === 'tutto' || inv.tipo === 'gdr' ? inv.categorie[b.categoria] : '',
                  b.sistema, b.sede, b.generi.join(', ')].filter(Boolean).join(' · ');
   return `
-    <div class="bene" role="button" tabindex="0" aria-pressed="false" data-bene="${b.id}">
+    <div class="bene" role="button" tabindex="0" aria-pressed="false" data-bene="${esc(b.id)}">
       <div class="bene-testa">
         <b>${esc(b.titolo)}</b>
         <span class="stato stato-${esc(b.stato)}">${STATI_BENE[b.stato] || esc(b.stato)}</span>
@@ -3106,13 +3323,17 @@ function collegaBottoni(dove) {
     if (inv.admin) {
       const azioni = document.createElement('div');
       azioni.className = 'azioni sinistra';
-      azioni.innerHTML = '<button type="button" class="conferma" data-pieno>Modifica</button>';
+      azioni.innerHTML = '<button type="button" class="conferma" data-pieno data-icona="modifica">Modifica</button>';
       azioni.querySelector('button').onclick = () => { chiudiScorri(scheda); apriModifica(id); };
       scheda.append(azioni);
     }
   });
   if (inv.admin) {
-    scorrevoli(dove, '.bene[data-bene]', { tocco: () => {} });
+    // Il tocco sceglie il bene (lo fa gia' la scheda); Modifica si trova
+    // scorrendo, o nel menu della scheda: pressione lunga, tasto destro,
+    // Maiusc+F10.
+    scorrevoli(dove, '.bene[data-bene]', { tocco: () => {}, menu: menuDellaRiga,
+      aiuto: 'Tocca per sceglierlo, tieni premuto per le altre azioni.' });
     dove.querySelectorAll('.scorri:not(.di-bene)').forEach(s => { if (s.querySelector(':scope > .bene')) s.classList.add('di-bene'); });
   }
   dove.querySelectorAll('[data-prolunga]').forEach(b => {
@@ -3136,13 +3357,20 @@ function apriPrestatoA(beneId) {
   mostraSuggerimentiSoci([]);
   cercaSociANome(0);
   el('a-nome-conferma').disabled = false;
-  el('foglio-a-nome').hidden = false;
+  if (el('foglio-a-nome').hidden) {
+    el('foglio-a-nome').hidden = false;
+    aNome.rilascia = trattieniFuoco(el('foglio-a-nome'), el('foglio-a-nome').querySelector('.foglio'), chiudiPrestatoA);
+  }
   setTimeout(() => el('a-nome').focus(), 50);
 }
 
 function chiudiPrestatoA() {
+  if (el('foglio-a-nome').hidden) return;
   el('foglio-a-nome').hidden = true;
   el('a-nome').blur();
+  const rilascia = aNome.rilascia;
+  aNome.rilascia = null;
+  rilascia?.();
 }
 
 // L'elenco sotto il campo: si apre appena arrivano nomi, si chiude quando
@@ -3209,7 +3437,7 @@ el('a-nome').addEventListener('keydown', (e) => {
   if (e.key === 'ArrowDown') { e.preventDefault(); evidenziaSocio(aNome.evidenziato + 1); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); evidenziaSocio(aNome.evidenziato - 1); }
   else if (e.key === 'Enter' && aNome.evidenziato >= 0) { e.preventDefault(); scegliSocio(aNome.evidenziato); }
-  else if (e.key === 'Escape') { e.preventDefault(); mostraSuggerimentiSoci([]); }
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); mostraSuggerimentiSoci([]); }
 });
 el('a-nome-annulla').onclick = chiudiPrestatoA;
 el('azione-a-nome').onclick = () => inv.scelto && apriPrestatoA(inv.scelto);
@@ -3369,19 +3597,23 @@ const prestitiAdmin = { lista: null, filtro: null };
 const ICONA_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
 
 async function caricaPrestitiAdmin() {
+  const giro = nuovoGiro('prestiti');
   const dove = el('elenco-prestiti');
   dove.className = 'vuoto';
   dove.textContent = 'Carico…';
   try {
     const { prestiti } = await chiama('inventario/admin/prestiti');
+    if (!giroValido('prestiti', giro)) return;
     prestitiAdmin.lista = prestiti.sort((a, b) => (b.giorni_ritardo || 0) - (a.giorni_ritardo || 0)
       || String(a.scadenza || '9').localeCompare(String(b.scadenza || '9')));
   } catch (err) {
+    if (!giroValido('prestiti', giro)) return;
     el('filtro-prestiti').hidden = true;
     dove.textContent = err.message;
     return;
   }
   await sedeGestione();
+  if (!giroValido('prestiti', giro)) return;
   if (!prestitiAdmin.filtro) prestitiAdmin.filtro = prestitiAdmin.lista.some(p => p.giorni_ritardo) ? 'ritardo' : 'tutti';
   disegnaPrestitiAdmin();
 }
@@ -3393,7 +3625,7 @@ function disegnaPrestitiAdmin() {
   const sedi = stato.sediInfo || [];
   el('sede-prestiti').hidden = sedi.length < 2;
   el('sede-prestiti').innerHTML = [['', 'Tutte'], ...sedi.map(x => [x.slug, x.nome])].map(([k, nome]) =>
-    `<button type="button" role="tab" data-sede-prestiti="${k}" aria-selected="${k === gestione.sede}">${esc(nome)}</button>`).join('');
+    `<button type="button" data-sede-prestiti="${esc(k)}" aria-pressed="${k === gestione.sede}">${esc(nome)}</button>`).join('');
   el('sede-prestiti').querySelectorAll('[data-sede-prestiti]').forEach(b => {
     b.onclick = () => {
       gestione.sede = b.dataset.sedePrestiti;
@@ -3408,7 +3640,7 @@ function disegnaPrestitiAdmin() {
   const inRitardo = tutti.filter(p => p.giorni_ritardo);
   el('filtro-prestiti').hidden = !tutti.length;
   el('filtro-prestiti').innerHTML = [['tutti', 'Tutti', tutti.length], ['ritardo', 'In ritardo', inRitardo.length]]
-    .map(([k, nome, n]) => `<button type="button" role="tab" data-filtro-prestiti="${k}" aria-selected="${k === prestitiAdmin.filtro}">${nome}${conta(n)}</button>`).join('');
+    .map(([k, nome, n]) => `<button type="button" data-filtro-prestiti="${k}" aria-pressed="${k === prestitiAdmin.filtro}">${nome}${conta(n)}</button>`).join('');
   el('filtro-prestiti').querySelectorAll('[data-filtro-prestiti]').forEach(b => {
     b.onclick = () => { prestitiAdmin.filtro = b.dataset.filtroPrestiti; disegnaPrestitiAdmin(); };
   });
@@ -3430,7 +3662,7 @@ function disegnaPrestitiAdmin() {
         ? `In ritardo di ${p.giorni_ritardo} ${p.giorni_ritardo === 1 ? 'giorno' : 'giorni'}`
         : p.scadenza ? `Da riportare entro il ${dataTesto(p.scadenza)}` : 'Senza scadenza'}</div>
       <div class="azioni a-destra" data-azioni>
-        <button type="button" class="grave" data-pieno data-icona="restituito" data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
+        <button type="button" class="grave" data-pieno data-icona="restituito" data-chiudi="${esc(p.id)}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
       </div>
       <div class="azioni sinistra">
         <button type="button" class="conferma" data-pieno data-icona="estendi" data-apri-prolunga>Estendi</button>
@@ -3438,10 +3670,10 @@ function disegnaPrestitiAdmin() {
       ${p.username ? `<div class="azioni solo-menu" hidden>
         <button type="button" data-icona="chat" data-chat="${esc(p.username)}">Scrivi in chat</button>
       </div>` : ''}
-      <div class="azioni a-destra prolunga" data-prolunga-di="${p.id}" hidden>
+      <div class="azioni a-destra prolunga" data-prolunga-di="${esc(p.id)}" hidden>
         <div class="contagiorni">
           <button type="button" data-meno aria-label="Un giorno in meno">−</button>
-          <input type="number" inputmode="numeric" min="1" max="365" value="${inv.giorni}" aria-label="Giorni in piu'">
+          <input type="number" inputmode="numeric" min="1" max="365" value="${esc(inv.giorni)}" aria-label="Giorni in piu'">
           <span class="unita">gg</span>
           <button type="button" data-piu aria-label="Un giorno in piu'">+</button>
         </div>
@@ -3649,9 +3881,11 @@ function aggiornaCategoria() {
 
 function disegnaGeneri() {
   const c = el('agg-categoria').value;
+  // I generi della categoria si contano una volta, non uno per genere.
+  const dellaCategoria = new Set(generiDi([c]));
   const tutti = [
     ...inv.opzioni.generi
-      .filter(g => generiDi([c]).includes(g) || inv.generiScelti.has(String(g.id)))
+      .filter(g => dellaCategoria.has(g) || inv.generiScelti.has(String(g.id)))
       .map(g => ({ chiave: String(g.id), nome: g.nome })),
     ...inv.nuoviGeneri.map(n => ({ chiave: 'nuovo:' + n, nome: n })),
   ];
@@ -3679,7 +3913,7 @@ function suggerisciGeneri() {
     .sort((a, b) => Number(!a.nome.toLowerCase().startsWith(t)) - Number(!b.nome.toLowerCase().startsWith(t))
       || a.nome.localeCompare(b.nome, 'it'))
     .slice(0, 8);
-  dove.innerHTML = lista.map(g => `<button type="button" role="option" data-genere-esistente="${g.id}"><b>${esc(g.nome)}</b></button>`).join('');
+  dove.innerHTML = lista.map(g => `<button type="button" role="option" data-genere-esistente="${esc(g.id)}"><b>${esc(g.nome)}</b></button>`).join('');
   dove.hidden = !lista.length;
   campo.setAttribute('aria-expanded', String(Boolean(lista.length)));
   dove.querySelectorAll('[data-genere-esistente]').forEach(b => {
@@ -3757,6 +3991,16 @@ function caricaZxing() {
   });
 }
 
+// La fotocamera aperta: chi la chiude (Annulla, Indietro, un'altra scheda)
+// ferma il video e la lettura, non solo la finestra. Senza, il telefono
+// teneva la fotocamera accesa e continuava a cercare codici.
+let scannerAperto = null;
+function fermaScanner() {
+  const chiudi = scannerAperto;
+  scannerAperto = null;
+  if (chiudi) chiudi();
+}
+
 async function scansionaConZxing() {
   let ZXing;
   try {
@@ -3766,7 +4010,14 @@ async function scansionaConZxing() {
   }
   const indizi = new Map([[ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13]]]);
   const lettore = new ZXing.BrowserMultiFormatReader(indizi, 250);
-  const chiudi = () => { lettore.reset(); el('scanner').hidden = true; };
+  const chiudi = () => {
+    if (scannerAperto === chiudi) scannerAperto = null;
+    try { lettore.reset(); } catch {}
+    el('video-isbn').srcObject = null;
+    el('scanner').hidden = true;
+  };
+  fermaScanner();
+  scannerAperto = chiudi;
   el('chiudi-scanner').onclick = chiudi;
   el('scanner').hidden = false;
   try {
@@ -3780,6 +4031,8 @@ async function scansionaConZxing() {
         cercaIsbn();
       });
   } catch {
+    // Chiusa da chi ha cambiato pagina mentre si apriva: niente da dire.
+    if (scannerAperto !== chiudi) return;
     chiudi();
     lamenta('Non riesco ad aprire la fotocamera: scrivi l’ISBN a mano.');
   }
@@ -3794,14 +4047,20 @@ async function scansiona() {
     lamenta('Non riesco ad aprire la fotocamera: scrivi l’ISBN a mano.');
     return;
   }
+  // Mentre il telefono chiedeva il permesso si e' andati altrove.
+  if (el('pannello-aggiungi').hidden) { flusso.getTracks().forEach(t => t.stop()); return; }
   const video = el('video-isbn');
   const lettore = new BarcodeDetector({ formats: ['ean_13'] });
   let finito = false;
   const chiudi = () => {
+    if (scannerAperto === chiudi) scannerAperto = null;
     finito = true;
     flusso.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
     el('scanner').hidden = true;
   };
+  fermaScanner();
+  scannerAperto = chiudi;
   el('chiudi-scanner').onclick = chiudi;
   el('scanner').hidden = false;
   video.srcObject = flusso;
@@ -3811,6 +4070,7 @@ async function scansiona() {
       // Solo gli EAN dei libri (978, 979): il codice del prezzo accanto
       // non deve passare per un ISBN.
       const trovato = (await lettore.detect(video)).find(c => /^97[89]\d{10}$/.test(c.rawValue));
+      if (finito) return;
       if (trovato) {
         chiudi();
         tg?.HapticFeedback?.notificationOccurred('success');
@@ -3894,18 +4154,21 @@ const dataNumerica = (iso) => iso ? iso.split('-').reverse().join('/') : '';
 const meseTesto = (m) => `${MESI[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
 
 async function caricaTessera() {
+  const giro = nuovoGiro('tessera');
   const dove = el('tessera');
   dove.className = 'vuoto';
   dove.textContent = 'Carico…';
   try {
     const { tessera } = await chiama('tessera');
+    if (!giroValido('tessera', giro)) return;
+    segnaFresco('tessera');
     tess.dati = tessera;
     tess.voce = null;
     dove.className = '';
     dove.innerHTML = disegnaTessera(tessera);
     collegaTessera(dove);
   } catch (err) {
-    dove.textContent = err.message;
+    if (giroValido('tessera', giro)) dove.textContent = err.message;
   }
 }
 
@@ -3917,27 +4180,27 @@ function disegnaRicevute(t) {
   // altri. Il quadratino dell'anno sceglie tutte le sue ricevute.
   const perAnno = new Map();
   for (const r of t.ricevute) {
-    const anno = r.data.slice(0, 4);
+    const anno = String(r.data).slice(0, 4);
     perAnno.set(anno, [...(perAnno.get(anno) || []), r]);
   }
   const chevron = '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   return perAnno.size ? [...perAnno].map(([anno, lista], i) => {
     const totale = lista.reduce((n, r) => n + Number(r.importo || 0), 0);
     return `
-    <div class="ricevute-anno" data-gruppo="${anno}">
+    <div class="ricevute-anno" data-gruppo="${esc(anno)}">
       <div class="testa-anno">
-        <span class="scegli-anno" role="checkbox" aria-checked="false" tabindex="0" data-anno-tutte="${anno}" aria-label="Tutte le ricevute del ${anno}"><span class="spunta" aria-hidden="true"></span></span>
-        <button type="button" class="apri-anno" data-apri-anno="${anno}" aria-expanded="${i === 0}">
-          <b>${anno}</b><span>${lista.length} ${lista.length === 1 ? 'ricevuta' : 'ricevute'} · ${euro(totale)}</span>${chevron}
+        <span class="scegli-anno" role="checkbox" aria-checked="false" tabindex="0" data-anno-tutte="${esc(anno)}" aria-label="Tutte le ricevute del ${esc(anno)}"><span class="spunta" aria-hidden="true"></span></span>
+        <button type="button" class="apri-anno" data-apri-anno="${esc(anno)}" aria-expanded="${i === 0}">
+          <b>${esc(anno)}</b><span>${lista.length} ${lista.length === 1 ? 'ricevuta' : 'ricevute'} · ${euro(totale)}</span>${chevron}
         </button>
       </div>
-      <div class="ricevute-dentro" data-dentro="${anno}"${i === 0 ? '' : ' hidden'}>
+      <div class="ricevute-dentro" data-dentro="${esc(anno)}"${i === 0 ? '' : ' hidden'}>
       ${lista.map(r => `
-        <div class="riga ricevuta" role="checkbox" aria-checked="false" tabindex="0" data-ricevuta="${r.id}" data-anno="${anno}">
+        <div class="riga ricevuta" role="checkbox" aria-checked="false" tabindex="0" data-ricevuta="${esc(r.id)}" data-anno="${esc(anno)}">
           <span class="spunta" aria-hidden="true"></span>
           <div class="ricevuta-testo">
             <div><b>${esc(r.tipo)}</b>${r.evento ? ' · ' + esc(r.evento) : ''} · ${euro(r.importo)}</div>
-            <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}</div>
+            <div class="quando">${esc(r.numero)} · ${esc(dataNumerica(r.data))}${r.mese ? ' · ' + esc(meseTesto(r.mese)) : ''}</div>
           </div>
         </div>`).join('')}
       </div>
@@ -3950,7 +4213,7 @@ function disegnaSpese(t) {
   // La quota annuale non e' una spesa dell'anno come le altre: resta fuori.
   const spese = t.spese.filter(s => s.codice !== 'tesseramento');
   const totale = spese.reduce((n, s) => n + s.totale, 0);
-  return `<h2>I tuoi contributi ${t.anno}</h2>` + (spese.length ? `
+  return `<h2>I tuoi contributi ${esc(t.anno)}</h2>` + (spese.length ? `
     <div class="spese">
       <div class="spese-totale">${euro(totale)}</div>
       ${spese.map(s => `<div class="spesa"><span>${esc(s.tipo)}${s.quante > 1 ? ' × ' + s.quante : ''}</span><b>${euro(s.totale)}</b></div>`).join('')}
@@ -3976,7 +4239,7 @@ function disegnaTessera(t) {
   ];
   return `
     <div class="tessera-carta${t.tesserato ? '' : ' da-rinnovare'}">
-      <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${t.anno}</span></div>
+      <div class="tessera-testa"><span>Crocevia dei Mondi</span><span>${esc(t.anno)}</span></div>
       <div class="tessera-piede">
         <div class="tessera-nome">${stellina(stato.ruolo)}${esc(t.nome)}</div>
         <div class="tessera-dati">${[t.numero_socio && t.tesserato ? `Tessera n. ${esc(t.numero_socio)}` : '', t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</div>
@@ -3998,7 +4261,7 @@ function disegnaTessera(t) {
     <!-- In fondo: scegliendo una voce se ne va senza spostare il resto.
          Senza la tessera dell'anno non c'e'. -->
     <div id="mesi-pagati-tessera"${t.tesserato ? '' : ' hidden'}>
-    <p class="etichetta-mesi">Mensilità pagate nel ${t.anno}</p>
+    <p class="etichetta-mesi">Mensilità pagate nel ${esc(t.anno)}</p>
     <div class="mensilita">${MESI_BREVI.map((m, i) =>
       `<span class="${pagati.has(i + 1) ? 'pagato' : ''}${i + 1 === adesso ? ' adesso' : ''}" title="${MESI[i]}${pagati.has(i + 1) ? ': pagato' : ''}">${m}</span>`).join('')}</div>
     </div>`;
@@ -4135,8 +4398,8 @@ function disegnaPagamento() {
       <div class="scelte">
         ${giorno(oggi, 'oggi', 'Oggi')}
         ${giorno(ieri, 'ieri', 'Ieri')}
-        <label class="scelta-data" aria-pressed="${tess.giorno === 'data'}">${tess.giorno === 'data' ? dataNumerica(tess.data) : 'Altro giorno'}
-          <input type="date" id="data-pagamento" max="${isoLocale(oggi)}" value="${tess.data}"></label>
+        <label class="scelta-data" aria-pressed="${tess.giorno === 'data'}">${tess.giorno === 'data' ? esc(dataNumerica(tess.data)) : 'Altro giorno'}
+          <input type="date" id="data-pagamento" max="${isoLocale(oggi)}" value="${esc(tess.data)}"></label>
       </div>`;
   }
   if (v === 'contributo_evento') {
@@ -4159,12 +4422,12 @@ function disegnaPagamento() {
         const k = `${t.anno}-${String(i + 1).padStart(2, '0')}`;
         const pagato = t.mensilita.includes(k);
         const classi = [pagato ? 'pagato' : '', k === meseCorrente() ? 'adesso' : ''].join(' ').trim();
-        return `<button type="button" data-mese="${k}" aria-pressed="${tess.mesi.has(k)}" ${pagato ? 'disabled' : ''} class="${classi}" title="${MESI[i]}${pagato ? ': già pagato' : ''}">${m}</button>`;
+        return `<button type="button" data-mese="${esc(k)}" aria-pressed="${tess.mesi.has(k)}" ${pagato ? 'disabled' : ''} class="${classi}" title="${MESI[i]}${pagato ? ': già pagato' : ''}">${m}</button>`;
       }).join('')}</div>`;
     }
   }
   if (!PAGAMENTO_ATTIVO) html += '<p class="nota-pagamento">Il pagamento dall’app arriva presto: per ora si paga in sede.</p>';
-  d.innerHTML = html;
+  ridisegnaTenendo(d, () => { d.innerHTML = html; });
 
   d.querySelectorAll('[data-giorno]').forEach(b => {
     b.onclick = () => { tess.giorno = b.dataset.nome; tess.data = b.dataset.giorno; disegnaPagamento(); };
@@ -4222,7 +4485,7 @@ function collegaRicevute(dove) {
     aggiornaRicevute(dove);
   }));
   dove.querySelectorAll('[data-anno-tutte]').forEach(testa => tocco(testa, () => {
-    const ids = [...dove.querySelectorAll(`[data-ricevuta][data-anno="${testa.dataset.annoTutte}"]`)]
+    const ids = [...dove.querySelectorAll(`[data-ricevuta][data-anno="${CSS.escape(testa.dataset.annoTutte)}"]`)]
       .map(r => Number(r.dataset.ricevuta));
     const tutte = ids.every(id => ricevuteScelte.has(id));
     ids.forEach(id => tutte ? ricevuteScelte.delete(id) : ricevuteScelte.add(id));
@@ -4232,7 +4495,7 @@ function collegaRicevute(dove) {
     b.onclick = () => {
       const aperto = b.getAttribute('aria-expanded') !== 'true';
       b.setAttribute('aria-expanded', String(aperto));
-      dove.querySelector(`[data-dentro="${b.dataset.apriAnno}"]`).hidden = !aperto;
+      dove.querySelector(`[data-dentro="${CSS.escape(b.dataset.apriAnno)}"]`).hidden = !aperto;
     };
   });
   aggiornaRicevute(dove);
@@ -4242,7 +4505,7 @@ function aggiornaRicevute(dove) {
   dove.querySelectorAll('[data-ricevuta]').forEach(r =>
     r.setAttribute('aria-checked', String(ricevuteScelte.has(Number(r.dataset.ricevuta)))));
   dove.querySelectorAll('[data-anno-tutte]').forEach(testa => {
-    const righe = [...dove.querySelectorAll(`[data-ricevuta][data-anno="${testa.dataset.annoTutte}"]`)];
+    const righe = [...dove.querySelectorAll(`[data-ricevuta][data-anno="${CSS.escape(testa.dataset.annoTutte)}"]`)];
     const scelte = righe.filter(r => ricevuteScelte.has(Number(r.dataset.ricevuta))).length;
     testa.setAttribute('aria-checked', !scelte ? 'false' : scelte === righe.length ? 'true' : 'mixed');
   });
@@ -4284,6 +4547,7 @@ const CAMPI_ISCRIZIONE = ['nome', 'cognome', 'data_nascita', 'luogo_nascita', 'c
 const FACOLTATIVI = new Set(['telefono', 'provincia', 'messaggio']);
 const isc = (id) => el(`isc-${id}`);
 let quotaIscrizione = 0;
+let iscrizioneCollegata = false;
 
 function mostraIscrizione(info) {
   el('pannello-registrazione').hidden = true;
@@ -4297,8 +4561,12 @@ function mostraIscrizione(info) {
     azionePrincipale = registrati;
     aggiornaRegistrazione();
   };
-  for (const k of CAMPI_ISCRIZIONE) isc(k).addEventListener('input', aggiornaIscrizione);
-  isc('privacy').addEventListener('change', aggiornaIscrizione);
+  // Si apre e si chiude quante volte si vuole: i campi si collegano una volta.
+  if (!iscrizioneCollegata) {
+    iscrizioneCollegata = true;
+    for (const k of CAMPI_ISCRIZIONE) isc(k).addEventListener('input', aggiornaIscrizione);
+    isc('privacy').addEventListener('change', aggiornaIscrizione);
+  }
   azionePrincipale = inviaIscrizione;
   aggiornaIscrizione();
   window.scrollTo(0, 0);
@@ -4385,9 +4653,14 @@ function collegaQuote() {
   el('anche-senza-tessera').onchange = () => { quo.ancheSenza = el('anche-senza-tessera').checked; disegnaQuote(); };
   el('anno-prima').onclick = () => cambiaAnnoQuote(-1);
   el('anno-dopo').onclick = () => cambiaAnnoQuote(1);
+  // Si ridisegna quando ci si ferma un attimo, non a ogni lettera.
+  let attesa;
   el('cerca-quote').addEventListener('input', () => {
-    quo.testo = el('cerca-quote').value.trim().toLowerCase();
-    disegnaQuote();
+    clearTimeout(attesa);
+    attesa = setTimeout(() => {
+      quo.testo = el('cerca-quote').value.trim().toLowerCase();
+      disegnaQuote();
+    }, 200);
   });
 }
 
@@ -4401,7 +4674,7 @@ function cambiaAnnoQuote(delta) {
 async function caricaQuote() {
   // L'anno vale per la vista delle persone; i pagamenti hanno il loro periodo.
   el('vista-quote').querySelectorAll('[data-vista]').forEach(b =>
-    b.setAttribute('aria-selected', String(b.dataset.vista === quo.vista)));
+    b.setAttribute('aria-pressed', String(b.dataset.vista === quo.vista)));
   el('vista-persone').hidden = quo.vista !== 'persone';
   el('vista-pagamenti').hidden = quo.vista !== 'pagamenti';
   el('anno-quote-nav').style.visibility = quo.vista === 'persone' ? '' : 'hidden';
@@ -4410,13 +4683,18 @@ async function caricaQuote() {
   el('anno-dopo').disabled = quo.anno >= annoCorrente();
   const dove = el('elenco-quote');
   if (!quo.soci) {
+    // Cambiando anno in fretta arrivano piu' risposte: conta l'ultima.
+    const giro = nuovoGiro('quote');
+    const anno = quo.anno;
     dove.className = 'vuoto';
     dove.textContent = 'Carico…';
     try {
-      const { soci } = await chiama('tessere/elenco', { anno: quo.anno });
+      const { soci } = await chiama('tessere/elenco', { anno });
+      if (!giroValido('quote', giro) || anno !== quo.anno) return;
       quo.soci = soci.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
+      quo.annoSoci = anno;
     } catch (err) {
-      dove.textContent = err.message;
+      if (giroValido('quote', giro)) dove.textContent = err.message;
       return;
     }
   }
@@ -4444,8 +4722,12 @@ function disegnaQuote() {
   const dove = el('elenco-quote');
   if (!quo.soci) return;
   const base = quo.soci.filter(s => quo.ancheSenza || s.tesserato);
-  el('mese-pagato').innerHTML = `<option value="">Tutti i mesi</option>` + MESI.map((m, i) =>
-    `<option value="${meseKey(quo.anno, i)}">${m.replace(/^./, c => c.toUpperCase())}</option>`).join('');
+  // I mesi cambiano solo con l'anno: il menu si rifa' solo allora.
+  if (el('mese-pagato').dataset.anno !== String(quo.anno)) {
+    el('mese-pagato').innerHTML = `<option value="">Tutti i mesi</option>` + MESI.map((m, i) =>
+      `<option value="${meseKey(quo.anno, i)}">${m.replace(/^./, c => c.toUpperCase())}</option>`).join('');
+    el('mese-pagato').dataset.anno = String(quo.anno);
+  }
   if (quo.mesePagato && !quo.mesePagato.startsWith(String(quo.anno))) quo.mesePagato = '';
   el('mese-pagato').value = quo.mesePagato;
   el('ordine-quote').value = quo.ordine;
@@ -4465,10 +4747,10 @@ function disegnaQuote() {
   const adesso = quo.anno === annoCorrente() ? new Date().getMonth() : -1;
   dove.className = '';
   dove.innerHTML = lista.map(s => `
-    <div class="riga socio-quota${s.tesserato ? '' : ' senza-tessera'}" role="button" tabindex="0" data-socio="${s.id}">
+    <div class="riga socio-quota${s.tesserato ? '' : ' senza-tessera'}" role="button" tabindex="0" data-socio="${esc(s.id)}">
       <span class="numero-tessera" title="${s.tesserato && s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza tessera ' + quo.anno}">${s.tesserato && s.numero_socio ? esc(s.numero_socio) : ''}</span>
       ${stellina(s.ruolo)}<span class="socio-nome">${esc(s.nome)}${s.tesserato ? '' : `<small>senza tessera ${quo.anno}</small>`}</span>
-      <span class="mesi-mini" aria-label="Mensilità pagate: ${s.mensilita.length} su 12">${MESI_BREVI.map((m, i) =>
+      <span class="mesi-mini" aria-label="Mensilità pagate: ${esc(s.mensilita.length)} su 12">${MESI_BREVI.map((m, i) =>
         `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</span>
     </div>`).join('');
   dove.querySelectorAll('[data-socio]').forEach(r => {
@@ -4539,7 +4821,7 @@ function estremiPeriodo() {
 
 async function caricaPagamenti() {
   el('periodo-pagamenti').innerHTML = PERIODI().map(([k, nome]) =>
-    `<button type="button" role="tab" data-periodo="${k}" aria-selected="${k === quo.periodo}">${nome}</button>`).join('');
+    `<button type="button" data-periodo="${k}" aria-pressed="${k === quo.periodo}">${nome}</button>`).join('');
   el('periodo-pagamenti').querySelectorAll('[data-periodo]').forEach(b => {
     b.onclick = () => {
       quo.periodo = b.dataset.periodo;
@@ -4565,13 +4847,17 @@ async function caricaPagamenti() {
   }
   const chiave = `${da}|${a}`;
   if (!quo.pagamenti || quo.chiavePagamenti !== chiave) {
+    // Cambiando periodo in fretta: conta l'ultimo.
+    const giro = nuovoGiro('pagamenti');
     dove.className = 'vuoto';
     dove.textContent = 'Carico…';
     try {
-      quo.pagamenti = (await chiama('tessere/pagamenti', { da, a })).pagamenti;
+      const { pagamenti } = await chiama('tessere/pagamenti', { da, a });
+      if (!giroValido('pagamenti', giro)) return;
+      quo.pagamenti = pagamenti;
       quo.chiavePagamenti = chiave;
     } catch (err) {
-      dove.textContent = err.message;
+      if (giroValido('pagamenti', giro)) dove.textContent = err.message;
       return;
     }
   }
@@ -4582,7 +4868,7 @@ function disegnaPagamenti() {
   const tutti = quo.pagamenti;
   el('voce-pagamenti').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
     const n = k === 'tutte' ? null : tutti.filter(p => p.codice === k).length;
-    return `<button type="button" role="tab" data-voce-cronologia="${k}" aria-selected="${k === quo.voceFiltro}">${nome}${n === null ? '' : conta(n)}</button>`;
+    return `<button type="button" data-voce-cronologia="${k}" aria-pressed="${k === quo.voceFiltro}">${nome}${n === null ? '' : conta(n)}</button>`;
   }).join('');
   el('voce-pagamenti').querySelectorAll('[data-voce-cronologia]').forEach(b => {
     b.onclick = () => { quo.voceFiltro = b.dataset.voceCronologia; disegnaPagamenti(); };
@@ -4602,12 +4888,12 @@ function disegnaPagamenti() {
     : new Date(`${g}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   dove.className = '';
   dove.innerHTML = [...perGiorno].map(([g, righe]) => `
-    <h2 class="giorno-gestione">${nomeGiorno(g)} <span class="totale-giorno">${euro(righe.reduce((n, p) => n + Number(p.importo || 0), 0))}</span></h2>
+    <h2 class="giorno-gestione">${esc(nomeGiorno(g))} <span class="totale-giorno">${euro(righe.reduce((n, p) => n + Number(p.importo || 0), 0))}</span></h2>
     ${righe.map(p => `
-      <div class="riga pagamento riga-pagamento" role="button" tabindex="0" data-socio-pagamento="${p.partner_id}">
+      <div class="riga pagamento riga-pagamento" role="button" tabindex="0" data-socio-pagamento="${esc(p.partner_id)}">
         <div class="pag-testo">
           <b>${esc(p.socio)}</b>
-          <div class="quando">${esc(p.tipo)}${p.mese ? ' ' + meseTesto(p.mese) : ''}${p.evento ? ' · ' + esc(p.evento) : ''} · ${esc(p.numero)}</div>
+          <div class="quando">${esc(p.tipo)}${p.mese ? ' ' + esc(meseTesto(p.mese)) : ''}${p.evento ? ' · ' + esc(p.evento) : ''} · ${esc(p.numero)}</div>
         </div>
         <div class="pag-importo"><b>${euro(p.importo)}</b><span>${esc(metodoNome(p.metodo))}</span></div>
       </div>`).join('')}`).join('');
@@ -4618,8 +4904,12 @@ function disegnaPagamenti() {
   });
 }
 
+// La scheda di una persona. Se mentre arriva se ne apre un'altra (o si
+// torna indietro), la risposta non vale piu': senza, la scheda di A poteva
+// arrivare dopo quella di B, e "Registra" pagava su A.
 async function apriQuota(partnerId) {
   mostra('quota');
+  const giro = nuovoGiro('quota');
   window.scrollTo(0, 0);
   Object.assign(quo, { socio: null, voce: null, giorno: null, data: '', mesi: new Set(), importo: EVENTO_BASE, metodo: null });
   const dove = el('scheda-quota');
@@ -4627,9 +4917,10 @@ async function apriQuota(partnerId) {
   dove.textContent = 'Carico…';
   try {
     const { tessera } = await chiama('tessere/socio', { partnerId, anno: quo.anno });
+    if (!giroValido('quota', giro)) return;
     quo.socio = { ...tessera, id: tessera.id || partnerId };
   } catch (err) {
-    dove.textContent = err.message;
+    if (giroValido('quota', giro)) dove.textContent = err.message;
     return;
   }
   disegnaQuota();
@@ -4649,10 +4940,10 @@ function disegnaQuota() {
   dove.className = 'con-pagamento';
   dove.innerHTML = `
     <h1 class="nome-quota">${stellina(quo.soci?.find(s => s.id === t.id)?.ruolo)}${esc(t.nome)}</h1>
-    <p class="quando-quota">${[t.numero_socio && t.tesserato ? `Tessera n. ${esc(t.numero_socio)}` : `Senza tessera ${t.anno}`, t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</p>
-    ${t.tesserato ? '' : `<p class="tessera-avviso">Tessera ${t.anno} da rinnovare: la prima mensilità vale anche come tesseramento.</p>`}
+    <p class="quando-quota">${[t.numero_socio && t.tesserato ? `Tessera n. ${esc(t.numero_socio)}` : `Senza tessera ${esc(t.anno)}`, t.categoria ? esc(t.categoria) : ''].filter(Boolean).join(' · ')}</p>
+    ${t.tesserato ? '' : `<p class="tessera-avviso">Tessera ${esc(t.anno)} da rinnovare: la prima mensilità vale anche come tesseramento.</p>`}
     <div id="mesi-pagati-quota">
-    <p class="etichetta-mesi">Mensilità pagate nel ${t.anno}</p>
+    <p class="etichetta-mesi">Mensilità pagate nel ${esc(t.anno)}</p>
     <div class="mensilita">${MESI_BREVI.map((m, i) => {
       const pagato = t.mensilita.includes(meseKey(t.anno, i));
       return `<span class="${pagato ? 'pagato' : ''}${i === adesso ? ' adesso' : ''}" title="${MESI[i]}${pagato ? ': pagato' : ''}">${m}</span>`;
@@ -4666,8 +4957,8 @@ function disegnaQuota() {
         `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce-quota="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
       <div id="dettaglio-quota"></div>
     </section>
-    <h2>Pagamenti ${t.anno}</h2>
-    ${ricevute.length ? `<div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-scheda" role="tablist" aria-label="Voce"></div></div>` : ''}
+    <h2>Pagamenti ${esc(t.anno)}</h2>
+    ${ricevute.length ? `<div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-scheda" role="group" aria-label="Voce"></div></div>` : ''}
     <div id="pagamenti-scheda">${ricevute.length ? '' : '<p class="nota-pagamento">Nessuna ricevuta quest’anno.</p>'}</div>`;
 
   dove.querySelectorAll('[data-voce-quota]').forEach(b => {
@@ -4697,7 +4988,7 @@ function disegnaPagamentiScheda(ricevute) {
   if (!VOCI_CRONOLOGIA.some(([k]) => k === quo.voceScheda)) quo.voceScheda = 'tutte';
   el('voce-scheda').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
     const n = k === 'tutte' ? null : ricevute.filter(r => r.codice === k).length;
-    return `<button type="button" role="tab" data-voce-scheda="${k}" aria-selected="${k === quo.voceScheda}">${nome}${n === null ? '' : conta(n)}</button>`;
+    return `<button type="button" data-voce-scheda="${k}" aria-pressed="${k === quo.voceScheda}">${nome}${n === null ? '' : conta(n)}</button>`;
   }).join('');
   el('voce-scheda').querySelectorAll('[data-voce-scheda]').forEach(b => {
     b.onclick = () => { quo.voceScheda = b.dataset.voceScheda; disegnaPagamentiScheda(ricevute); };
@@ -4707,8 +4998,8 @@ function disegnaPagamentiScheda(ricevute) {
   dove.innerHTML = lista.length ? lista.map(r => `
       <div class="riga riga-pagamento">
         <div class="pag-testo">
-          <b>${r.evento ? esc(r.evento) : `${esc(r.tipo)}${r.mese ? ' ' + meseTesto(r.mese) : ''}`}</b>
-          <div class="quando">${r.evento ? esc(r.tipo) + ' · ' : ''}${dataNumerica(r.data)} · ${esc(r.numero)}</div>
+          <b>${r.evento ? esc(r.evento) : `${esc(r.tipo)}${r.mese ? ' ' + esc(meseTesto(r.mese)) : ''}`}</b>
+          <div class="quando">${r.evento ? esc(r.tipo) + ' · ' : ''}${esc(dataNumerica(r.data))} · ${esc(r.numero)}</div>
         </div>
         <div class="pag-importo"><b>${euro(r.importo)}</b><span>${esc(metodoNome(r.metodo))}</span></div>
       </div>`).join('') : '<p class="nota-pagamento">Niente di questo tipo quest’anno.</p>';
@@ -4751,7 +5042,7 @@ function disegnaPagamentoQuota() {
         const k = meseKey(t.anno, i);
         const pagato = t.mensilita.includes(k);
         const classi = [pagato ? 'pagato' : '', k === meseCorrente() ? 'adesso' : ''].join(' ').trim();
-        return `<button type="button" data-mese-quota="${k}" aria-pressed="${quo.mesi.has(k)}" ${pagato ? 'disabled' : ''} class="${classi}" title="${MESI[i]}${pagato ? ': già pagato' : ''}">${m}</button>`;
+        return `<button type="button" data-mese-quota="${esc(k)}" aria-pressed="${quo.mesi.has(k)}" ${pagato ? 'disabled' : ''} class="${classi}" title="${MESI[i]}${pagato ? ': già pagato' : ''}">${m}</button>`;
       }).join('')}</div>
       ${mancano.length > 1 ? `<div class="scelte"><button type="button" data-tutti-mesi aria-pressed="${tutti}">Tutti quelli che mancano</button></div>` : ''}`;
   }
@@ -4760,24 +5051,24 @@ function disegnaPagamentoQuota() {
       <div class="contatore"><button type="button" data-importo="-1" aria-label="Meno">−</button><b>${euro(quo.importo)}</b><button type="button" data-importo="1" aria-label="Più">+</button></div>`;
   }
   if (!t.tesserato && v !== 'contributo_mensile') {
-    html += `<p class="nota-pagamento attento">Non ha ancora la tessera ${t.anno}: ricordaglielo.</p>`;
+    html += `<p class="nota-pagamento attento">Non ha ancora la tessera ${esc(t.anno)}: ricordaglielo.</p>`;
   }
   if (!t.tesserato && v === 'contributo_mensile') {
-    html += `<p class="nota-pagamento">Il primo mese scelto è il tesseramento ${t.anno}: copre gli ingressi di tutto quel mese.</p>`;
+    html += `<p class="nota-pagamento">Il primo mese scelto è il tesseramento ${esc(t.anno)}: copre gli ingressi di tutto quel mese.</p>`;
   }
   html += `<p class="domanda">${v === 'obolo_giornaliero' || v === 'contributo_evento' ? 'Per che giorno?' : 'Quando ha pagato?'}</p>`;
   html += `
     <div class="scelte">
       <button type="button" data-giorno-quota="${isoLocale(oggi)}" data-nome="oggi" aria-pressed="${quo.giorno === 'oggi'}">Oggi</button>
       <button type="button" data-giorno-quota="${isoLocale(ieri)}" data-nome="ieri" aria-pressed="${quo.giorno === 'ieri'}">Ieri</button>
-      <label class="scelta-data" aria-pressed="${quo.giorno === 'data'}">${quo.giorno === 'data' ? dataNumerica(quo.data) : 'Altro giorno'}
-        <input type="date" id="data-quota" max="${isoLocale(oggi)}" value="${quo.data}"></label>
+      <label class="scelta-data" aria-pressed="${quo.giorno === 'data'}">${quo.giorno === 'data' ? esc(dataNumerica(quo.data)) : 'Altro giorno'}
+        <input type="date" id="data-quota" max="${isoLocale(oggi)}" value="${esc(quo.data)}"></label>
     </div>
     ${v === 'contributo_evento' ? campoEventoHtml('quota', quo.nomeEvento) : ''}
     <p class="domanda">Come ha pagato?</p>
     <div class="scelte">${METODI.map(([k, nome]) =>
       `<button type="button" data-metodo="${k}" aria-pressed="${quo.metodo === k}">${nome}</button>`).join('')}</div>`;
-  d.innerHTML = html;
+  ridisegnaTenendo(d, () => { d.innerHTML = html; });
 
   d.querySelectorAll('[data-mese-quota]').forEach(b => {
     b.onclick = () => {
@@ -4882,15 +5173,24 @@ async function apriIncassi() {
   Object.assign(inc, { giorno: 'oggi', data: oggi, metodo: null, mesi: new Set([meseCorrente()]),
                        importo: EVENTO_BASE, nomeEvento: '', scelti: [], errori: new Map() });
   const dove = el('modulo-incassi');
+  const giro = nuovoGiro('incassi');
+  // L'elenco delle quote, se e' gia' quello di quest'anno, va bene anche qui.
+  // Se no si rilegge: quello di prima puo' essere vecchio.
+  inc.soci = quo.soci && quo.annoSoci === annoCorrente() ? { soci: quo.soci } : null;
   if (!inc.soci || !tess.dati) {
     dove.className = 'vuoto';
     dove.textContent = 'Carico…';
     try {
       // I prezzi sono quelli della propria tessera: uguali per tutte le persone.
-      if (!tess.dati) tess.dati = (await chiama('tessera')).tessera;
-      inc.soci = await chiama('tessere/elenco', { anno: annoCorrente() });
+      const [tessera, elenco] = await Promise.all([
+        tess.dati ? null : chiama('tessera').then(r => r.tessera),
+        inc.soci ? null : chiama('tessere/elenco', { anno: annoCorrente() }),
+      ]);
+      if (!giroValido('incassi', giro)) return;
+      if (tessera) tess.dati = tessera;
+      if (elenco) inc.soci = elenco;
     } catch (err) {
-      dove.textContent = err.message;
+      if (giroValido('incassi', giro)) dove.textContent = err.message;
       return;
     }
   }
@@ -4923,7 +5223,7 @@ function disegnaIncassi() {
     html += `<p class="domanda">Quali mesi?</p>
       <div class="mensilita scegli">${MESI_BREVI.map((m, i) => {
         const k = meseKey(anno, i);
-        return `<button type="button" data-mese-incasso="${k}" aria-pressed="${inc.mesi.has(k)}" class="${k === meseCorrente() ? 'adesso' : ''}" title="${MESI[i]}">${m}</button>`;
+        return `<button type="button" data-mese-incasso="${esc(k)}" aria-pressed="${inc.mesi.has(k)}" class="${k === meseCorrente() ? 'adesso' : ''}" title="${MESI[i]}">${m}</button>`;
       }).join('')}</div>`;
   }
   if (inc.voce === 'contributo_evento') {
@@ -4934,8 +5234,8 @@ function disegnaIncassi() {
     <div class="scelte">
       <button type="button" data-giorno-incasso="${isoLocale(oggi)}" data-nome="oggi" aria-pressed="${inc.giorno === 'oggi'}">Oggi</button>
       <button type="button" data-giorno-incasso="${isoLocale(ieri)}" data-nome="ieri" aria-pressed="${inc.giorno === 'ieri'}">Ieri</button>
-      <label class="scelta-data" aria-pressed="${inc.giorno === 'data'}">${inc.giorno === 'data' ? dataNumerica(inc.data) : 'Altro giorno'}
-        <input type="date" id="data-incasso" max="${isoLocale(oggi)}" value="${inc.data}"></label>
+      <label class="scelta-data" aria-pressed="${inc.giorno === 'data'}">${inc.giorno === 'data' ? esc(dataNumerica(inc.data)) : 'Altro giorno'}
+        <input type="date" id="data-incasso" max="${isoLocale(oggi)}" value="${esc(inc.data)}"></label>
     </div>
     ${inc.voce === 'contributo_evento' ? campoEventoHtml('incasso', inc.nomeEvento) : ''}
     <p class="domanda">Come hanno pagato?</p>
@@ -4948,7 +5248,8 @@ function disegnaIncassi() {
       <div id="suggerimenti-incasso" class="suggerimenti-soci" role="listbox" aria-label="Persone" hidden></div>
     </div>
     <div id="scelti-incasso"></div>`;
-  dove.innerHTML = html;
+  // Il nome a meta' nel campo "Chi?" resta, e il fuoco anche.
+  const tornato = ridisegnaTenendo(dove, () => { dove.innerHTML = html; });
 
   dove.querySelectorAll('[data-voce-incasso]').forEach(b => {
     b.onclick = () => { inc.voce = b.dataset.voceIncasso; disegnaIncassi(); };
@@ -4980,6 +5281,8 @@ function disegnaIncassi() {
   if (inc.voce === 'contributo_evento') collegaCampoEvento('incasso', inc.data, (nome) => { inc.nomeEvento = nome; });
   collegaCercaIncasso();
   disegnaSceltiIncasso();
+  // Si stava scrivendo un nome: tornano anche i suggerimenti.
+  if (tornato?.id === 'cerca-incasso' && tornato.value.trim()) tornato.dispatchEvent(new Event('input'));
 }
 
 function suggerimentiIncasso(testo) {
@@ -5061,7 +5364,7 @@ function disegnaSceltiIncasso() {
         <div class="testa-prestito">
           <b>${esc(s.nome)}</b>
           <span class="importo-incasso">${p.gia ? '' : euro(p.totale)}</span>
-          <button type="button" class="togli-incasso" data-togli="${s.id}" aria-label="Togli ${esc(s.nome)}">×</button>
+          <button type="button" class="togli-incasso" data-togli="${esc(s.id)}" aria-label="Togli ${esc(s.nome)}">×</button>
         </div>
         ${nota}
       </div>`;
@@ -5113,7 +5416,8 @@ async function registraIncassi() {
     inc.errori = new Map(esiti.filter(e => !e.ok).map(e => [e.partnerId, e.errore]));
     // Chi e' registrato esce dall'elenco; chi no resta, con il motivo.
     inc.scelti = inc.scelti.filter(id => !ok.has(id));
-    inc.soci = null;
+    // L'elenco vecchio resta finche' non arriva il nuovo: intanto si puo'
+    // ancora togliere un nome senza che la pagina si rompa.
     quo.soci = null;
     quo.pagamenti = null;
     attesaAzione(false);
@@ -5159,16 +5463,22 @@ const richiestaDellaSede = (r) => !gestione.sede
   || r.sedeNome === (stato.sediInfo || []).find(x => x.slug === gestione.sede)?.nome;
 const senzaChiApre = (p) => p.serveApertura && !p.apre;
 
+// Le prenotazioni di tutti le chiedono in due: l'elenco e il controllo del
+// pallino. Conta l'ultima richiesta partita, che e' la piu' fresca.
 async function caricaGestione({ silenzioso = false } = {}) {
+  const giro = nuovoGiro('gestione');
   const dove = el('elenco-gestione');
   if (!silenzioso) {
     dove.className = 'vuoto';
     dove.textContent = 'Carico…';
   }
   try {
-    [gestione.dati] = await Promise.all([chiama('staff/prenotazioni'), sedeGestione()]);
+    const [dati] = await Promise.all([chiama('staff/prenotazioni'), sedeGestione()]);
+    if (!giroValido('gestione', giro)) return;
+    gestione.dati = dati;
     chiaviControllate = Date.now();
   } catch (err) {
+    if (!giroValido('gestione', giro)) return;
     if (silenzioso) return lamenta(err.message);
     el('filtro-gestione').hidden = true;
     dove.textContent = err.message;
@@ -5203,8 +5513,11 @@ async function chiaviGiaViste() {
 async function controllaChiavi() {
   if (el('apri-gestione').hidden || Date.now() - chiaviControllate < CHIAVI_OGNI_MS) return;
   chiaviControllate = Date.now();
+  const giro = nuovoGiro('gestione');
   try {
-    gestione.dati = await chiama('staff/prenotazioni');
+    const dati = await chiama('staff/prenotazioni');
+    if (!giroValido('gestione', giro)) { chiaviControllate = 0; return; }
+    gestione.dati = dati;
   } catch {
     chiaviControllate = 0;
     return;
@@ -5241,7 +5554,7 @@ function disegnaGestione() {
   const sedi = stato.sediInfo || [];
   el('sede-gestione').hidden = sedi.length < 2;
   el('sede-gestione').innerHTML = [['', 'Tutte'], ...sedi.map(x => [x.slug, x.nome])].map(([k, nome]) =>
-    `<button type="button" role="tab" data-sede-gestione="${k}" aria-selected="${k === gestione.sede}">${esc(nome)}</button>`).join('');
+    `<button type="button" data-sede-gestione="${esc(k)}" aria-pressed="${k === gestione.sede}">${esc(nome)}</button>`).join('');
   el('sede-gestione').querySelectorAll('[data-sede-gestione]').forEach(b => {
     b.onclick = () => {
       gestione.sede = b.dataset.sedeGestione;
@@ -5255,7 +5568,7 @@ function disegnaGestione() {
   const filtri = [['tutte', 'Tutte', righe.length], ['senza-apre', 'Senza chiavi', senza.length]];
   el('filtro-gestione').hidden = false;
   el('filtro-gestione').innerHTML = filtri.map(([k, nome, n]) =>
-    `<button type="button" role="tab" data-filtro-gestione="${k}" aria-selected="${k === gestione.filtro}">${nome}${conta(n)}</button>`).join('');
+    `<button type="button" data-filtro-gestione="${k}" aria-pressed="${k === gestione.filtro}">${nome}${conta(n)}</button>`).join('');
   el('filtro-gestione').querySelectorAll('[data-filtro-gestione]').forEach(b => {
     b.onclick = () => { gestione.filtro = b.dataset.filtroGestione; disegnaGestione(); };
   });
@@ -5288,7 +5601,7 @@ function disegnaGestione() {
     : new Date(`${g}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   const ora = (iso) => new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   html += perGiorno.size ? [...perGiorno].map(([g, lista]) => `
-    <h2 class="giorno-gestione">${nomeGiorno(g)}</h2>
+    <h2 class="giorno-gestione">${esc(nomeGiorno(g))}</h2>
     ${lista.map(p => {
       const scoperta = p.serveApertura && !p.apre;
       const chiavi = !p.serveApertura ? ''
@@ -5427,8 +5740,9 @@ function dettaglioPrenotazione(p) {
 const serieAperta = { sede: null, id: null };
 
 async function apriSerie(sede, serieId) {
-  Object.assign(serieAperta, { sede, id: serieId });
+  Object.assign(serieAperta, { sede, id: serieId, titolo: '' });
   mostra('serie');
+  const giro = nuovoGiro('serie');
   window.scrollTo(0, 0);
   const dove = el('riepilogo-serie');
   dove.className = 'vuoto';
@@ -5437,41 +5751,52 @@ async function apriSerie(sede, serieId) {
   try {
     ({ serie: s } = await chiama('staff/serie', { sede, serieId }));
   } catch (err) {
-    dove.textContent = err.message;
+    if (giroValido('serie', giro)) dove.textContent = err.message;
     return;
   }
+  // Mentre arrivava si e' tornati indietro, o si e' aperta un'altra serie:
+  // il pulsante rosso non deve finire su un'altra pagina.
+  if (!giroValido('serie', giro) || el('pannello-serie').hidden || serieAperta.id !== serieId) return;
+  serieAperta.titolo = s.titolo;
   const giorno = (iso) => new Date(iso).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const prossime = s.prossime || [];
   const righe = [
-    ['Sede', esc(s.sedeNome)],
-    ['Quando', `${esc(s.cadenza)}, ${esc(s.orario)}`],
+    ['Sede', s.sedeNome],
+    ['Quando', `${s.cadenza}, ${s.orario}`],
     [s.cominciata ? 'Va dal' : 'Comincia il', dataTesto(s.dal)],
-    ...(s.chi ? [['Proposta da', esc(s.chi)]] : []),
+    ...(s.chi ? [['Proposta da', s.chi]] : []),
     ['Date che spariscono', s.quante ? `${s.quante} nel prossimo anno` : 'nessuna'],
   ];
   dove.className = 'con-pagamento';
-  dove.innerHTML = `
-    <h1>${esc(s.titolo)}</h1>
-    <div class="riepilogo">${righe.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
-    ${s.prossime.length ? `<h2>Le prossime</h2>
-      ${s.prossime.map(d => `<div class="riga data-serie"><span class="giorno-serie">${giorno(d.inizio)}</span>${d.apre ? `<span class="quando">apre ${esc(d.apre)}</span>` : ''}</div>`).join('')}
-      ${s.quante > s.prossime.length ? `<p class="nota-pagamento">…e altre ${s.quante - s.prossime.length}.</p>` : ''}` : ''}
+  dove.innerHTML = html`
+    <h1>${s.titolo}</h1>
+    <div class="riepilogo">${righe.map(([k, v]) => html`<div><span>${k}</span><b>${v}</b></div>`)}</div>
+    ${prossime.length ? html`<h2>Le prossime</h2>
+      ${prossime.map(d => html`<div class="riga data-serie"><span class="giorno-serie">${giorno(d.inizio)}</span>${d.apre ? html`<span class="quando">apre ${d.apre}</span>` : ''}</div>`)}
+      ${s.quante > prossime.length ? html`<p class="nota-pagamento">…e altre ${s.quante - prossime.length}.</p>` : ''}` : ''}
     <p class="nota-serie">${s.cominciata ? 'Le date già passate restano nel calendario: se ne vanno solo quelle da adesso in poi.'
       : 'Non è ancora cominciata: se ne va tutta.'} Non si torna indietro.</p>
-    ${s.avvisabile ? `<div class="campo">
+    ${s.avvisabile ? raw(`<div class="campo">
       <label for="messaggio-serie">Un messaggio per chi l’ha proposta (facoltativo)</label>
       <textarea id="messaggio-serie" maxlength="500" placeholder="Per esempio, perché si chiude."></textarea>
     </div>
-    <p class="nota-pagamento">Riceve comunque un messaggio in chat che dice che l’attività è chiusa.</p>` : ''}`;
+    <p class="nota-pagamento">Riceve comunque un messaggio in chat che dice che l’attività è chiusa.</p>`) : ''}`;
   azionePrincipale = annullaSerie;
   pulsantePrincipale('Annulla la serie', true);
   el('azione').classList.add('grave');
 }
 
 async function annullaSerie() {
+  // Non si torna indietro: si chiede prima.
+  if (el('pannello-serie').hidden || !serieAperta.id) return;
+  const { sede, id } = serieAperta;
+  if (!await conferma('Tutte le date future spariscono dal calendario. Non si torna indietro.',
+    serieAperta.titolo ? `Annullo “${serieAperta.titolo}”?` : 'Annullo la serie?')) return;
+  if (el('pannello-serie').hidden || serieAperta.id !== id) return;
   const messaggio = el('messaggio-serie')?.value || '';
   attesaAzione(true);
   try {
-    await chiama('staff/annulla-serie', { sede: serieAperta.sede, serieId: serieAperta.id, messaggio });
+    await chiama('staff/annulla-serie', { sede, serieId: id, messaggio });
     attesaAzione(false);
     toast('Serie annullata.');
     mostra('gestione');
@@ -5497,7 +5822,13 @@ const SCORRI_SOGLIA = 8;
 const SCORRI_PIENO = 0.6;
 let scorriAperta = null;
 
-function scorrevoli(dove, selettore = '.riga', { tocco = null, menu = null } = {}) {
+// Da tastiera il menu della riga si apre con Maiusc+F10 o col tasto menu.
+// Lo stesso tasto, in certi browser, manda anche l'evento del tasto destro:
+// quello che arriva subito dopo il tasto si ignora, se no si apre e richiude.
+let menuDaTastiera = 0;
+const tastoMenu = (e) => (e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu';
+
+function scorrevoli(dove, selettore = '.riga', { tocco = null, menu = null, aiuto = null } = {}) {
   dove.querySelectorAll(selettore).forEach(riga => {
     if (riga.parentElement?.classList.contains('scorri')) return;
     const destra = riga.querySelector(':scope > .azioni:not([hidden]):not(.in-vista):not(.sinistra)');
@@ -5519,7 +5850,7 @@ function scorrevoli(dove, selettore = '.riga', { tocco = null, menu = null } = {
       lati[lato] = strato;
     }
     if (!lati.destra && !lati.sinistra) {
-      if (tocco) collegaSoloTocco(riga, tocco);
+      if (tocco) collegaSoloTocco(riga, tocco, menu);
       return;
     }
     const scatola = document.createElement('div');
@@ -5527,25 +5858,45 @@ function scorrevoli(dove, selettore = '.riga', { tocco = null, menu = null } = {
     riga.replaceWith(scatola);
     scatola.append(...Object.values(lati), riga);
     riga.tabIndex = 0;
-    riga.setAttribute('aria-expanded', 'false');
-    riga.setAttribute('aria-label', `${riga.textContent.trim().replace(/\s+/g, ' ')}. ${tocco ? 'Tocca per i dettagli.' : 'Tocca per le azioni.'}`);
+    descriviRiga(riga, aiuto || (tocco ? 'Tocca per i dettagli.' : 'Tocca per le azioni.'));
     collegaScorri(scatola, riga, lati, tocco, menu);
   });
   suggerisciScorri(dove);
 }
 
-function collegaSoloTocco(riga, tocco) {
+// Per il lettore di schermo: una riga senza altri controlli dentro e' un
+// pulsante, e dice se ha le azioni aperte; con dentro altri pulsanti (la
+// chat, "Apro io") e' un gruppo, perche' un pulsante dentro un pulsante non
+// si puo' usare. Le schede dei beni sono gia' pulsanti.
+function descriviRiga(riga, aiuto) {
+  if (!riga.hasAttribute('role')) {
+    const altri = [...riga.querySelectorAll('button, a, input, select, textarea')].some(n => !n.closest('[hidden]'));
+    riga.setAttribute('role', altri ? 'group' : 'button');
+  }
+  if (riga.getAttribute('role') === 'button') riga.setAttribute('aria-expanded', 'false');
+  riga.setAttribute('aria-label', `${riga.textContent.trim().replace(/\s+/g, ' ')}. ${aiuto}`);
+}
+
+function segnaAperta(riga, si) {
+  if (riga.getAttribute('role') === 'button') riga.setAttribute('aria-expanded', String(si));
+}
+
+function collegaSoloTocco(riga, tocco, menu = null) {
   riga.tabIndex = 0;
   riga.classList.add('toccabile');
   riga.onclick = (e) => { if (!e.target.closest('button, input, a, label, select, textarea')) tocco(riga); };
-  riga.onkeydown = (e) => { if (e.target === riga && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); tocco(riga); } };
+  riga.onkeydown = (e) => {
+    if (e.target !== riga) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tocco(riga); }
+    else if (tastoMenu(e)) { e.preventDefault(); menuDaTastiera = performance.now(); (menu || tocco)(riga); }
+  };
 }
 
 // Il pulsante accanto alla riga (il primo che si scopre): e' lui che si
 // allarga oltre i pulsanti, ed e' il suo colore che sta sotto gli angoli
 // tondi della riga, cosi' non resta nessun ritaglio.
 function accanto(strato, lato) {
-  const bottoni = [...strato.querySelectorAll('button')].filter(b => getComputedStyle(b).display !== 'none');
+  const bottoni = [...strato.querySelectorAll('button')].filter(b => !b.hidden);
   return lato === 'destra' ? bottoni[0] : bottoni[bottoni.length - 1];
 }
 
@@ -5559,11 +5910,11 @@ function coloreLato(scatola, lato) {
 // strato ha un ::before): copre gli angoli tondi dal lato che si apre, e
 // solo quelli. Uno sfondo dietro tutta la riga si vedrebbe come un filo
 // colorato anche lungo gli angoli dell'altro lato.
-function mostraLato(scatola, lato) {
+function mostraLato(scatola, lato, colore = null) {
   if (lato) {
     scatola.dataset.lato = lato;
     const strato = scatola.querySelector(`:scope > .scorri-azioni.${lato}`);
-    if (strato) strato.style.setProperty('--colore-accanto', coloreLato(scatola, lato));
+    if (strato) strato.style.setProperty('--colore-accanto', colore ?? coloreLato(scatola, lato));
   } else {
     delete scatola.dataset.lato;
   }
@@ -5580,7 +5931,7 @@ function apriScorri(scatola, lato) {
   scatola.classList.remove('trascina');
   const larga = strato ? strato.offsetWidth : 0;
   riga.style.transform = lato === 'destra' ? `translateX(${-larga}px)` : lato === 'sinistra' ? `translateX(${larga}px)` : '';
-  riga.setAttribute('aria-expanded', String(Boolean(lato)));
+  segnaAperta(riga, Boolean(lato));
   if (lato) mostraLato(scatola, lato);
   else {
     // Il colore se ne va quando la riga e' tornata, non prima.
@@ -5605,14 +5956,73 @@ function chiudiPieno(scatola) {
   });
 }
 
+// Il trascinamento. Tutto quello che va misurato (larghezze, il pulsante
+// accanto, i colori) si misura quando il dito si appoggia; mentre si muove
+// si fanno solo conti, e la pagina si tocca una volta per fotogramma, e
+// solo dove cambia qualcosa. Prima ogni movimento misurava e riscriveva
+// tutto, e il telefono ricalcolava la pagina a ogni pixel.
 function collegaScorri(scatola, riga, lati, tocco, menu) {
   let inizio = null;
   let trascinato = false;
+  let fotogramma = 0;
+  // Com'e' adesso la pagina, per cambiare solo quello che cambia.
+  let visto = null;
+  const vuoto = (lato = null) => ({ strato: null, lato, oltre: false, piena: false, cresce: null, larghezza: '', scala: '' });
+
+  const azzera = () => {
+    const s = visto.strato;
+    if (s) {
+      s.classList.remove('oltre', 'piena');
+      s.style.width = '';
+    }
+    if (visto.cresce) {
+      visto.cresce.classList.remove('cresce');
+      const t = visto.cresce.querySelector('.scritta-azione');
+      if (t) t.style.transform = '';
+    }
+    visto = vuoto(visto.lato);
+  };
+
+  const applica = () => {
+    fotogramma = 0;
+    const v = inizio?.vuoi;
+    if (!v) return;
+    riga.style.transform = `translateX(${v.x}px)`;
+    const strato = v.lato ? lati[v.lato] : null;
+    if (visto.strato !== strato) azzera();
+    if (strato) {
+      if (visto.oltre !== v.oltre) strato.classList.toggle('oltre', v.oltre);
+      if (visto.piena !== v.piena) strato.classList.toggle('piena', v.piena);
+      if (visto.larghezza !== v.larghezza) strato.style.width = v.larghezza;
+      if (visto.cresce !== v.cresce) {
+        if (visto.cresce) {
+          visto.cresce.classList.remove('cresce');
+          const t = visto.cresce.querySelector('.scritta-azione');
+          if (t) t.style.transform = '';
+        }
+        v.cresce?.classList.add('cresce');
+      }
+      if (v.cresce && (visto.cresce !== v.cresce || visto.scala !== v.scala)) {
+        const t = v.cresce.querySelector('.scritta-azione');
+        if (t) t.style.transform = v.scala;
+      }
+    }
+    if (visto.lato !== v.lato) mostraLato(scatola, v.lato, v.lato ? inizio.lati[v.lato].colore : null);
+    visto = { strato, lato: v.lato, oltre: v.oltre, piena: v.piena, cresce: v.cresce, larghezza: v.larghezza, scala: v.scala };
+  };
+
   riga.addEventListener('pointerdown', (e) => {
     if (e.button > 0 || e.target.closest('button, input, a, label, select, textarea')) return;
-    const larghe = { destra: lati.destra?.offsetWidth || 0, sinistra: lati.sinistra?.offsetWidth || 0 };
-    const base = scatola._lato === 'destra' ? -larghe.destra : scatola._lato === 'sinistra' ? larghe.sinistra : 0;
-    inizio = { x: e.clientX, y: e.clientY, base, larghe, tutta: riga.offsetWidth, verso: null, t: e.timeStamp, id: e.pointerId, ultimo: 0 };
+    const misure = {};
+    for (const [lato, strato] of Object.entries(lati)) {
+      const vicino = accanto(strato, lato);
+      misure[lato] = { larga: strato.offsetWidth, pieno: strato.querySelector('[data-pieno]'), vicino,
+                       colore: vicino ? getComputedStyle(vicino).backgroundColor : '' };
+    }
+    const larga = (lato) => misure[lato]?.larga || 0;
+    const base = scatola._lato === 'destra' ? -larga('destra') : scatola._lato === 'sinistra' ? larga('sinistra') : 0;
+    inizio = { x: e.clientX, y: e.clientY, base, lati: misure, tutta: riga.offsetWidth, verso: null,
+               t: e.timeStamp, id: e.pointerId, ultimo: 0, vuoi: null };
     trascinato = false;
   });
   riga.addEventListener('pointermove', (e) => {
@@ -5626,50 +6036,51 @@ function collegaScorri(scatola, riga, lati, tocco, menu) {
       riga.setPointerCapture?.(e.pointerId);
       scatola.classList.add('trascina');
       if (scorriAperta && scorriAperta !== scatola) apriScorri(scorriAperta, false);
+      // Una volta sola per gesto: si parte puliti (anche da uno swipe
+      // completo rimasto aperto).
+      chiudiPieno(scatola);
+      visto = vuoto(scatola.dataset.lato || null);
     }
     trascinato = true;
     let x = inizio.base + dx;
     const lato = x < 0 ? 'destra' : x > 0 ? 'sinistra' : null;
-    const strato = lato && lati[lato];
-    const larga = lato ? inizio.larghe[lato] : 0;
-    const pieno = strato?.querySelector('[data-pieno]');
+    const info = lato ? inizio.lati[lato] : null;
+    const larga = info ? info.larga : 0;
     // Un lato senza pulsanti fa solo un po' di resistenza. Con i pulsanti si
     // va avanti libero fino al limite (oltre la soglia dello swipe completo),
     // dove la scritta e' stirata al massimo; da li' in poi la riga fa da
     // elastico e torna quando si lascia.
     const limite = Math.max(larga, inizio.tutta * SCORRI_PIENO) + 50;
-    if (lato && !strato) x = x / 4;
+    if (lato && !info) x = x / 4;
     else if (lato && Math.abs(x) > limite) x = Math.sign(x) * (limite + (Math.abs(x) - limite) / 4);
     x = Math.max(-inizio.tutta, Math.min(inizio.tutta, x));
     inizio.ultimo = x;
-    riga.style.transform = `translateX(${x}px)`;
-    chiudiPieno(scatola);
-    if (strato && Math.abs(x) > larga) {
-      // Oltre i pulsanti lo strato segue la riga: si allarga l'azione piena
-      // se c'e', se no quella accanto. A meta' riga resta solo la piena.
-      strato.classList.add('oltre');
-      strato.classList.toggle('piena', Boolean(pieno) && Math.abs(x) > inizio.tutta * SCORRI_PIENO);
-      const cresce = pieno || accanto(strato, lato);
-      cresce?.classList.add('cresce');
-      strato.style.width = `${Math.abs(x)}px`;
-      // La scritta si allarga con lo swipe: le lettere si stirano in
-      // larghezza, le righe restano quelle. Al limite e' un quarto piu' larga,
-      // e li' si ferma, come la riga.
-      const scritta = cresce?.querySelector('.scritta-azione');
-      const quanto = Math.min(1, Math.max(0, (Math.abs(x) - larga) / (limite - larga)));
-      if (scritta) scritta.style.transform = `scaleX(${1 + 0.25 * quanto})`;
-    }
-    mostraLato(scatola, strato ? lato : null);
+    // Oltre i pulsanti lo strato segue la riga: si allarga l'azione piena
+    // se c'e', se no quella accanto. A meta' riga resta solo la piena.
+    const oltre = Boolean(info) && Math.abs(x) > larga;
+    const cresce = oltre ? (info.pieno || info.vicino || null) : null;
+    // La scritta si allarga con lo swipe: le lettere si stirano in
+    // larghezza, le righe restano quelle. Al limite e' un quarto piu' larga,
+    // e li' si ferma, come la riga.
+    const quanto = oltre ? Math.min(1, Math.max(0, (Math.abs(x) - larga) / (limite - larga))) : 0;
+    inizio.vuoi = {
+      x, lato: info ? lato : null, oltre,
+      piena: oltre && Boolean(info.pieno) && Math.abs(x) > inizio.tutta * SCORRI_PIENO,
+      cresce, larghezza: oltre ? `${Math.abs(x)}px` : '', scala: cresce ? `scaleX(${1 + 0.25 * quanto})` : '',
+    };
+    if (!fotogramma) fotogramma = requestAnimationFrame(applica);
   });
   const fine = (e) => {
     if (!inizio || e.pointerId !== inizio.id) return;
+    // L'ultimo movimento, se il fotogramma non e' ancora passato.
+    if (fotogramma) { cancelAnimationFrame(fotogramma); applica(); }
     const x = inizio.ultimo;
     const lato = x < 0 ? 'destra' : x > 0 ? 'sinistra' : null;
     const strato = lato && lati[lato];
     // Chi ascolta il click della riga (la scelta di un bene) sa che era
     // uno swipe e non un tocco.
     if (trascinato) { riga.dataset.appenaScorsa = '1'; setTimeout(() => delete riga.dataset.appenaScorsa, 0); }
-    if (trascinato && strato?.classList.contains('piena')) {
+    if (trascinato && strato && visto?.strato === strato && visto.piena) {
       // Swipe completo: la riga resta aperta del tutto, con l'azione piena
       // in vista, e l'azione parte (chiede conferma da se'). Se va a buon
       // fine la riga se ne va; se no si richiude con un tocco, sulla riga o
@@ -5682,16 +6093,16 @@ function collegaScorri(scatola, riga, lati, tocco, menu) {
       if (scorriAperta && scorriAperta !== scatola) apriScorri(scorriAperta, false);
       scatola._lato = lato;
       scorriAperta = scatola;
-      riga.setAttribute('aria-expanded', 'true');
-      mostraLato(scatola, lato);
+      segnaAperta(riga, true);
+      mostraLato(scatola, lato, inizio.lati[lato].colore);
       inizio = null;
       setTimeout(() => pieno?.click(), 200);
       return;
     }
-    chiudiPieno(scatola);
+    if (trascinato) chiudiPieno(scatola);
     if (trascinato) {
       const veloce = Math.abs(e.clientX - inizio.x) / Math.max(1, e.timeStamp - inizio.t) > 0.5;
-      const apri = strato && (veloce || Math.abs(x) > inizio.larghe[lato] / 2) ? lato : false;
+      const apri = strato && (veloce || Math.abs(x) > inizio.lati[lato].larga / 2) ? lato : false;
       apriScorri(scatola, apri);
       if (apri) scorriImparato();
     }
@@ -5700,6 +6111,7 @@ function collegaScorri(scatola, riga, lati, tocco, menu) {
   riga.addEventListener('pointerup', fine);
   riga.addEventListener('pointercancel', () => {
     if (!inizio) return;
+    if (fotogramma) { cancelAnimationFrame(fotogramma); fotogramma = 0; }
     inizio = null;
     chiudiPieno(scatola);
     apriScorri(scatola, scatola._lato || false);
@@ -5708,6 +6120,15 @@ function collegaScorri(scatola, riga, lati, tocco, menu) {
     if (scatola._lato) return apriScorri(scatola, false);
     if (tocco) return tocco(riga);
     apriScorri(scatola, true);
+  };
+  // Il menu (o, dove non c'e', i pulsanti) da tasto destro, pressione
+  // lunga e tastiera.
+  const apriMenu = () => {
+    if (menu) { if (scatola._lato) apriScorri(scatola, false); return menu(riga); }
+    const apri = !scatola._lato;
+    apriScorri(scatola, apri);
+    if (apri) scorriImparato();
+    return null;
   };
   riga.addEventListener('click', (e) => {
     if (trascinato) { trascinato = false; return; }
@@ -5721,18 +6142,25 @@ function collegaScorri(scatola, riga, lati, tocco, menu) {
     if (e.target.closest('input, textarea, select, a')) return;
     e.preventDefault();
     if (trascinato) return;
+    if (performance.now() - menuDaTastiera < 600) return;
     inizio = null;
     // Dove c'e' un menu delle azioni, il tasto destro (o la pressione lunga)
     // apre quello, come il tocco.
-    if (menu) { if (scatola._lato) apriScorri(scatola, false); return menu(riga); }
-    const apri = !scatola._lato;
-    apriScorri(scatola, apri);
-    if (apri) scorriImparato();
+    apriMenu();
   });
+  // Da tastiera: Invio o spazio come il tocco; Maiusc+F10 (o il tasto menu)
+  // apre il menu delle azioni; Esc richiude i pulsanti.
   riga.addEventListener('keydown', (e) => {
-    if (e.target !== riga || (e.key !== 'Enter' && e.key !== ' ')) return;
-    e.preventDefault();
-    tocca();
+    if (e.target !== riga) return;
+    if (e.key === 'Escape' && scatola._lato) { e.preventDefault(); apriScorri(scatola, false); return; }
+    if (tastoMenu(e)) {
+      e.preventDefault();
+      menuDaTastiera = performance.now();
+      apriMenu();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tocca();
+    } else return;
     if (scatola._lato) scatola.querySelector(`:scope > .scorri-azioni.${scatola._lato} button:not(:disabled)`)?.focus();
   });
 }
@@ -5760,11 +6188,15 @@ let menuAperto = null;
 
 function chiudiMenuRiga() {
   if (!menuAperto) return;
-  menuAperto.velo.remove();
-  menuAperto.lista.remove();
-  menuAperto.riga.classList.remove('con-menu');
+  const { lista, velo, riga } = menuAperto;
+  // Chi era nel menu (da tastiera) torna sulla riga.
+  const dentro = lista.contains(document.activeElement);
+  velo.remove();
+  lista.remove();
+  riga.classList.remove('con-menu');
   menuAperto = null;
   removeEventListener('scroll', chiudiMenuRiga);
+  if (dentro && riga.isConnected) riga.focus({ preventScroll: true });
 }
 
 async function menuDellaRiga(riga) {
@@ -5775,17 +6207,26 @@ async function menuDellaRiga(riga) {
   const altre = bottoni.filter(b => !b.classList.contains('grave'));
   const gravi = bottoni.filter(b => b.classList.contains('grave'));
   const ordinati = [...altre, ...gravi];
-  const voce = (b, i) => `<button type="button" role="menuitem" class="voce-menu${b.classList.contains('grave') ? ' grave' : ''}" data-voce-menu="${i}">
-      <span class="icona-menu">${ICONE_MENU[b.dataset.icona] || ''}</span>
-      <span>${esc(b.querySelector('.scritta-azione')?.textContent || b.textContent.trim())}</span></button>`;
+  const voce = (b, i) => html`<button type="button" role="menuitem" tabindex="-1" class="voce-menu${b.classList.contains('grave') ? ' grave' : ''}" data-voce-menu="${i}">
+      <span class="icona-menu">${raw(ICONE_MENU[b.dataset.icona] || '')}</span>
+      <span>${b.querySelector('.scritta-azione')?.textContent || b.textContent.trim()}</span></button>`;
   const lista = document.createElement('div');
   lista.className = 'menu-riga';
   lista.setAttribute('role', 'menu');
+  lista.setAttribute('aria-label', 'Azioni');
   lista.innerHTML = altre.map((b, i) => voce(b, i)).join('') +
     (altre.length && gravi.length ? '<div class="separa-menu" role="separator"></div>' : '') +
     gravi.map((b, i) => voce(b, altre.length + i)).join('');
   lista.style.visibility = 'hidden';
   document.body.append(lista);
+  const velo = document.createElement('div');
+  velo.className = 'velo-menu';
+  velo.addEventListener('pointerdown', (e) => { e.preventDefault(); chiudiMenuRiga(); });
+  // Il menu e' "aperto" da subito, anche mentre la pagina scorre per fargli
+  // posto: un secondo tocco in quel momento lo chiude, invece di aprirne un
+  // altro che restava orfano.
+  const questo = { lista, velo, riga };
+  menuAperto = questo;
   // Quanto spazio serve sotto la riga, sopra il menu dell'app.
   const fondo = (el('azione').hidden ? innerHeight : el('azione').getBoundingClientRect().top) -
     (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--menu')) || 62) - 24;
@@ -5793,6 +6234,7 @@ async function menuDellaRiga(riga) {
   if (manca > 0) {
     scorriDi(manca, 280);
     await new Promise(r => setTimeout(r, 300));
+    if (menuAperto !== questo) return;   // chiuso nel frattempo
   }
   const r = riga.getBoundingClientRect();
   const larga = Math.min(260, r.width);
@@ -5800,18 +6242,25 @@ async function menuDellaRiga(riga) {
   lista.style.left = `${r.right - larga}px`;
   lista.style.width = `${larga}px`;
   lista.style.visibility = '';
-  const velo = document.createElement('div');
-  velo.className = 'velo-menu';
-  velo.addEventListener('pointerdown', (e) => { e.preventDefault(); chiudiMenuRiga(); });
   document.body.append(velo);
   riga.classList.add('con-menu');
-  menuAperto = { lista, velo, riga };
-  setTimeout(() => addEventListener('scroll', chiudiMenuRiga, { once: true }), 50);
-  lista.querySelectorAll('[data-voce-menu]').forEach(v => {
+  setTimeout(() => { if (menuAperto === questo) addEventListener('scroll', chiudiMenuRiga, { once: true }); }, 50);
+  const voci = [...lista.querySelectorAll('[data-voce-menu]')];
+  voci.forEach(v => {
     v.onclick = () => { chiudiMenuRiga(); ordinati[Number(v.dataset.voceMenu)].click(); };
   });
-  lista.addEventListener('keydown', (e) => { if (e.key === 'Escape') { chiudiMenuRiga(); riga.focus(); } });
-  lista.querySelector('[data-voce-menu]')?.focus({ preventScroll: true });
+  // Da tastiera, come i menu del sistema: frecce, Inizio e Fine per
+  // muoversi; Esc o Tab chiudono e si torna sulla riga.
+  lista.addEventListener('keydown', (e) => {
+    const qui = voci.indexOf(document.activeElement);
+    const vai = (i) => voci[(i + voci.length) % voci.length]?.focus();
+    if (e.key === 'ArrowDown') { e.preventDefault(); vai(qui + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); vai(qui < 0 ? -1 : qui - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); vai(0); }
+    else if (e.key === 'End') { e.preventDefault(); vai(-1); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); chiudiMenuRiga(); }
+  });
+  voci[0]?.focus({ preventScroll: true });
 }
 
 // Un tocco fuori dalla riga aperta la richiude.
@@ -5822,17 +6271,59 @@ document.addEventListener('pointerdown', (e) => {
 // ---- il foglio dal basso: dettagli e domande con piu' di due risposte
 // Uno solo per volta; si chiude toccando fuori, con Indietro o col tasto
 // di Telegram.
-function apriFoglio(html) {
+// Mentre un foglio e' aperto la tastiera resta dentro (Tab gira fra i suoi
+// controlli), Esc lo chiude, e chiuso il fuoco torna dov'era prima.
+const FOCUSABILI = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), ' +
+  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function trattieniFuoco(velo, scatola, chiudi) {
+  const prima = document.activeElement;
+  const tasto = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); chiudi(); return; }
+    if (e.key !== 'Tab') return;
+    const dentro = [...scatola.querySelectorAll(FOCUSABILI)].filter(n => !n.closest('[hidden]'));
+    if (!dentro.length) { e.preventDefault(); scatola.focus(); return; }
+    const primo = dentro[0], ultimo = dentro[dentro.length - 1];
+    if (e.shiftKey && (document.activeElement === primo || !scatola.contains(document.activeElement))) {
+      e.preventDefault(); ultimo.focus();
+    } else if (!e.shiftKey && (document.activeElement === ultimo || !scatola.contains(document.activeElement))) {
+      e.preventDefault(); primo.focus();
+    }
+  };
+  velo.addEventListener('keydown', tasto);
+  return () => {
+    velo.removeEventListener('keydown', tasto);
+    if (prima?.isConnected && typeof prima.focus === 'function') prima.focus({ preventScroll: true });
+  };
+}
+
+let rilasciaFoglio = null;
+function apriFoglio(contenuto) {
   const velo = el('foglio');
-  el('foglio-corpo').innerHTML = html;
+  const scatola = velo.querySelector('.foglio');
+  el('foglio-corpo').innerHTML = contenuto;
+  // Il titolo del foglio e' il suo nome per il lettore di schermo.
+  const titolo = el('foglio-corpo').querySelector('h1, h2');
+  if (titolo) { titolo.id = 'foglio-titolo'; scatola.setAttribute('aria-labelledby', 'foglio-titolo'); }
+  else scatola.removeAttribute('aria-labelledby');
+  scatola.tabIndex = -1;
+  const giaAperto = !velo.hidden;
   velo.hidden = false;
   tg?.BackButton?.show();
+  if (!giaAperto) { rilasciaFoglio?.(); rilasciaFoglio = trattieniFuoco(velo, scatola, chiudiFoglio); }
+  // Il fuoco entra nel foglio (non nel campo: sul telefono aprirebbe la
+  // tastiera sopra le domande).
+  if (!giaAperto || !scatola.contains(document.activeElement)) scatola.focus({ preventScroll: true });
   return el('foglio-corpo');
 }
 
 function chiudiFoglio() {
+  if (el('foglio').hidden) return;
   el('foglio').hidden = true;
   el('foglio-corpo').innerHTML = '';
+  const rilascia = rilasciaFoglio;
+  rilasciaFoglio = null;
+  rilascia?.();
 }
 el('foglio').addEventListener('click', (e) => { if (e.target === el('foglio')) chiudiFoglio(); });
 
@@ -5924,8 +6415,19 @@ const conta = (n) => ` <span class="conta">${n}</span>`;
 // ------------------------------------------------------------------ avvio
 const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute', 'gestione', 'serie', 'quote', 'quota', 'incassi'];
 
+// I caricamenti di ogni pagina: lasciandola, le risposte in viaggio non
+// valgono piu'.
+const GIRI_PAGINA = { mie: ['mie'], gestione: ['gestione'], serie: ['serie'], prestiti: ['prestiti'],
+  tessera: ['tessera'], quote: ['quote', 'pagamenti'], quota: ['quota'], incassi: ['incassi'] };
+
 function mostra(quale) {
   chiudiMenuRiga();
+  chiudiFoglio();
+  fermaScanner();
+  if (scorriAperta) apriScorri(scorriAperta, false);
+  for (const [pagina, chiavi] of Object.entries(GIRI_PAGINA)) {
+    if (pagina !== quale) chiavi.forEach(nuovoGiro);
+  }
   if (quale !== 'prenota') stato.spostando = null;
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
   // "Segna come prestato" e' del bene scelto in biblioteca: cambiando scheda
@@ -5953,9 +6455,18 @@ function mostra(quale) {
     el('azione').classList.add('con-etichetta');
   }
   else nascondiAzione();
-  if (quale === 'mie') { caricaMie(); controllaChiavi(); }
+  if (quale === 'mie') {
+    // Appena vista e senza modifiche nel frattempo: l'elenco e' ancora quello.
+    if (eFresco('mie') && el('elenco-mie').className !== 'vuoto') {
+      el('azione').classList.toggle('con-etichetta', (stato.quanteMie || 0) <= MAX_CON_AGGIUNGI);
+    } else caricaMie();
+    controllaChiavi();
+  }
   if (quale === 'inventario') apriInventario();
-  if (quale === 'tessera') caricaTessera();
+  if (quale === 'tessera') {
+    if (eFresco('tessera') && tess.dati && el('tessera').querySelector('#dettaglio-pagamento')) disegnaPagamento();
+    else caricaTessera();
+  }
   if (quale === 'gestione') caricaGestione();
   if (quale === 'quote') {
     caricaQuote();
@@ -5970,7 +6481,10 @@ async function avvia() {
   try {
     info = await chiama('stato');
   } catch (err) {
-    document.body.innerHTML = `<div class="vuoto">${err.message}</div>`;
+    const avviso = document.createElement('div');
+    avviso.className = 'vuoto';
+    avviso.textContent = err.message;
+    document.body.replaceChildren(avviso);
     return;
   }
   if (!info.socio) return mostraRegistrazione(info.registrazione);
@@ -5981,11 +6495,11 @@ async function avvia() {
   stato.daOra = 18;
   stato.aOra = 21;
 
-  el('sedi').innerHTML = info.sedi.map(s => `
+  el('sedi').innerHTML = html`${info.sedi.map(s => html`
     <button data-slug="${s.slug}" aria-pressed="false">
       <span>${s.nome}</span>
-      ${s.indirizzo ? `<small>${s.indirizzo}</small>` : ''}
-    </button>`).join('');
+      ${s.indirizzo ? html`<small>${s.indirizzo}</small>` : ''}
+    </button>`)}`;
   el('sedi').querySelectorAll('button').forEach(b => {
     b.onclick = async () => {
       stato.sede = b.dataset.slug;
@@ -6002,13 +6516,25 @@ async function avvia() {
   // invece di mostrarlo spento senza spiegare perche'.
   el('campo-vetrina').hidden = !info.direttivo;
 
-  el('categorie').innerHTML = (info.categorie || []).map(c => `
-    <button class="categoria" data-slug="${c.slug}" aria-pressed="false"
-            style="--tinta:${c.colore}">
+  // Colore e icona non passano dall'HTML: il colore va nello stile solo se
+  // e' davvero un colore, l'icona solo se e' un indirizzo http(s) o della
+  // nostra pagina, e se non si carica si nasconde.
+  el('categorie').innerHTML = html`${(info.categorie || []).map(c => html`
+    <button class="categoria" data-slug="${c.slug}" aria-pressed="false">
       <span class="tinta"></span>
-      <img src="${c.icona}" alt="" onerror="this.style.visibility='hidden'">
+      <img alt="">
       <span class="nome">${c.nome}</span>
-    </button>`).join('');
+    </button>`)}`;
+  el('categorie').querySelectorAll('.categoria').forEach((b, i) => {
+    const c = info.categorie[i];
+    if (c.colore && CSS.supports('color', String(c.colore))) b.style.setProperty('--tinta', String(c.colore));
+    const img = b.querySelector('img');
+    img.addEventListener('error', () => { img.style.visibility = 'hidden'; });
+    let src = null;
+    try { src = c.icona ? new URL(String(c.icona), location.href) : null; } catch {}
+    if (src && ['https:', 'http:'].includes(src.protocol) || src?.protocol === location.protocol) img.src = src.href;
+    else img.style.visibility = 'hidden';
+  });
   // Che nome ci vada non e' la stessa domanda per una campagna di ruolo e per
   // una serata di giochi da tavolo: l'esempio nel campo cambia con la
   // categoria, e i testi stanno in categorie.txt insieme al resto.
