@@ -10,10 +10,10 @@
 // un evento non appartiene.
 
 import crypto from 'crypto';
-import fs from 'fs';
 import path from 'path';
 import { DateTime } from 'luxon';
 import { google } from 'googleapis';
+import { creaStore } from './jsonStore.js';
 
 const ZONA = 'Europe/Rome';
 
@@ -26,8 +26,9 @@ export const ORA_MASSIMA = 24;
 export const GIORNI_AVANTI = 60;
 
 const DIR = path.dirname(new URL(import.meta.url).pathname);
-const FILE_BLOCCATI = path.join(DIR, 'dati', 'bloccati.json');
-const FILE_RICHIESTE = path.join(DIR, 'dati', 'richieste.json');
+// Tenuti anche in memoria: eBloccato si chiede quasi a ogni chiamata.
+const bloccati = creaStore(path.join(DIR, 'dati', 'bloccati.json'));
+const richieste = creaStore(path.join(DIR, 'dati', 'richieste.json'));
 
 
 // ---------- identita' di chi apre l'app ----------
@@ -78,46 +79,30 @@ export function verificaInitData(initData, botToken) {
 
 
 // ---------- blocchi ----------
-function leggiBloccati() {
-  try {
-    return JSON.parse(fs.readFileSync(FILE_BLOCCATI, 'utf8'));
-  } catch (err) {
-    if (err.code !== 'ENOENT') console.error('bloccati.json illeggibile:', err.message);
-    return {};
-  }
-}
-
-function scriviBloccati(dati) {
-  fs.mkdirSync(path.dirname(FILE_BLOCCATI), { recursive: true });
-  const provvisorio = FILE_BLOCCATI + '.tmp';
-  fs.writeFileSync(provvisorio, JSON.stringify(dati, null, 2));
-  fs.renameSync(provvisorio, FILE_BLOCCATI);
-}
-
 export function eBloccato(userId) {
-  return Boolean(leggiBloccati()[String(userId)]);
+  return Boolean(bloccati.leggi()[String(userId)]);
 }
 
 export function blocca(userId, nome, daChi) {
-  const dati = leggiBloccati();
+  const dati = bloccati.copia();
   dati[String(userId)] = {
     nome,
     daChi,
     quando: DateTime.now().setZone(ZONA).toISO(),
   };
-  scriviBloccati(dati);
+  bloccati.scrivi(dati);
 }
 
 export function sblocca(userId) {
-  const dati = leggiBloccati();
+  const dati = bloccati.copia();
   if (!dati[String(userId)]) return false;
   delete dati[String(userId)];
-  scriviBloccati(dati);
+  bloccati.scrivi(dati);
   return true;
 }
 
 export function elencoBloccati() {
-  return Object.entries(leggiBloccati()).map(([id, v]) => ({ id, ...v }));
+  return Object.entries(bloccati.leggi()).map(([id, v]) => ({ id, ...v }));
 }
 
 
@@ -125,52 +110,68 @@ export function elencoBloccati() {
 // Un'attivita' che si ripete ogni settimana occupa la stanza per sempre: la
 // decide lo staff, non chi la chiede. Finche' non e' approvata non esiste
 // sul calendario, quindi vive qui.
-function leggiRichieste() {
-  try {
-    return JSON.parse(fs.readFileSync(FILE_RICHIESTE, 'utf8'));
-  } catch (err) {
-    if (err.code !== 'ENOENT') console.error('richieste.json illeggibile:', err.message);
-    return {};
-  }
-}
-
-function scriviRichieste(dati) {
-  fs.mkdirSync(path.dirname(FILE_RICHIESTE), { recursive: true });
-  const provvisorio = FILE_RICHIESTE + '.tmp';
-  fs.writeFileSync(provvisorio, JSON.stringify(dati, null, 2));
-  fs.renameSync(provvisorio, FILE_RICHIESTE);
-}
-
 export function salvaRichiesta(richiesta) {
-  const dati = leggiRichieste();
+  const dati = richieste.copia();
   const id = crypto.randomBytes(6).toString('hex');
   dati[id] = { ...richiesta, quando: DateTime.now().setZone(ZONA).toISO() };
-  scriviRichieste(dati);
+  richieste.scrivi(dati);
   return id;
 }
 
 export function leggiRichiesta(id) {
-  return leggiRichieste()[id] || null;
+  const r = Object.hasOwn(richieste.leggi(), String(id)) ? richieste.leggi()[id] : null;
+  return r ? structuredClone(r) : null;
 }
 
 export function elencoRichieste() {
-  return Object.entries(leggiRichieste()).map(([id, r]) => ({ id, ...r }));
+  return Object.entries(richieste.leggi()).map(([id, r]) => ({ id, ...structuredClone(r) }));
 }
 
 export function aggiornaRichiesta(id, campi) {
-  const dati = leggiRichieste();
-  if (!dati[id]) return false;
+  const dati = richieste.copia();
+  if (!Object.hasOwn(dati, String(id))) return false;
   dati[id] = { ...dati[id], ...campi };
-  scriviRichieste(dati);
+  richieste.scrivi(dati);
   return true;
 }
 
 export function chiudiRichiesta(id) {
-  const dati = leggiRichieste();
-  if (!dati[id]) return false;
+  const dati = richieste.copia();
+  if (!Object.hasOwn(dati, String(id))) return false;
   delete dati[id];
-  scriviRichieste(dati);
+  richieste.scrivi(dati);
   return true;
+}
+
+// Due persone dello staff approvano insieme (una dal gruppo, una dall'app):
+// decide la prima. Si segna qui, prima di qualsiasi chiamata a Google:
+// lettura e scrittura sono sincrone, quindi nessun'altra richiesta puo'
+// infilarsi in mezzo. Una presa in carico vecchia di qualche minuto e' di un
+// tentativo morto a meta' (il server riavviato), e non blocca piu'.
+const PRESA_VALIDA_PER_MS = 5 * 60 * 1000;
+
+function inCarico(r) {
+  return r?.inCaricoA && Date.now() - Number(r.inCaricoDal || 0) < PRESA_VALIDA_PER_MS
+    ? r.inCaricoA : null;
+}
+
+export function prendiInCaricoRichiesta(id, daChi) {
+  const r = leggiRichiesta(id);
+  if (!r) return { esito: 'sparita' };
+  const gia = inCarico(r);
+  if (gia) return { esito: 'occupata', daChi: gia };
+  aggiornaRichiesta(id, { inCaricoA: daChi || 'staff', inCaricoDal: Date.now() });
+  return { esito: 'presa', richiesta: r };
+}
+
+export function rilasciaRichiesta(id) {
+  aggiornaRichiesta(id, { inCaricoA: null, inCaricoDal: null });
+}
+
+// Chi la sta approvando, o null: una richiesta in approvazione non si
+// rifiuta, se no si chiude mentre la serie sta nascendo.
+export function richiestaInCaricoA(id) {
+  return inCarico(leggiRichiesta(id));
 }
 
 
@@ -199,11 +200,23 @@ export function validaRichiesta({ data, oraInizio, oraFine }) {
 
 // Gli estremi in DateTime. La fine alle 24 e' la mezzanotte del giorno dopo:
 // scriverla come "ora 24" sullo stesso giorno non esiste.
+// L'ora si imposta sull'orologio del giorno, non si somma alla mezzanotte:
+// nei due giorni del cambio d'ora la giornata dura 23 o 25 ore, e "mezzanotte
+// piu' 16 ore" diventava le 15 o le 17. Le ore possono avere la mezz'ora
+// (18.5 sono le 18:30).
+function allOra(giorno, ore) {
+  const n = Number(ore);
+  const intere = Math.floor(n);
+  const minuti = Math.round((n - intere) * 60);
+  const base = intere >= 24 ? giorno.plus({ days: Math.floor(intere / 24) }).startOf('day') : giorno;
+  return base.set({ hour: intere % 24, minute: minuti, second: 0, millisecond: 0 });
+}
+
 export function estremi(data, oraInizio, oraFine) {
   const giorno = DateTime.fromISO(data, { zone: ZONA }).startOf('day');
   return {
-    inizio: giorno.plus({ hours: Number(oraInizio) }),
-    fine: giorno.plus({ hours: Number(oraFine) }),
+    inizio: allOra(giorno, oraInizio),
+    fine: allOra(giorno, oraFine),
   };
 }
 
@@ -295,9 +308,12 @@ export async function occupazione(auth, calendarId, inizio, fine) {
       // calendario e basta.
       telegramId: ev.extendedProperties?.private?.telegram_id || null,
     }))
+    // Gli eventi di tutto il giorno hanno solo la data: va letta come
+    // mezzanotte di qui, non dell'orologio del server (UTC). Contano come
+    // occupazione di tutta la giornata, come prima.
     .filter((ev) => {
-      const a = DateTime.fromISO(ev.inizio);
-      const b = DateTime.fromISO(ev.fine);
+      const a = DateTime.fromISO(ev.inizio, { zone: ZONA });
+      const b = DateTime.fromISO(ev.fine, { zone: ZONA });
       return b > inizio && a < fine;
     });
 }
@@ -458,25 +474,64 @@ export async function saltaIstanza(auth, calendarId, istanzaId) {
 
 // Sposta una sola data di una serie (o una prenotazione singola): cambia
 // giorno, ora e, se serve, sede. Si modifica l'istanza, non la serie, cosi'
-// le altre date restano dove sono. Cambiando sede l'evento passa al calendario
-// della nuova sede: da quel momento e' una data a se'.
-export async function spostaIstanza(auth, { da, nuova, eventId, inizio, fine }) {
+// le altre date restano dove sono.
+// Cambiando sede non si puo' spostare l'istanza: Google sposta fra
+// calendari solo eventi interi, non una data di una serie. Si crea allora
+// un evento nuovo nel calendario della nuova sede, con titolo, descrizione
+// e dati di chi ha prenotato, e si toglie la data vecchia: da quel momento
+// e' una data a se'. Chi apriva apriva l'altra sede, quindi non si copia;
+// e il luogo si copia solo se `tieniLuogo` dice che non indica la sede di
+// prima (un indirizzo di fuori sede, per esempio).
+export async function spostaIstanza(auth, { da, nuova, eventId, inizio, fine, tieniLuogo = () => false }) {
   const api = client(auth);
-  let calendarId = da;
-  let id = eventId;
-  if (nuova !== da) {
-    const { data } = await api.events.move({ calendarId: da, eventId, destination: nuova });
-    calendarId = nuova;
-    id = data.id;
+  const orari = {
+    start: { dateTime: inizio.toISO(), timeZone: ZONA },
+    end: { dateTime: fine.toISO(), timeZone: ZONA },
+  };
+  if (nuova === da) {
+    await api.events.patch({ calendarId: da, eventId, requestBody: orari });
+    return { calendarId: da, eventId };
   }
-  await api.events.patch({
-    calendarId,
-    eventId: id,
-    requestBody: {
-      start: { dateTime: inizio.toISO(), timeZone: 'Europe/Rome' },
-      end: { dateTime: fine.toISO(), timeZone: 'Europe/Rome' },
+
+  const { data: vecchio } = await api.events.get({ calendarId: da, eventId });
+  // Una serie intera (l'evento madre) invece si sposta com'e', con tutte le
+  // sue date: e' un evento intero, e Google lo sa spostare.
+  if (vecchio.recurrence?.length) {
+    const { data } = await api.events.move({ calendarId: da, eventId, destination: nuova });
+    await api.events.patch({ calendarId: nuova, eventId: data.id, requestBody: orari });
+    return { calendarId: nuova, eventId: data.id };
+  }
+  const { apre, ...privati } = vecchio.extendedProperties?.private || {};
+  // Una data staccata dalla serie non si ripete piu': per l'app e per la
+  // conferma settimanale e' una prenotazione singola.
+  if (vecchio.recurringEventId) {
+    privati.fissa = 'no';
+    delete privati.ricorrenza;
+  }
+  const corpo = {
+    summary: vecchio.summary,
+    description: String(vecchio.description || '')
+      .split('\n').filter((riga) => !/^Apre: /.test(riga.trim())).join('\n'),
+    ...orari,
+    extendedProperties: {
+      ...(vecchio.extendedProperties || {}),
+      private: privati,
     },
-  });
+  };
+  if (vecchio.colorId) corpo.colorId = vecchio.colorId;
+  if (vecchio.location && tieniLuogo(vecchio.location)) corpo.location = vecchio.location;
+
+  const { data: nuovo } = await api.events.insert({ calendarId: nuova, requestBody: corpo });
+  try {
+    await api.events.delete({ calendarId: da, eventId });
+  } catch (err) {
+    // Senza togliere la vecchia ci sarebbero due date: si toglie la nuova e
+    // si dice che non e' andata.
+    await api.events.delete({ calendarId: nuova, eventId: nuovo.id })
+      .catch((e) => console.error('sposta: la copia nella nuova sede e rimasta:', e.message));
+    throw err;
+  }
+  return { calendarId: nuova, eventId: nuovo.id };
 }
 
 export async function leggiPrenotazione(auth, calendarId, eventId) {

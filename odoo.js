@@ -45,12 +45,27 @@ const ERRORI_PER_UTENTE = new Set([
   'odoo.exceptions.ValidationError',
 ]);
 
-async function rpc(service, method, args) {
-  const risposta = await fetch(`${CONFIG.url}/jsonrpc`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { service, method, args } }),
-  });
+// Odoo risponde in un secondo o due; oltre questi tempi non risponde piu', e
+// una richiesta appesa tiene appesa la pagina che aspetta. I PDF delle
+// ricevute si rendono al momento, e ci mettono di piu'.
+const TEMPO_MS = 15 * 1000;
+const TEMPI_LUNGHI_MS = { ricevuta_pdf: 60 * 1000, ricevute_pdf: 120 * 1000 };
+
+async function rpc(service, method, args, tempo = TEMPO_MS) {
+  let risposta;
+  try {
+    risposta = await fetch(`${CONFIG.url}/jsonrpc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { service, method, args } }),
+      signal: AbortSignal.timeout(tempo),
+    });
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      throw new ErroreOdoo(`Odoo non risponde in ${Math.round(tempo / 1000)} secondi`, false);
+    }
+    throw new ErroreOdoo(`Odoo non raggiungibile: ${err.message}`, false);
+  }
   if (!risposta.ok) throw new ErroreOdoo(`Odoo HTTP ${risposta.status}`, false);
   const esito = await risposta.json();
   if (esito.error) {
@@ -71,7 +86,13 @@ async function autentica() {
 }
 
 export async function miniapp(metodo, ...args) {
+  return miniappConTempo(TEMPI_LUNGHI_MS[metodo] || TEMPO_MS, metodo, ...args);
+}
+
+// Come miniapp, con un tempo massimo scelto da chi chiama (il controllo di
+// salute vuole saperlo prima degli altri).
+export async function miniappConTempo(tempo, metodo, ...args) {
   if (!CONFIG) throw new ErroreOdoo('inventario non configurato: manca odoo.json', false);
   return rpc('object', 'execute_kw',
-    [CONFIG.db, await autentica(), CONFIG.chiave, 'crocevia.miniapp', metodo, args]);
+    [CONFIG.db, await autentica(), CONFIG.chiave, 'crocevia.miniapp', metodo, args], tempo);
 }
