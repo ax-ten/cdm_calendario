@@ -268,7 +268,7 @@ function schedaBene(b) {
     <div class="bene" role="button" tabindex="0" aria-pressed="false" data-bene="${esc(b.id)}">
       <div class="bene-testa">
         <b>${esc(b.titolo)}</b>
-        <span class="stato stato-${esc(b.stato)}">${STATI_BENE[b.stato] || esc(b.stato)}</span>
+        ${b.stato === 'disponibile' ? '' : `<span class="stato stato-${esc(b.stato)}">${STATI_BENE[b.stato] || esc(b.stato)}</span>`}
       </div>
       ${riga1 ? `<div class="bene-info">${esc(riga1)}</div>` : ''}
       <div class="bene-info">${esc(riga2)}</div>

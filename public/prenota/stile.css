@@ -823,7 +823,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .bene-testa b { font-weight: 600; }
 .bene-info { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
 .stato { font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; margin-top: 2px; }
-.stato-disponibile { color: var(--libero); background: color-mix(in srgb, var(--libero) 18%, transparent); }
 .stato-in_prestito { color: var(--occupato); background: color-mix(in srgb, var(--occupato) 13%, transparent); }
 .stato-mancante { color: var(--pieno); background: color-mix(in srgb, var(--pieno) 18%, transparent); }
 
