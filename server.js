@@ -1746,8 +1746,8 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
 // o con Satispay, e qualcuno le deve segnare. Da qui il direttivo vede chi
 // ha rinnovato il tesseramento e quali mensilita' ha pagato ciascunə,
 // registra un pagamento fatto fuori dall'app (la ricevuta nasce in Odoo come
-// le altre), annulla una ricevuta segnata per sbaglio e manda un promemoria
-// in chat a chi ha Telegram collegato.
+// le altre) e manda un promemoria in chat a chi ha Telegram collegato.
+// Annullare o correggere una ricevuta si fa in Odoo, non da qui.
 //
 // In Odoo (crocevia.miniapp) servono:
 //   ricevute_pdf(telegram_id, ricevuta_ids) -> { pdf (base64), nome_file }
@@ -1765,8 +1765,6 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
 //                       Per chi non ha la tessera dell'anno, la prima mensilita'
 //                       pagata vale anche come tesseramento.
 //   prestiti_aperti()    in ogni prestito anche telegram_id, per aprire la chat
-//   annulla_ricevuta(ricevuta_id, da_chi)
-//                       -> { numero, tipo, importo, socio, telegram_id }
 // e, facoltative, nella risposta di socio_da_telegram: la spunta admin_tessere
 // e tesserato (senza la tessera dell'anno non si prenota).
 
@@ -1954,25 +1952,6 @@ app.post('/prenota/api/tessere/registra-tanti', (req, res) => conUtente(req, res
       fatti.map(e => e.nome).join(', ') + '.');
   }
   res.json({ esiti });
-}));
-
-// Una ricevuta segnata per sbaglio (socio sbagliato, mese sbagliato): si
-// annulla, e si rifa' giusta. In Odoo resta, annullata: il numero non torna.
-app.post('/prenota/api/tessere/annulla', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdminTessere(utente, res)) return;
-  const ricevutaId = Number(req.body?.ricevutaId);
-  if (!ricevutaId) return res.status(400).json({ errore: 'Quale ricevuta?' });
-  const r = await odoo.miniapp('annulla_ricevuta', ricevutaId, nomeTelegram(utente));
-  if (r.telegram_id) sociVisti.delete(String(r.telegram_id));
-  const chatDirettivo = GRUPPI.get('direttivo');
-  if (chatDirettivo) {
-    telegram('sendMessage', {
-      chat_id: chatDirettivo,
-      text: `${nomeTelegram(utente)} ha annullato la ricevuta ${r.numero} di ${r.socio} ` +
-            `(${r.tipo}, ${euroTesto(r.importo)}).`,
-    }).catch(err => console.error('quote: direttivo non avvisato:', err.message));
-  }
-  res.json({ ok: true });
 }));
 
 // Un promemoria in chat a chi ha Telegram collegato: cosa risulta da pagare

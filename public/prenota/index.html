@@ -1089,6 +1089,10 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .scorri > .riga:focus:not(:focus-visible) { outline: none; }
 .scorri.trascina > .riga { transition: none; }
 .scorri-azioni { position: absolute; top: 0; bottom: 0; display: flex; visibility: hidden; }
+.scorri-azioni::before { content: ""; position: absolute; top: 0; bottom: 0; width: 16px;
+  background: var(--colore-accanto, transparent); }
+.scorri-azioni.destra::before { right: 100%; margin-right: -2px; }
+.scorri-azioni.sinistra::before { left: 100%; margin-left: -2px; }
 .scorri-azioni.destra { right: 0; }
 .scorri-azioni.sinistra { left: 0; }
 .scorri[data-lato="destra"] > .scorri-azioni.destra, .scorri[data-lato="sinistra"] > .scorri-azioni.sinistra { visibility: visible; }
@@ -4449,7 +4453,7 @@ function disegnaQuota() {
 }
 
 // I pagamenti di una persona, filtrabili per voce: tutte, mensilita',
-// oboli, eventi. Ogni riga si scorre per annullarla.
+// oboli, eventi. Annullare o correggere una ricevuta si fa in Odoo.
 function disegnaPagamentiScheda(ricevute) {
   if (!VOCI_CRONOLOGIA.some(([k]) => k === quo.voceScheda)) quo.voceScheda = 'tutte';
   el('voce-scheda').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
@@ -4468,14 +4472,7 @@ function disegnaPagamentiScheda(ricevute) {
           <div class="quando">${dataNumerica(r.data)} · ${esc(r.numero)}</div>
         </div>
         <div class="pag-importo"><b>${euro(r.importo)}</b><span>${esc(metodoNome(r.metodo))}</span></div>
-        <div class="azioni a-destra">
-          <button type="button" class="grave" data-pieno data-annulla-ricevuta="${r.id}" data-numero="${esc(r.numero)}" data-tipo="${esc(r.tipo)}">Annulla</button>
-        </div>
       </div>`).join('') : '<p class="nota-pagamento">Niente di questo tipo quest’anno.</p>';
-  dove.querySelectorAll('[data-annulla-ricevuta]').forEach(b => {
-    b.onclick = () => annullaRicevuta(Number(b.dataset.annullaRicevuta), b.dataset.numero, b.dataset.tipo, b);
-  });
-  scorrevoli(dove);
 }
 
 function mostraDettaglioQuota() {
@@ -4607,23 +4604,6 @@ async function registraQuota() {
     apriQuota(t.id);
   } catch (err) {
     attesaAzione(false);
-    lamenta(err.message);
-  }
-}
-
-async function annullaRicevuta(ricevutaId, numero, tipo, bottone) {
-  if (!await conferma(`La ricevuta ${numero} (${tipo}) resta in archivio come annullata. Se era sbagliata, poi segna quella giusta.`,
-    'Annullo la ricevuta?')) return;
-  bottone.disabled = true;
-  try {
-    await chiama('tessere/annulla', { ricevutaId });
-    toast('Ricevuta annullata.');
-    quo.soci = null;
-    quo.pagamenti = null;
-    nascondiAzione();
-    apriQuota(quo.socio.id);
-  } catch (err) {
-    bottone.disabled = false;
     lamenta(err.message);
   }
 }
@@ -5335,13 +5315,17 @@ function coloreLato(scatola, lato) {
   return b ? getComputedStyle(b).backgroundColor : '';
 }
 
+// Il colore del pulsante accanto si allunga un poco sotto la riga (lo
+// strato ha un ::before): copre gli angoli tondi dal lato che si apre, e
+// solo quelli. Uno sfondo dietro tutta la riga si vedrebbe come un filo
+// colorato anche lungo gli angoli dell'altro lato.
 function mostraLato(scatola, lato) {
   if (lato) {
     scatola.dataset.lato = lato;
-    scatola.style.backgroundColor = coloreLato(scatola, lato);
+    const strato = scatola.querySelector(`:scope > .scorri-azioni.${lato}`);
+    if (strato) strato.style.setProperty('--colore-accanto', coloreLato(scatola, lato));
   } else {
     delete scatola.dataset.lato;
-    scatola.style.backgroundColor = '';
   }
 }
 
