@@ -630,7 +630,7 @@ async function usernameDi(telegramId) {
 
 // Senza la tessera dell'anno non si prenota: la scheda in Odoo lo dice con
 // tesserato. Se Odoo non lo manda (versioni di prima), non si blocca nessuno.
-const TESTO_SENZA_TESSERA = 'Per prenotare un’attività serve la tessera: la trovi nella scheda Tessera.';
+const TESTO_SENZA_TESSERA = 'Per prenotare un’attività bisogna tesserarsi: lo fai dalla scheda Tessera.';
 const senzaTessera = (utente) => utente.socio?.tesserato === false;
 
 // Un gruppo Telegram che manca in gruppi.txt o staff.txt e' un problema di
