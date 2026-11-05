@@ -921,10 +921,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .segmenti button[aria-selected="true"] { background: var(--accento); color: var(--su-accento); }
 #vista-persone, #vista-pagamenti { padding-bottom: calc(var(--azione) + 24px); }
 #vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden], #totale-pagamenti[hidden] { display: none; }
-#periodo-pagamenti, #voce-pagamenti { margin-bottom: 10px; }
 /* Il periodo sta su una riga anche sui telefoni stretti. */
 #periodo-pagamenti { flex-wrap: nowrap; }
-#periodo-pagamenti button { padding: 7px 11px; }
 .date-pagamenti { display: flex; gap: 8px; margin: 0 0 12px; }
 .date-pagamenti label { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; color: var(--tenue); font-size: .88rem; }
 .date-pagamenti input { flex: 1 1 0; width: 100%; min-width: 0; padding: 9px 8px; font-size: .88rem; }
@@ -991,8 +989,18 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
   font-size: 1.15rem; line-height: 1; color: var(--tenue); background: color-mix(in srgb, var(--tenue) 16%, transparent); }
 .scelto-incasso.spento b { color: var(--tenue); }
 .giorno-gestione { margin-top: 22px; }
-#filtro-gestione { margin: 2px 0 18px; }
-#sede-gestione { margin: 2px 0 8px; }
+/* Righe di filtri: a sinistra la categoria, a destra le scelte.
+   Se le scelte non ci stanno si scorrono di lato, senza andare a capo. */
+.filtro-riga { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.filtro-riga:has(> .tipi[hidden]) { display: none; }
+.filtro-nome { flex: 0 0 auto; color: var(--tenue); font-size: .84rem; }
+.filtro-riga > .tipi { gap: 4px; }
+.filtro-riga > .tipi button { padding: 6px 9px; font-size: .84rem; }
+.filtro-riga > .tipi .conta { margin-left: 2px; }
+.filtro-riga > .tipi { flex: 1; min-width: 0; margin: 0; flex-wrap: nowrap; overflow-x: auto;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.filtro-riga > .tipi::-webkit-scrollbar { display: none; }
+.filtro-riga + :not(.filtro-riga) { margin-top: 14px; }
 #sede-gestione[hidden] { display: none; }
 .tipi .conta { margin-left: 3px; font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
 .riga.pren { padding: 11px 13px; }
@@ -1010,8 +1018,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .avviso-tessera { background: color-mix(in srgb, var(--occupato) 14%, var(--scheda)); border-radius: 16px;
   padding: 22px 18px; margin: 8px 0 14px; line-height: 1.4; text-align: center; font-size: 1.08rem; font-weight: 600; }
 .avviso-tessera .link { display: block; margin: 10px auto 0; font-size: 1rem; }
-#filtro-prestiti { margin: 0 0 14px; }
-#sede-prestiti { margin: 0 0 8px; }
 #sede-prestiti[hidden] { display: none; }
 #filtro-prestiti[hidden] { display: none; }
 .tipi .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
@@ -1308,8 +1314,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <button type="button" class="indietro" id="chiudi-gestione">‹ Attività</button>
   <h1>Prenotazioni</h1>
   <!-- Il filtro veloce: le date in cui nessuno ha ancora detto che apre. -->
-  <div class="tipi" id="sede-gestione" role="tablist" aria-label="Sede" hidden></div>
-  <div class="tipi" id="filtro-gestione" role="tablist" aria-label="Quali prenotazioni" hidden></div>
+  <div class="filtro-riga"><span class="filtro-nome">Sede</span><div class="tipi" id="sede-gestione" role="tablist" aria-label="Sede" hidden></div></div>
+  <div class="filtro-riga"><span class="filtro-nome">Mostra</span><div class="tipi" id="filtro-gestione" role="tablist" aria-label="Quali prenotazioni" hidden></div></div>
   <div id="elenco-gestione" class="vuoto">…</div>
 </section>
 
@@ -1358,8 +1364,8 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-prestiti" hidden>
   <button type="button" class="indietro" id="chiudi-prestiti">‹ Biblioteca</button>
   <h1>Prestiti in corso</h1>
-  <div class="tipi" id="sede-prestiti" role="tablist" aria-label="Sede" hidden></div>
-  <div class="tipi" id="filtro-prestiti" role="tablist" aria-label="Quali prestiti" hidden></div>
+  <div class="filtro-riga"><span class="filtro-nome">Sede</span><div class="tipi" id="sede-prestiti" role="tablist" aria-label="Sede" hidden></div></div>
+  <div class="filtro-riga"><span class="filtro-nome">Mostra</span><div class="tipi" id="filtro-prestiti" role="tablist" aria-label="Quali prestiti" hidden></div></div>
   <div id="elenco-prestiti" class="vuoto">…</div>
 </section>
 
@@ -1530,7 +1536,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
       <input type="search" id="cerca-quote" placeholder="Nome o numero di tessera" autocomplete="off">
     </div>
     <div class="filtri">
-      <label class="mese-coperto"><span>Ha coperto</span>
+      <label class="mese-coperto"><span class="filtro-nome">Ha coperto</span>
         <select id="mese-pagato" aria-label="Chi ha coperto un mese"></select></label>
       <label class="ordina" title="Ordina">
         <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg></span>
@@ -1546,12 +1552,12 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <div id="elenco-quote" class="vuoto">…</div>
   </div>
   <div id="vista-pagamenti" hidden>
-    <div class="tipi" id="periodo-pagamenti" role="tablist" aria-label="Periodo"></div>
+    <div class="filtro-riga"><span class="filtro-nome">Periodo</span><div class="tipi" id="periodo-pagamenti" role="tablist" aria-label="Periodo"></div></div>
     <div class="date-pagamenti" id="date-pagamenti" hidden>
       <label>Dal <input type="date" id="pagamenti-da"></label>
       <label>al <input type="date" id="pagamenti-a"></label>
     </div>
-    <div class="tipi" id="voce-pagamenti" role="tablist" aria-label="Voce"></div>
+    <div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-pagamenti" role="tablist" aria-label="Voce"></div></div>
     <div class="spese" id="totale-pagamenti" hidden></div>
     <div id="elenco-pagamenti" class="vuoto">…</div>
   </div>
@@ -3255,7 +3261,7 @@ function disegnaPrestitiAdmin() {
   // Qui la sede arriva da Odoo col suo nome: si confronta il nome.
   const sedi = stato.sediInfo || [];
   el('sede-prestiti').hidden = sedi.length < 2;
-  el('sede-prestiti').innerHTML = [['', 'Tutte le sedi'], ...sedi.map(x => [x.slug, x.nome])].map(([k, nome]) =>
+  el('sede-prestiti').innerHTML = [['', 'Tutte'], ...sedi.map(x => [x.slug, x.nome])].map(([k, nome]) =>
     `<button type="button" role="tab" data-sede-prestiti="${k}" aria-selected="${k === gestione.sede}">${esc(nome)}</button>`).join('');
   el('sede-prestiti').querySelectorAll('[data-sede-prestiti]').forEach(b => {
     b.onclick = () => {
@@ -4282,7 +4288,7 @@ function disegnaQuote() {
 // Su una riga sola: oggi, il mese in corso e l'anno in corso per nome, o un
 // periodo scelto con due date.
 const PERIODI = () => [['oggi', 'Oggi'], ['mese', MESI[new Date().getMonth()].replace(/^./, c => c.toUpperCase())],
-  ['anno', String(new Date().getFullYear())], ['scegli', 'Periodo']];
+  ['anno', String(new Date().getFullYear())], ['scegli', 'Altro…']];
 const VOCI_CRONOLOGIA = [['tutte', 'Tutte'], ['obolo_giornaliero', 'Oboli'], ['contributo_mensile', 'Mensilità'], ['contributo_evento', 'Eventi']];
 
 function estremiPeriodo() {
@@ -4339,8 +4345,8 @@ async function caricaPagamenti() {
 function disegnaPagamenti() {
   const tutti = quo.pagamenti;
   el('voce-pagamenti').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
-    const n = k === 'tutte' ? tutti.length : tutti.filter(p => p.codice === k).length;
-    return `<button type="button" role="tab" data-voce-cronologia="${k}" aria-selected="${k === quo.voceFiltro}">${nome}${conta(n)}</button>`;
+    const n = k === 'tutte' ? null : tutti.filter(p => p.codice === k).length;
+    return `<button type="button" role="tab" data-voce-cronologia="${k}" aria-selected="${k === quo.voceFiltro}">${nome}${n === null ? '' : conta(n)}</button>`;
   }).join('');
   el('voce-pagamenti').querySelectorAll('[data-voce-cronologia]').forEach(b => {
     b.onclick = () => { quo.voceFiltro = b.dataset.voceCronologia; disegnaPagamenti(); };
@@ -4430,7 +4436,7 @@ function disegnaQuota() {
       `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce-quota="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
     <div id="dettaglio-quota"></div>
     <h2>Pagamenti ${t.anno}</h2>
-    ${ricevute.length ? `<div class="tipi" id="voce-scheda" role="tablist" aria-label="Voce"></div>` : ''}
+    ${ricevute.length ? `<div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-scheda" role="tablist" aria-label="Voce"></div></div>` : ''}
     <div id="pagamenti-scheda">${ricevute.length ? '' : '<p class="nota-pagamento">Nessuna ricevuta quest’anno.</p>'}</div>`;
 
   dove.querySelectorAll('[data-voce-quota]').forEach(b => {
@@ -4459,8 +4465,8 @@ function disegnaQuota() {
 function disegnaPagamentiScheda(ricevute) {
   if (!VOCI_CRONOLOGIA.some(([k]) => k === quo.voceScheda)) quo.voceScheda = 'tutte';
   el('voce-scheda').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
-    const n = k === 'tutte' ? ricevute.length : ricevute.filter(r => r.codice === k).length;
-    return `<button type="button" role="tab" data-voce-scheda="${k}" aria-selected="${k === quo.voceScheda}">${nome}${conta(n)}</button>`;
+    const n = k === 'tutte' ? null : ricevute.filter(r => r.codice === k).length;
+    return `<button type="button" role="tab" data-voce-scheda="${k}" aria-selected="${k === quo.voceScheda}">${nome}${n === null ? '' : conta(n)}</button>`;
   }).join('');
   el('voce-scheda').querySelectorAll('[data-voce-scheda]').forEach(b => {
     b.onclick = () => { quo.voceScheda = b.dataset.voceScheda; disegnaPagamentiScheda(ricevute); };
@@ -4999,7 +5005,7 @@ function disegnaGestione() {
   const tutti = gestione.dati;
   const sedi = stato.sediInfo || [];
   el('sede-gestione').hidden = sedi.length < 2;
-  el('sede-gestione').innerHTML = [['', 'Tutte le sedi'], ...sedi.map(x => [x.slug, x.nome])].map(([k, nome]) =>
+  el('sede-gestione').innerHTML = [['', 'Tutte'], ...sedi.map(x => [x.slug, x.nome])].map(([k, nome]) =>
     `<button type="button" role="tab" data-sede-gestione="${k}" aria-selected="${k === gestione.sede}">${esc(nome)}</button>`).join('');
   el('sede-gestione').querySelectorAll('[data-sede-gestione]').forEach(b => {
     b.onclick = () => {
