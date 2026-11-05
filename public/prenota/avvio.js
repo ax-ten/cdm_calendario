@@ -19,7 +19,7 @@ function mostra(quale) {
   }
   if (quale !== 'prenota') stato.spostando = null;
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
-  // "Presta a un’altra persona…" e' del bene scelto in biblioteca: cambiando scheda
+  // "Segna come prestato" e' del bene scelto in biblioteca: cambiando scheda
   // se ne va, e il pulsante grande torna da solo a tutta larghezza.
   el('azione-a-nome').hidden = true;
   document.body.classList.remove('due-azioni');

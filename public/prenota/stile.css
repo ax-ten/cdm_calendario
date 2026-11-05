@@ -575,7 +575,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 #azione[hidden] { display: none; }
 /* Due azioni affiancate: si dividono la stessa larghezza del pulsante da
-   solo, "Presta a un’altra persona…" a sinistra. */
+   solo, "Segna come prestato" a sinistra. */
 #azione-a-nome {
   position: fixed; z-index: 24;
   left: calc((100% - min(440px, 100% - 24px)) / 2);

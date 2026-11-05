@@ -449,7 +449,7 @@ function aggiornaPrestito() {
   else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
 
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
-  // Chi amministra, su un bene disponibile, ha anche "Presta a un’altra persona…".
+  // Chi amministra, su un bene disponibile, ha anche "Segna come prestato".
   const aNomeVisibile = visibile && inv.admin && b.stato === 'disponibile';
   el('azione-a-nome').hidden = !aNomeVisibile;
   document.body.classList.toggle('due-azioni', aNomeVisibile);
