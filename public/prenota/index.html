@@ -1143,8 +1143,22 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .foglio h2 { margin: 0 0 4px; }
 .foglio .spiega { margin: 0 0 14px; color: var(--tenue); }
 .foglio .riepilogo { margin-bottom: 14px; }
-.menu-azioni { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-.menu-azioni .bottone { width: 100%; padding: 13px 14px; font-size: .95rem; }
+.velo-menu { position: fixed; inset: 0; z-index: 40; }
+.menu-riga { position: absolute; z-index: 41; padding: 6px; border-radius: 14px; background: var(--scheda);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45), 0 0 0 1px color-mix(in srgb, var(--tenue) 18%, transparent);
+  transform-origin: top right; animation: apri-menu .14s ease-out; }
+@keyframes apri-menu { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
+.voce-menu { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 0; border-radius: 10px; background: none; color: var(--testo); font: inherit; font-size: .95rem;
+  text-align: left; cursor: pointer; }
+.voce-menu:hover, .voce-menu:focus-visible { background: color-mix(in srgb, var(--tenue) 16%, transparent); outline: none; }
+.voce-menu.grave { color: var(--pieno); }
+.icona-menu { flex: 0 0 20px; width: 20px; height: 20px; display: flex; color: var(--tenue); }
+.voce-menu.grave .icona-menu { color: var(--pieno); }
+.icona-menu svg { width: 20px; height: 20px; }
+.separa-menu { height: 1px; margin: 4px 8px; background: color-mix(in srgb, var(--tenue) 22%, transparent); }
+.riga.con-menu { box-shadow: 0 0 0 1.5px var(--accento) inset; }
+@media (prefers-reduced-motion: reduce) { .menu-riga { animation: none; } }
 .solo-menu[hidden] { display: none; }
 .griglia-azioni { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin: 8px 0 14px; }
 .griglia-azioni .bottone { width: 100%; padding: 12px 10px; font-size: .92rem; }
@@ -2117,6 +2131,7 @@ function azionePrenota() {
 // bene alla biblioteca, da un passo a quello prima, e dal primo passo alle
 // tue prenotazioni.
 function indietro() {
+  if (menuAperto) return chiudiMenuRiga();
   if (!el('foglio').hidden) return chiudiFoglio();
   if (!el('pannello-aggiungi').hidden && inv.passoBene === 2) return passoBene(1);
   if (!el('pannello-aggiungi').hidden || !el('pannello-prestiti').hidden) return mostra('inventario');
@@ -2492,14 +2507,14 @@ async function caricaMie() {
         <div class="quando">${p.fissa ? 'Prossima: ' : ''}${quandoTesto(p.inizio, p.fine)} · ${esc(nomeSede(p.sede))}</div>
         <div class="azioni">
           ${p.fissa
-            ? `<button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>`
-            : `<button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.id}" data-cosa="una">Annulla</button>`}
+            ? `<button class="grave" data-pieno data-icona="salta" data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta il prossimo slot</button>`
+            : `<button class="grave" data-pieno data-icona="annulla" data-sede="${p.sede}" data-id="${p.id}" data-cosa="una">Annulla</button>`}
         </div>
         ${p.fissa ? '' : `<div class="azioni sinistra">
-          <button class="conferma" data-pieno data-sede="${p.sede}" data-id="${p.id}" data-cosa="settimanale">Rendi ricorrente</button>
+          <button class="conferma" data-pieno data-icona="ricorrente" data-sede="${p.sede}" data-id="${p.id}" data-cosa="settimanale">Rendi ricorrente</button>
         </div>`}
         ${p.fissa && p.serieId ? `<div class="azioni solo-menu" hidden>
-          <button class="grave" data-sede="${p.sede}" data-id="${p.serieId}" data-cosa="serie">Elimina la serie</button>
+          <button class="grave" data-icona="elimina" data-sede="${p.sede}" data-id="${p.serieId}" data-cosa="serie">Elimina la serie</button>
         </div>` : ''}
       </div>`).join('');
     dove.querySelectorAll('button').forEach(b => {
@@ -3340,13 +3355,13 @@ function disegnaPrestitiAdmin() {
         ? `In ritardo di ${p.giorni_ritardo} ${p.giorni_ritardo === 1 ? 'giorno' : 'giorni'}`
         : p.scadenza ? `Da riportare entro il ${dataTesto(p.scadenza)}` : 'Senza scadenza'}</div>
       <div class="azioni a-destra" data-azioni>
-        <button type="button" class="grave" data-pieno data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
+        <button type="button" class="grave" data-pieno data-icona="restituito" data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
       </div>
       <div class="azioni sinistra">
-        <button type="button" class="conferma" data-pieno data-apri-prolunga>Estendi</button>
+        <button type="button" class="conferma" data-pieno data-icona="estendi" data-apri-prolunga>Estendi</button>
       </div>
       ${p.username ? `<div class="azioni solo-menu" hidden>
-        <button type="button" data-chat="${esc(p.username)}">Scrivi in chat</button>
+        <button type="button" data-icona="chat" data-chat="${esc(p.username)}">Scrivi in chat</button>
       </div>` : ''}
       <div class="azioni a-destra prolunga" data-prolunga-di="${p.id}" hidden>
         <div class="contagiorni">
@@ -5647,24 +5662,81 @@ function collegaScorri(scatola, riga, lati, tocco, menu) {
   });
 }
 
-// Il menu di una riga: tutte le azioni che ci sono, anche quelle che non
-// stanno nello swipe (una per lato). Prima le altre, in fondo quelle che
-// tolgono. Toccare una voce fa quello che farebbe il pulsante della riga.
-function menuDellaRiga(riga) {
+// Il menu di una riga: una lista che si apre appena sotto la riga toccata,
+// con tutte le azioni che ci sono, anche quelle che non stanno nello swipe
+// (una per lato). Icone in colonna a sinistra; prima le altre, in fondo,
+// separate e in rosso, quelle che tolgono. Se sotto non c'e' spazio, la
+// pagina scorre quanto basta e poi il menu si apre. Si chiude toccando
+// fuori, scorrendo, con Esc o con Indietro; una voce fa quello che farebbe
+// il pulsante della riga.
+const svgIcona = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONE_MENU = {   // lucide
+  annulla: svgIcona('<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>'),
+  elimina: svgIcona('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'),
+  salta: svgIcona('<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/>'),
+  ricorrente: svgIcona('<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>'),
+  estendi: svgIcona('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 14v4"/><path d="M10 16h4"/>'),
+  restituito: svgIcona('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
+  chat: svgIcona('<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>'),
+  chiavi: svgIcona('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>'),
+  modifica: svgIcona('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>'),
+};
+let menuAperto = null;
+
+function chiudiMenuRiga() {
+  if (!menuAperto) return;
+  menuAperto.velo.remove();
+  menuAperto.lista.remove();
+  menuAperto.riga.classList.remove('con-menu');
+  menuAperto = null;
+  removeEventListener('scroll', chiudiMenuRiga);
+}
+
+async function menuDellaRiga(riga) {
+  if (menuAperto) { const stessa = menuAperto.riga === riga; chiudiMenuRiga(); if (stessa) return; }
   const scatola = riga.closest('.scorri') || riga;
   const bottoni = [...scatola.querySelectorAll('.scorri-azioni button, .solo-menu button')];
   if (!bottoni.length) return;
-  const ordinati = [...bottoni.filter(b => !b.classList.contains('grave')), ...bottoni.filter(b => b.classList.contains('grave'))];
-  const titolo = riga.querySelector('b')?.textContent || riga.querySelector('div')?.textContent || '';
-  const sotto = riga.querySelector('.quando')?.textContent || '';
-  const corpo = apriFoglio(`
-    <h2>${esc(titolo.trim())}</h2>
-    ${sotto ? `<p class="spiega">${esc(sotto.trim())}</p>` : ''}
-    <div class="menu-azioni">${ordinati.map((b, i) =>
-      `<button type="button" class="bottone${b.classList.contains('grave') ? ' grave' : ' secondario'}" data-voce-menu="${i}">${esc(b.querySelector('.scritta-azione')?.textContent || b.textContent.trim())}</button>`).join('')}</div>`);
-  corpo.querySelectorAll('[data-voce-menu]').forEach(v => {
-    v.onclick = () => { chiudiFoglio(); ordinati[Number(v.dataset.voceMenu)].click(); };
+  const altre = bottoni.filter(b => !b.classList.contains('grave'));
+  const gravi = bottoni.filter(b => b.classList.contains('grave'));
+  const ordinati = [...altre, ...gravi];
+  const voce = (b, i) => `<button type="button" role="menuitem" class="voce-menu${b.classList.contains('grave') ? ' grave' : ''}" data-voce-menu="${i}">
+      <span class="icona-menu">${ICONE_MENU[b.dataset.icona] || ''}</span>
+      <span>${esc(b.querySelector('.scritta-azione')?.textContent || b.textContent.trim())}</span></button>`;
+  const lista = document.createElement('div');
+  lista.className = 'menu-riga';
+  lista.setAttribute('role', 'menu');
+  lista.innerHTML = altre.map((b, i) => voce(b, i)).join('') +
+    (altre.length && gravi.length ? '<div class="separa-menu" role="separator"></div>' : '') +
+    gravi.map((b, i) => voce(b, altre.length + i)).join('');
+  lista.style.visibility = 'hidden';
+  document.body.append(lista);
+  // Quanto spazio serve sotto la riga, sopra il menu dell'app.
+  const fondo = (el('azione').hidden ? innerHeight : el('azione').getBoundingClientRect().top) -
+    (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--menu')) || 62) - 24;
+  const manca = riga.getBoundingClientRect().bottom + 6 + lista.offsetHeight - fondo;
+  if (manca > 0) {
+    scorriDi(manca, 280);
+    await new Promise(r => setTimeout(r, 300));
+  }
+  const r = riga.getBoundingClientRect();
+  const larga = Math.min(260, r.width);
+  lista.style.top = `${r.bottom + 6 + scrollY}px`;
+  lista.style.left = `${r.right - larga}px`;
+  lista.style.width = `${larga}px`;
+  lista.style.visibility = '';
+  const velo = document.createElement('div');
+  velo.className = 'velo-menu';
+  velo.addEventListener('pointerdown', (e) => { e.preventDefault(); chiudiMenuRiga(); });
+  document.body.append(velo);
+  riga.classList.add('con-menu');
+  menuAperto = { lista, velo, riga };
+  setTimeout(() => addEventListener('scroll', chiudiMenuRiga, { once: true }), 50);
+  lista.querySelectorAll('[data-voce-menu]').forEach(v => {
+    v.onclick = () => { chiudiMenuRiga(); ordinati[Number(v.dataset.voceMenu)].click(); };
   });
+  lista.addEventListener('keydown', (e) => { if (e.key === 'Escape') { chiudiMenuRiga(); riga.focus(); } });
+  lista.querySelector('[data-voce-menu]')?.focus({ preventScroll: true });
 }
 
 // Un tocco fuori dalla riga aperta la richiude.
@@ -5778,6 +5850,7 @@ const conta = (n) => ` <span class="conta">${n}</span>`;
 const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute', 'gestione', 'serie', 'quote', 'quota', 'incassi'];
 
 function mostra(quale) {
+  chiudiMenuRiga();
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
   // "Segna come prestato" e' del bene scelto in biblioteca: cambiando scheda
   // se ne va, e il pulsante grande torna da solo a tutta larghezza.
