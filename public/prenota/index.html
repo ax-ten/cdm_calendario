@@ -996,9 +996,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .con-apro > .azioni.in-vista { margin: 0; flex: 0 0 auto; }
 .azioni.in-vista button { padding: 10px 16px; }
 .senza-entrata .riga, .senza-entrata .scorri { animation: none !important; }
-.avviso-tessera { background: color-mix(in srgb, var(--occupato) 14%, var(--scheda)); border-radius: 12px;
-  padding: 12px 13px; margin-bottom: 12px; line-height: 1.4; }
-.avviso-tessera .link { display: block; margin-top: 4px; }
+.avviso-tessera { background: color-mix(in srgb, var(--occupato) 14%, var(--scheda)); border-radius: 16px;
+  padding: 22px 18px; margin: 8px 0 14px; line-height: 1.4; text-align: center; font-size: 1.08rem; font-weight: 600; }
+.avviso-tessera .link { display: block; margin: 10px auto 0; font-size: 1rem; }
 #filtro-prestiti { margin: 0 0 14px; }
 #filtro-prestiti[hidden] { display: none; }
 .tipi .avviso:not([aria-selected="true"]) { color: var(--pieno); border-color: var(--pieno); }
@@ -2398,7 +2398,8 @@ async function caricaMie() {
     const avviso = stato.senzaTessera ? AVVISO_SENZA_TESSERA : '';
     if (!prenotazioni.length) {
       dove.className = '';
-      dove.innerHTML = avviso + NESSUNA_MIA;
+      // Senza tessera l'avviso prende il posto di "Non hai attivita'".
+      dove.innerHTML = avviso || NESSUNA_MIA;
       collegaAvvisoTessera(dove);
       return;
     }
@@ -2448,7 +2449,7 @@ function primeDelleSerie(lista) {
 // strada per farla.
 const AVVISO_SENZA_TESSERA = `<div class="avviso-tessera">
   Per prenotare un’attività bisogna tesserarsi.
-  <button type="button" class="link" data-vai-tessera>Vai alla Tessera ›</button></div>`;
+  <button type="button" class="link" data-vai-tessera>Vai al tesseramento ›</button></div>`;
 function collegaAvvisoTessera(dove) {
   const b = dove.querySelector('[data-vai-tessera]');
   if (b) b.onclick = () => mostra('tessera');
