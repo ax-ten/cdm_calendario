@@ -960,8 +960,9 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #vista-persone .filtri { align-items: center; }
 #vista-persone .ordina { align-self: stretch; min-height: 38px; }
 .anno-quote { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-.anno-quote button { width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; font: inherit;
-  font-size: 1.1rem; background: var(--scheda); color: var(--testo); }
+.anno-quote button { width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center; background: var(--scheda); color: var(--testo); }
+.anno-quote button svg { width: 18px; height: 18px; display: block; }
 .anno-quote button:disabled { opacity: .35; cursor: default; }
 .filtro-quote { margin-top: 10px; }
 .riepilogo-quote { color: var(--tenue); font-size: .86rem; margin: 0 0 12px; }
@@ -1146,6 +1147,18 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .bottone.grave { background: transparent; color: var(--pieno); border-color: var(--pieno); }
 .bottone.arancio { background: transparent; color: var(--occupato); border-color: var(--occupato); }
 .bottone.pieno-grave { background: var(--pieno); border-color: var(--pieno); color: #fff; }
+/* "Segna un pagamento" e' un'azione, non un elenco: sta in un riquadro suo,
+   tinto, cosi' non si confonde con i pagamenti sotto. */
+.blocco-segna { margin: 6px 0 24px; padding: 14px 12px 4px; border-radius: 16px;
+  background: color-mix(in srgb, var(--accento) 9%, var(--sfondo));
+  border: 1px solid color-mix(in srgb, var(--accento) 28%, transparent); }
+.blocco-segna h2 { margin-top: 0; }
+.blocco-segna .voce { background: var(--sfondo); }
+#dettaglio-quota:not(:empty) { padding-bottom: 8px; }
+.campo-evento { width: 100%; margin: 6px 0 8px; }
+.eventi-giorno { margin-top: 0; }
+.eventi-giorno:empty { display: none; }
+.eventi-giorno small { color: inherit; opacity: .7; margin-left: 2px; }
 .date-serie { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .date-serie span { font-size: .82rem; padding: 4px 9px; border-radius: 999px; background: var(--scheda); color: var(--tenue); }
 .date-serie span.apre { color: var(--libero); }
@@ -1526,9 +1539,10 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <div class="titolo-con-anno">
     <h1>Quote</h1>
     <div class="anno-quote" id="anno-quote-nav">
-      <button type="button" id="anno-prima" aria-label="Anno precedente">‹</button>
+      <!-- lucide: chevron-left / chevron-right: i caratteri ‹ › non stanno al centro -->
+      <button type="button" id="anno-prima" aria-label="Anno precedente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
       <b id="anno-quote">…</b>
-      <button type="button" id="anno-dopo" aria-label="Anno successivo">›</button>
+      <button type="button" id="anno-dopo" aria-label="Anno successivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
     </div>
   </div>
   <!-- Due viste: chi ha pagato cosa, e la cronologia dei pagamenti. -->
@@ -3730,7 +3744,7 @@ function disegnaRicevute(t) {
         <div class="riga ricevuta" role="checkbox" aria-checked="false" tabindex="0" data-ricevuta="${r.id}" data-anno="${anno}">
           <span class="spunta" aria-hidden="true"></span>
           <div class="ricevuta-testo">
-            <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
+            <div><b>${esc(r.tipo)}</b>${r.evento ? ' · ' + esc(r.evento) : ''} · ${euro(r.importo)}</div>
             <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}</div>
           </div>
         </div>`).join('')}
@@ -3822,7 +3836,7 @@ function collegaTessera(dove) {
     b.onclick = () => {
       const v = b.dataset.voce;
       Object.assign(tess, { voce: tess.voce === v ? null : v, giorno: null, data: '',
-                            modoMesi: null, mesi: new Set(), evento: EVENTO_BASE });
+                            modoMesi: null, mesi: new Set(), evento: EVENTO_BASE, nomeEvento: '' });
       preseleziona();
       disegnaPagamento();
       if (tess.voce) mostraDettaglio();
@@ -3934,6 +3948,7 @@ function disegnaPagamento() {
       </div>`;
   }
   if (v === 'contributo_evento') {
+    html += campoEventoHtml('tessera', tess.nomeEvento);
     html += `<p class="domanda">Quanto?</p>
       <div class="contatore"><button type="button" data-evento="-1" aria-label="Meno">−</button><b>${euro(tess.evento)}</b><button type="button" data-evento="1" aria-label="Più">+</button></div>`;
   }
@@ -3974,6 +3989,7 @@ function disegnaPagamento() {
   d.querySelectorAll('[data-evento]').forEach(b => {
     b.onclick = () => { tess.evento = Math.min(EVENTO_BASE, Math.max(3, tess.evento + Number(b.dataset.evento))); disegnaPagamento(); };
   });
+  if (v === 'contributo_evento') collegaCampoEvento('tessera', tess.data, (nome) => { tess.nomeEvento = nome; });
   d.querySelectorAll('[data-mesi]').forEach(b => {
     b.onclick = () => {
       tess.modoMesi = b.dataset.mesi;
@@ -4285,6 +4301,45 @@ function disegnaQuote() {
   });
 }
 
+// ---- il nome dell'evento, per il contributo evento
+// Si scrive, o si tocca fra gli eventi in calendario quel giorno (tutte le
+// sedi): scrivendo, la lista si stringe a quelli che corrispondono.
+const eventiGiorno = new Map();
+function nomiEventiDelGiorno(data) {
+  if (!eventiGiorno.has(data)) {
+    eventiGiorno.set(data, chiama('eventi-del-giorno', { data }).then(r => r.eventi || [])
+      .catch(() => { eventiGiorno.delete(data); return []; }));
+  }
+  return eventiGiorno.get(data);
+}
+
+function campoEventoHtml(id, valore) {
+  return `<p class="domanda">Quale evento?</p>
+    <input type="text" id="evento-${id}" class="campo-evento" maxlength="120" autocomplete="off"
+           placeholder="Il nome dell’evento" value="${esc(valore || '')}">
+    <div class="scelte eventi-giorno" id="eventi-${id}"></div>`;
+}
+
+async function collegaCampoEvento(id, data, salva) {
+  const campo = el(`evento-${id}`);
+  const dove = el(`eventi-${id}`);
+  if (!campo || !data) return;
+  let eventi = [];
+  const disegna = () => {
+    const scritto = campo.value.trim();
+    const t = scritto.toLowerCase();
+    const esatto = eventi.some(e => e.titolo === scritto);
+    const lista = esatto || !t ? eventi : eventi.filter(e => e.titolo.toLowerCase().includes(t));
+    dove.innerHTML = lista.map(e => `<button type="button" data-evento-nome="${esc(e.titolo)}" aria-pressed="${e.titolo === scritto}">${esc(e.titolo)}${e.ora ? ` <small>${esc(e.ora)}</small>` : ''}</button>`).join('');
+    dove.querySelectorAll('[data-evento-nome]').forEach(b => {
+      b.onclick = () => { campo.value = b.dataset.eventoNome; salva(campo.value); disegna(); };
+    });
+  };
+  campo.oninput = () => { salva(campo.value.trim()); disegna(); };
+  eventi = await nomiEventiDelGiorno(data);
+  if (campo.isConnected) disegna();
+}
+
 // ---- la cronologia: i pagamenti di tutte le persone in un periodo
 // Si sceglie il periodo (oggi, il mese, l'anno, o due
 // date), poi volendo una voce sola: cosi' si vedono anche i singoli oboli di
@@ -4383,7 +4438,7 @@ function disegnaPagamenti() {
       <div class="riga pagamento riga-pagamento" role="button" tabindex="0" data-socio-pagamento="${p.partner_id}">
         <div class="pag-testo">
           <b>${esc(p.socio)}</b>
-          <div class="quando">${esc(p.tipo)}${p.mese ? ' ' + meseTesto(p.mese) : ''} · ${esc(p.numero)}</div>
+          <div class="quando">${esc(p.tipo)}${p.mese ? ' ' + meseTesto(p.mese) : ''}${p.evento ? ' · ' + esc(p.evento) : ''} · ${esc(p.numero)}</div>
         </div>
         <div class="pag-importo"><b>${euro(p.importo)}</b><span>${esc(metodoNome(p.metodo))}</span></div>
       </div>`).join('')}`).join('');
@@ -4436,10 +4491,12 @@ function disegnaQuota() {
     </div>
     ${t.telegram && t.anno === annoCorrente()
       ? '<p class="ricorda-quota"><button type="button" class="link" id="ricorda-quota">Manda un promemoria in chat ›</button></p>' : ''}
-    <h2>Segna un pagamento</h2>
-    <div class="voci">${voci.map(([k, nome, prezzo]) =>
-      `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce-quota="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
-    <div id="dettaglio-quota"></div>
+    <section class="blocco-segna" aria-labelledby="titolo-segna">
+      <h2 id="titolo-segna">Segna un pagamento</h2>
+      <div class="voci">${voci.map(([k, nome, prezzo]) =>
+        `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce-quota="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
+      <div id="dettaglio-quota"></div>
+    </section>
     <h2>Pagamenti ${t.anno}</h2>
     ${ricevute.length ? `<div class="filtro-riga"><span class="filtro-nome">Voce</span><div class="tipi" id="voce-scheda" role="tablist" aria-label="Voce"></div></div>` : ''}
     <div id="pagamenti-scheda">${ricevute.length ? '' : '<p class="nota-pagamento">Nessuna ricevuta quest’anno.</p>'}</div>`;
@@ -4449,7 +4506,7 @@ function disegnaQuota() {
       const v = b.dataset.voceQuota;
       const oggi = isoLocale(new Date());
       Object.assign(quo, { voce: quo.voce === v ? null : v, giorno: 'oggi', data: oggi,
-                           mesi: new Set(), importo: EVENTO_BASE });
+                           mesi: new Set(), importo: EVENTO_BASE, nomeEvento: '' });
       // Per la mensilita' il mese piu' probabile e' questo, se manca.
       const questo = meseCorrente();
       if (quo.voce === 'contributo_mensile' && t.anno === annoCorrente() && !t.mensilita.includes(questo)) {
@@ -4481,8 +4538,8 @@ function disegnaPagamentiScheda(ricevute) {
   dove.innerHTML = lista.length ? lista.map(r => `
       <div class="riga riga-pagamento">
         <div class="pag-testo">
-          <b>${esc(r.tipo)}${r.mese ? ' ' + meseTesto(r.mese) : ''}</b>
-          <div class="quando">${dataNumerica(r.data)} · ${esc(r.numero)}</div>
+          <b>${r.evento ? esc(r.evento) : `${esc(r.tipo)}${r.mese ? ' ' + meseTesto(r.mese) : ''}`}</b>
+          <div class="quando">${r.evento ? esc(r.tipo) + ' · ' : ''}${dataNumerica(r.data)} · ${esc(r.numero)}</div>
         </div>
         <div class="pag-importo"><b>${euro(r.importo)}</b><span>${esc(metodoNome(r.metodo))}</span></div>
       </div>`).join('') : '<p class="nota-pagamento">Niente di questo tipo quest’anno.</p>';
@@ -4547,6 +4604,7 @@ function disegnaPagamentoQuota() {
       <label class="scelta-data" aria-pressed="${quo.giorno === 'data'}">${quo.giorno === 'data' ? dataNumerica(quo.data) : 'Altro giorno'}
         <input type="date" id="data-quota" max="${isoLocale(oggi)}" value="${quo.data}"></label>
     </div>
+    ${v === 'contributo_evento' ? campoEventoHtml('quota', quo.nomeEvento) : ''}
     <p class="domanda">Come ha pagato?</p>
     <div class="scelte">${METODI.map(([k, nome]) =>
       `<button type="button" data-metodo="${k}" aria-pressed="${quo.metodo === k}">${nome}</button>`).join('')}</div>`;
@@ -4582,6 +4640,7 @@ function disegnaPagamentoQuota() {
   d.querySelectorAll('[data-metodo]').forEach(b => {
     b.onclick = () => { quo.metodo = b.dataset.metodo; disegnaPagamentoQuota(); };
   });
+  if (v === 'contributo_evento') collegaCampoEvento('quota', quo.data, (nome) => { quo.nomeEvento = nome; });
 
   const totale = totaleQuota();
   const pronto = totale > 0 && quo.data && quo.metodo && (v !== 'contributo_mensile' || quo.mesi.size);
@@ -4594,7 +4653,7 @@ function descriviQuota() {
   const metodo = METODI_TESTO[quo.metodo];
   const cosa = quo.voce === 'contributo_mensile'
     ? `Mensilità di ${[...quo.mesi].sort().map(k => MESI[Number(k.slice(5)) - 1]).join(', ')}`
-    : `${quo.voce === 'obolo_giornaliero' ? 'Obolo' : 'Evento'} del ${dataNumerica(quo.data)}`;
+    : `${quo.voce === 'obolo_giornaliero' ? 'Obolo' : `Evento${quo.nomeEvento ? ` “${quo.nomeEvento}”` : ''}`} del ${dataNumerica(quo.data)}`;
   return `${cosa}: ${euro(totaleQuota())}, ${metodo}${quo.voce === 'contributo_mensile' ? `, il ${dataNumerica(quo.data)}` : ''}.`;
 }
 
@@ -4606,7 +4665,7 @@ async function registraQuota() {
   try {
     const esito = await chiama('tessere/registra', {
       partnerId: t.id, codice: quo.voce, metodo: quo.metodo, data: quo.data,
-      mesi: [...quo.mesi], importo: quo.importo,
+      mesi: [...quo.mesi], importo: quo.importo, evento: quo.nomeEvento || '',
     });
     const numero = esito?.ricevute?.[0]?.numero;
     toast(numero ? `Registrato: ricevuta ${numero}.` : 'Pagamento registrato.');
@@ -4652,7 +4711,7 @@ async function apriIncassi() {
   window.scrollTo(0, 0);
   const oggi = isoLocale(new Date());
   Object.assign(inc, { giorno: 'oggi', data: oggi, metodo: null, mesi: new Set([meseCorrente()]),
-                       importo: EVENTO_BASE, scelti: [], errori: new Map() });
+                       importo: EVENTO_BASE, nomeEvento: '', scelti: [], errori: new Map() });
   const dove = el('modulo-incassi');
   if (!inc.soci || !tess.dati) {
     dove.className = 'vuoto';
@@ -4709,6 +4768,7 @@ function disegnaIncassi() {
       <label class="scelta-data" aria-pressed="${inc.giorno === 'data'}">${inc.giorno === 'data' ? dataNumerica(inc.data) : 'Altro giorno'}
         <input type="date" id="data-incasso" max="${isoLocale(oggi)}" value="${inc.data}"></label>
     </div>
+    ${inc.voce === 'contributo_evento' ? campoEventoHtml('incasso', inc.nomeEvento) : ''}
     <p class="domanda">Come hanno pagato?</p>
     <div class="scelte">${METODI.map(([k, nome]) =>
       `<button type="button" data-metodo-incasso="${k}" aria-pressed="${inc.metodo === k}">${nome}</button>`).join('')}</div>
@@ -4748,6 +4808,7 @@ function disegnaIncassi() {
   dove.querySelectorAll('[data-metodo-incasso]').forEach(b => {
     b.onclick = () => { inc.metodo = b.dataset.metodoIncasso; disegnaIncassi(); };
   });
+  if (inc.voce === 'contributo_evento') collegaCampoEvento('incasso', inc.data, (nome) => { inc.nomeEvento = nome; });
   collegaCercaIncasso();
   disegnaSceltiIncasso();
 }
@@ -4870,13 +4931,13 @@ async function registraIncassi() {
   const metodo = METODI_TESTO[inc.metodo];
   const quando = inc.voce === 'contributo_mensile'
     ? [...inc.mesi].sort().map(k => MESI[Number(k.slice(5)) - 1]).join(', ')
-    : `del ${dataNumerica(inc.data)}`;
+    : `${inc.voce === 'contributo_evento' && inc.nomeEvento ? `“${inc.nomeEvento}” ` : ''}del ${dataNumerica(inc.data)}`;
   if (!await conferma(`${voce} ${quando}: ${righe.length} ${righe.length === 1 ? 'persona' : 'persone'}, ${euro(totale)} in tutto, ${metodo}.`,
     'Registro i pagamenti?')) return;
   attesaAzione(true);
   try {
     const { esiti } = await chiama('tessere/registra-tanti', {
-      codice: inc.voce, metodo: inc.metodo, data: inc.data, importo: inc.importo,
+      codice: inc.voce, metodo: inc.metodo, data: inc.data, importo: inc.importo, evento: inc.nomeEvento || '',
       righe: righe.map(({ s, p }) => ({ partnerId: s.id, mesi: p.mesi })),
     });
     const ok = new Set(esiti.filter(e => e.ok).map(e => e.partnerId));

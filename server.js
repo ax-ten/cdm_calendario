@@ -1760,7 +1760,9 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
 //                          mensilita: ['2026-01', ...], telegram_id }]
 //   tessera_socio(partner_id, anno) -> come tessera(), piu' id, telegram_id
 //                          e importi.tesseramento
-//   registra_pagamento(partner_id, { codice, metodo, data, mesi, importo }, da_chi)
+//   registra_pagamento(partner_id, { codice, metodo, data, mesi, importo, evento }, da_chi)
+//                       evento: il nome dell'evento, per il contributo evento
+//                       (sulla ricevuta, e restituito come evento nelle ricevute)
 //                       -> { nome, telegram_id, ricevute: [{ id, numero, tipo, importo, data, mese }] }
 //                       Per chi non ha la tessera dell'anno, la prima mensilita'
 //                       pagata vale anche come tesseramento.
@@ -1813,6 +1815,36 @@ app.post('/prenota/api/tessere/elenco', (req, res) => conUtente(req, res, async 
   });
 }));
 
+// Gli eventi in calendario in un giorno, in tutte le sedi: i nomi che l'app
+// propone quando si segna un contributo evento. Si tengono cinque minuti.
+const EVENTI_VALIDI_PER_MS = 5 * 60 * 1000;
+const eventiVisti = new Map();
+app.post('/prenota/api/eventi-del-giorno', (req, res) => conUtente(req, res, async () => {
+  const zona = 'Europe/Rome';
+  const giorno = DateTime.fromISO(String(req.body?.data || ''), { zone: zona });
+  if (!giorno.isValid) return res.status(400).json({ errore: 'Che giorno?' });
+  const chiave = giorno.toISODate();
+  const visto = eventiVisti.get(chiave);
+  if (visto && Date.now() - visto.quando < EVENTI_VALIDI_PER_MS) return res.json({ eventi: visto.eventi });
+  const auth = await getAuth();
+  const perSede = await Promise.all(CALENDARI.map(async (c) => {
+    const { data } = await google.calendar({ version: 'v3', auth }).events.list({
+      calendarId: c.id, singleEvents: true, orderBy: 'startTime',
+      timeMin: giorno.startOf('day').toISO(), timeMax: giorno.endOf('day').toISO(), maxResults: 50,
+    });
+    return (data.items || []).filter(ev => ev.summary).map(ev => ({
+      titolo: ev.summary.trim(),
+      ora: ev.start?.dateTime ? DateTime.fromISO(ev.start.dateTime).setZone(zona).toFormat('HH:mm') : '',
+      sede: SEDI_NOMI.get(c.sede) || c.sede,
+    }));
+  }));
+  const eventi = perSede.flat().sort((a, b) => a.ora.localeCompare(b.ora))
+    .filter((e, i, tutti) => tutti.findIndex(x => x.titolo === e.titolo) === i);
+  if (eventiVisti.size > 100) eventiVisti.clear();
+  eventiVisti.set(chiave, { eventi, quando: Date.now() });
+  res.json({ eventi });
+}));
+
 // La cronologia: tutti i pagamenti fra due date, di tutte le persone. Un
 // anno al massimo per volta, che e' gia' tanto da scorrere.
 app.post('/prenota/api/tessere/pagamenti', (req, res) => conUtente(req, res, async (utente) => {
@@ -1850,6 +1882,8 @@ function leggiPagamento(b) {
     const importo = Number(b.importo);
     if (!(importo > 0 && importo <= IMPORTO_EVENTO_MAX)) return { errore: 'Quanto ha dato?' };
     valori.importo = Math.round(importo * 100) / 100;
+    // Il nome dell'evento, se c'e': va sulla ricevuta.
+    valori.evento = String(b.evento || '').trim().slice(0, 120) || false;
   }
   return { valori, data };
 }
@@ -1862,7 +1896,7 @@ function mesiDi(lista) {
 
 const cosaPagata = (valori, data) => valori.codice === 'contributo_mensile'
   ? `${VOCI_QUOTA[valori.codice]} di ${valori.mesi.map(nomeMese).join(', ')}`
-  : `${VOCI_QUOTA[valori.codice]} del ${data.setLocale('it').toFormat('d MMMM yyyy')}`;
+  : `${VOCI_QUOTA[valori.codice]}${valori.evento ? ` “${valori.evento}”` : ''} del ${data.setLocale('it').toFormat('d MMMM yyyy')}`;
 
 // Registra in Odoo e scrive a chi ha pagato, se ha Telegram collegato.
 // Per chi non ha ancora la tessera dell'anno, Odoo fa della prima
