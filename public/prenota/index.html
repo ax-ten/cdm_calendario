@@ -954,7 +954,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .tessera-nome .stellina.staff { color: #cfe9ff; }
 /* Sulla tessera la stellina sta sopra il nome, come un fregio. */
 .tessera-nome .stellina { display: block; font-size: 1.05rem; line-height: 1; margin-bottom: 4px; }
-.legenda-stelline { display: block; margin-top: 2px; font-size: .8rem; }
 .socio-nome small { display: block; font-weight: 400; font-size: .78rem; color: var(--tenue); }
 .socio-quota .mesi-mini { flex: 0 0 auto; grid-template-columns: repeat(6, 18px); gap: 3px; margin: 0; }
 .socio-quota .mesi-mini span { padding: 1px 0; font-size: .64rem; border-radius: 4px; }
@@ -969,7 +968,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .anno-quote button svg { width: 18px; height: 18px; display: block; }
 .anno-quote button:disabled { opacity: .35; cursor: default; }
 .filtro-quote { margin-top: 10px; }
-.riepilogo-quote { color: var(--tenue); font-size: .86rem; margin: 0 0 12px; }
 .socio-quota { cursor: pointer; }
 .socio-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .socio-testa b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1599,7 +1597,6 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
       </label>
     </div>
     <label class="solo-disp"><input type="checkbox" id="anche-senza-tessera"> Mostra anche chi non ha la tessera</label>
-    <p class="riepilogo-quote" id="riepilogo-quote"></p>
     <div id="elenco-quote" class="vuoto">…</div>
   </div>
   <div id="vista-pagamenti" hidden>
@@ -4318,7 +4315,6 @@ async function caricaQuote() {
   if (!quo.soci) {
     dove.className = 'vuoto';
     dove.textContent = 'Carico…';
-    el('riepilogo-quote').textContent = '';
     try {
       const { soci } = await chiama('tessere/elenco', { anno: quo.anno });
       quo.soci = soci.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
@@ -4358,20 +4354,6 @@ function disegnaQuote() {
   el('ordine-quote').value = quo.ordine;
   el('ordine-quote').closest('.ordina').classList.toggle('attivo', quo.ordine !== 'nome');
   el('anche-senza-tessera').checked = quo.ancheSenza;
-
-  const tesserati = quo.soci.filter(s => s.tesserato);
-  let riepilogo = `${tesserati.length} con la tessera ${quo.anno}`;
-  if (quo.anno === annoCorrente()) {
-    const mese = meseKey(quo.anno, new Date().getMonth());
-    const n = tesserati.filter(s => s.mensilita.includes(mese)).length;
-    riepilogo += ` · ${n} ${n === 1 ? 'ha' : 'hanno'} pagato ${MESI[new Date().getMonth()]}`;
-  }
-  if (quo.ancheSenza) riepilogo += ` · ${quo.soci.length - tesserati.length} senza tessera`;
-  el('riepilogo-quote').textContent = riepilogo;
-  if (quo.soci.some(s => RUOLI[s.ruolo])) {
-    el('riepilogo-quote').insertAdjacentHTML('beforeend',
-      `<span class="legenda-stelline">${stellina('direttivo')}direttivo &nbsp;${stellina('staff')}staff</span>`);
-  }
 
   const t = quo.testo;
   const lista = base.filter(s => !quo.mesePagato || s.mensilita.includes(quo.mesePagato)).filter(s => !t ||
