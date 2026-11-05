@@ -5496,6 +5496,7 @@ function mostraLato(scatola, lato) {
 // false per chiudere. true vale 'destra'.
 function apriScorri(scatola, lato) {
   if (lato === true) lato = scatola.querySelector(':scope > .scorri-azioni.destra') ? 'destra' : 'sinistra';
+  if (!lato) chiudiPieno(scatola);
   const riga = scatola.querySelector(':scope > :not(.scorri-azioni)');
   const strato = lato && scatola.querySelector(`:scope > .scorri-azioni.${lato}`);
   if (lato && !strato) lato = false;
@@ -5587,11 +5588,20 @@ function collegaScorri(scatola, riga, lati, tocco) {
     // uno swipe e non un tocco.
     if (trascinato) { riga.dataset.appenaScorsa = '1'; setTimeout(() => delete riga.dataset.appenaScorsa, 0); }
     if (trascinato && strato?.classList.contains('piena')) {
-      // Swipe completo: la riga torna a posto e parte l'azione piena (che
-      // chiede conferma da se').
+      // Swipe completo: la riga resta aperta del tutto, con l'azione piena
+      // in vista, e l'azione parte (chiede conferma da se'). Se va a buon
+      // fine la riga se ne va; se no si richiude con un tocco, sulla riga o
+      // fuori.
       const pieno = strato.querySelector('[data-pieno]');
-      chiudiPieno(scatola);
-      apriScorri(scatola, false);
+      const tutta = inizio.tutta;
+      scatola.classList.remove('trascina');
+      strato.style.width = `${tutta}px`;
+      riga.style.transform = `translateX(${lato === 'destra' ? -tutta : tutta}px)`;
+      if (scorriAperta && scorriAperta !== scatola) apriScorri(scorriAperta, false);
+      scatola._lato = lato;
+      scorriAperta = scatola;
+      riga.setAttribute('aria-expanded', 'true');
+      mostraLato(scatola, lato);
       inizio = null;
       setTimeout(() => pieno?.click(), 200);
       return;
