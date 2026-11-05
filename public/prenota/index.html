@@ -4329,7 +4329,6 @@ function disegnaPagamenti() {
   el('totale-pagamenti').hidden = !lista.length;
   el('totale-pagamenti').innerHTML = `
     <div class="spese-totale">${euro(totale)}</div>
-    <div class="spesa"><span>${lista.length} ${lista.length === 1 ? 'pagamento' : 'pagamenti'}</span></div>
     ${[...perMetodo].map(([m, n]) => `<div class="spesa"><span>${esc(m || 'Metodo non indicato')}</span><b>${euro(n)}</b></div>`).join('')}`;
   const dove = el('elenco-pagamenti');
   if (!lista.length) {
