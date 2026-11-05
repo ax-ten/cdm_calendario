@@ -45,12 +45,12 @@ function pulsanteTondo(icona, etichetta, attivo = true, scritta = '') {
 
 
 // ---- quanto occupa il fondo
-// Menu, pulsante d'azione, pulsanti tondi e barra dei passi galleggiano
+// Menu, pulsante d'azione e pulsanti tondi galleggiano
 // sopra la pagina. In fondo serve uno spazio alto quanto loro, misurato:
 // cambia da pagina a pagina (un tondo o due, la barra larga, la tastiera
 // aperta). Si misura dallo stile (bottom e altezza), non dal riquadro sullo
 // schermo, che durante l'animazione d'entrata e' rimpicciolito.
-const GALLEGGIANTI = 'nav.tab, #azione, #azione-a-nome, .tondo, .avanzamento';
+const GALLEGGIANTI = 'nav.tab, #azione, #azione-a-nome, .tondo';
 function aggiornaFondo() {
   let alto = 0;
   for (const n of document.querySelectorAll(GALLEGGIANTI)) {
