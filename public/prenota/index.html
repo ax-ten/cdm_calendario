@@ -92,11 +92,17 @@
   </div>
 
   <div class="passo" data-passo="3" hidden>
+  <!-- La categoria per prima: l'esempio nel campo del nome cambia con lei. -->
+  <div class="campo">
+    <span class="titolo">Categoria</span>
+    <div class="categorie" id="categorie"></div>
+  </div>
+
   <div class="campo">
     <label for="titolo">Nome attività</label>
     <span class="aiuto" id="aiuto-titolo">Serve agli altri per capire subito cosa fate. Va bene anche qualcosa di semplice, come «Serata giochi».</span>
     <input type="text" id="titolo" maxlength="80" required aria-describedby="aiuto-titolo"
-           placeholder="Es. Campagna di D&amp;D, torneo di Magic">
+           placeholder="Es. Campagna di D&amp;D, torneo di Mario Kart">
     <datalist id="serie-note"></datalist>
     <p class="serie" id="serie-nota" hidden></p>
   </div>
@@ -121,11 +127,6 @@
       <b id="conta-note">0/70</b>
     </span>
     <textarea id="note" maxlength="200"></textarea>
-  </div>
-
-  <div class="campo">
-    <span class="titolo">Categoria</span>
-    <div class="categorie" id="categorie"></div>
   </div>
 
   </div>

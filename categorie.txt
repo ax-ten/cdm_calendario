@@ -18,5 +18,5 @@ gdr        | Giochi di Ruolo                | D&D - Nome campagna
 gdt        | Giochi da Tavolo               | Nome del gioco, Boardgames
 mana       | Giochi di Carte Collezionabili | Mana Vault, Serata Pokemon
 libro      | Club di Lettura                | Libro - Autore
-gaming     | Videogiochi                    | Titolo da streammare
+gaming     | Videogiochi                    | Torneo di Mario Kart
 default    | Altro                          | Serata Powerpoint
