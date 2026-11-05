@@ -103,7 +103,7 @@ const VOCI_QUOTA = {
   obolo_giornaliero: 'Obolo',
   contributo_evento: 'Contributo evento',
 };
-const METODI_QUOTA = { contanti: 'in contanti', paypal: 'con PayPal', bonifico: 'con bonifico', stripe: 'con Stripe' };
+const METODI_QUOTA = { contanti: 'in contanti', paypal: 'con PayPal', bonifico: 'con bonifico', stripe: 'con carta' };
 const IMPORTO_EVENTO_MAX = 50;
 const euroTesto = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 })} €`;
 const nomeMese = (k) => DateTime.fromISO(`${k}-01`).setLocale('it').toFormat('LLLL yyyy');
