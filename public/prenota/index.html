@@ -922,9 +922,12 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 #vista-persone, #vista-pagamenti { padding-bottom: calc(var(--azione) + 24px); }
 #vista-persone[hidden], #vista-pagamenti[hidden], .date-pagamenti[hidden], #totale-pagamenti[hidden] { display: none; }
 #periodo-pagamenti, #voce-pagamenti { margin-bottom: 10px; }
+/* Il periodo sta su una riga anche sui telefoni stretti. */
+#periodo-pagamenti { flex-wrap: nowrap; }
+#periodo-pagamenti button { padding: 7px 11px; }
 .date-pagamenti { display: flex; gap: 8px; margin: 0 0 12px; }
-.date-pagamenti label { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--tenue); font-size: .88rem; }
-.date-pagamenti input { flex: 1; min-width: 0; padding: 9px 10px; }
+.date-pagamenti label { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; color: var(--tenue); font-size: .88rem; }
+.date-pagamenti input { flex: 1 1 0; width: 100%; min-width: 0; padding: 9px 8px; font-size: .88rem; }
 .totale-giorno { float: right; color: var(--tenue); font-size: .9rem; font-weight: 500; }
 .riga.pagamento { cursor: pointer; }
 /* Pagamenti: a sinistra cosa e quando, a destra l'importo incolonnato e,
@@ -4254,25 +4257,27 @@ function disegnaQuote() {
 }
 
 // ---- la cronologia: i pagamenti di tutte le persone in un periodo
-// Si sceglie il periodo (oggi, sette giorni, questo mese, quest'anno, o due
+// Si sceglie il periodo (oggi, il mese, l'anno, o due
 // date), poi volendo una voce sola: cosi' si vedono anche i singoli oboli di
 // una serata. In cima il totale e quanti per voce; sotto, giorno per giorno.
 // Toccare un pagamento apre la scheda della persona.
-const PERIODI = [['oggi', 'Oggi'], ['settimana', '7 giorni'], ['mese', 'Questo mese'], ['anno', 'Quest’anno'], ['scegli', 'Dal… al…']];
+// Su una riga sola: oggi, il mese in corso e l'anno in corso per nome, o un
+// periodo scelto con due date.
+const PERIODI = () => [['oggi', 'Oggi'], ['mese', MESI[new Date().getMonth()].replace(/^./, c => c.toUpperCase())],
+  ['anno', String(new Date().getFullYear())], ['scegli', 'Periodo']];
 const VOCI_CRONOLOGIA = [['tutte', 'Tutte'], ['obolo_giornaliero', 'Oboli'], ['contributo_mensile', 'Mensilità'], ['contributo_evento', 'Eventi']];
 
 function estremiPeriodo() {
   const oggi = new Date();
   const iso = isoLocale(oggi);
   if (quo.periodo === 'oggi') return [iso, iso];
-  if (quo.periodo === 'settimana') { const d = new Date(oggi); d.setDate(d.getDate() - 6); return [isoLocale(d), iso]; }
   if (quo.periodo === 'mese') return [`${iso.slice(0, 7)}-01`, iso];
   if (quo.periodo === 'anno') return [`${iso.slice(0, 4)}-01-01`, iso];
   return [quo.da, quo.a];
 }
 
 async function caricaPagamenti() {
-  el('periodo-pagamenti').innerHTML = PERIODI.map(([k, nome]) =>
+  el('periodo-pagamenti').innerHTML = PERIODI().map(([k, nome]) =>
     `<button type="button" role="tab" data-periodo="${k}" aria-selected="${k === quo.periodo}">${nome}</button>`).join('');
   el('periodo-pagamenti').querySelectorAll('[data-periodo]').forEach(b => {
     b.onclick = () => {
