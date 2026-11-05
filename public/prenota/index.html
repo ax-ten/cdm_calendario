@@ -93,8 +93,11 @@
 
   <div class="passo" data-passo="3" hidden>
   <div class="campo">
-    <span class="titolo">Categoria</span>
-    <div class="categorie" id="categorie"></div>
+    <label for="titolo">Nome attività</label>
+    <input type="text" id="titolo" maxlength="80" required
+           placeholder="Es. Serata giochi, campagna GdR">
+    <datalist id="serie-note"></datalist>
+    <p class="serie" id="serie-nota" hidden></p>
   </div>
 
   <!-- Solo per il direttivo: per tutti gli altri il campo non esiste. -->
@@ -108,21 +111,20 @@
     </div>
   </div>
 
-  <div class="campo">
-    <label for="titolo">Nome attività</label>
-    <input type="text" id="titolo" maxlength="80" required
-           placeholder="Es. Serata giochi, campagna GdR">
-    <datalist id="serie-note"></datalist>
-    <p class="serie" id="serie-nota" hidden></p>
-  </div>
-
-  <div class="campo">
+  <!-- La descrizione serve solo in vetrina (va sotto il titolo): si apre
+       con la spunta. -->
+  <div class="campo" id="campo-note" hidden>
     <label for="note">Descrizione <small>(facoltativa)</small></label>
     <span class="aiuto conta">
       <span>Una riga sola: va sotto il titolo, in vetrina.</span>
       <b id="conta-note">0/70</b>
     </span>
     <textarea id="note" maxlength="200"></textarea>
+  </div>
+
+  <div class="campo">
+    <span class="titolo">Categoria</span>
+    <div class="categorie" id="categorie"></div>
   </div>
 
   </div>

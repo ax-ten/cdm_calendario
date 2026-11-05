@@ -579,6 +579,7 @@ function quandoSerie(date) {
 function sincronizzaVetrina() {
   if (el('vetrina').checked) el('titolo').setAttribute('list', 'serie-note');
   else el('titolo').removeAttribute('list');
+  el('campo-note').hidden = !el('vetrina').checked;
   aggiornaSerie();
 }
 
@@ -647,7 +648,8 @@ async function prenota() {
       oraFine: stato.aOra,
       titolo,
       categoria: stato.categoria,
-      note: el('note').value.trim(),
+      // Fuori dalla vetrina la descrizione non si vede: non si manda.
+      note: el('vetrina').checked ? el('note').value.trim() : '',
       serveApertura: el('apertura').checked,
       fissa: el('fissa').checked,
       ricorrenza: stato.ricorrenza,
