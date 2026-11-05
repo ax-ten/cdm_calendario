@@ -597,9 +597,33 @@ function normalizeEvent(ev, zone = 'Europe/Rome', sedeCalendario = null) {
 // che servono a registrarsi, controlla che chi chiama sia un socio
 // confermato in Odoo. Nascondere le schede nella pagina non basterebbe:
 // l'API si chiama anche senza pagina.
+// Lo username Telegram di una persona, per aprirle la chat (t.me/<username>).
+// Lo sa Telegram (getChat), se la persona ha avviato il bot; si tiene un
+// giorno, e chi non ne ha uno resta senza pulsante.
+const USERNAME_VALIDI_PER_MS = 24 * 60 * 60 * 1000;
+const usernameVisti = new Map();
+async function usernameDi(telegramId) {
+  const visto = usernameVisti.get(String(telegramId));
+  if (visto && Date.now() - visto.quando < USERNAME_VALIDI_PER_MS) return visto.username;
+  let username = null;
+  try {
+    username = (await telegram('getChat', { chat_id: telegramId })).username || null;
+  } catch { /* chat mai aperta col bot: niente pulsante */ }
+  usernameVisti.set(String(telegramId), { username, quando: Date.now() });
+  return username;
+}
+
+// Un gruppo Telegram che manca in gruppi.txt o staff.txt e' un problema di
+// chi gestisce il server: va nel log. A chi usa l'app si dice cosa fare.
+function mancaGruppo(res, quale, chi) {
+  console.error(`configurazione: manca il gruppo ${quale}`);
+  return res.status(500).json({ errore: `Non riesco ad avvisare ${chi}: avvisa in sede.` });
+}
+
 async function conUtente(req, res, azione, { soloSoci = true } = {}) {
   if (!BOT_TOKEN) {
-    return res.status(503).json({ errore: 'app non configurata: manca bot_token.txt' });
+    console.error('app non configurata: manca bot_token.txt');
+    return res.status(503).json({ errore: 'L’app non è ancora pronta: riprova più tardi.' });
   }
   let utente;
   try {
@@ -765,7 +789,7 @@ function testoRegistrazione(utente, nome, cognome) {
 }
 
 function testoCandidati(candidati, nome, cognome) {
-  if (!candidati.length) return 'Su Odoo non c’è nessunə con questo nome: è sociə nuovə?';
+  if (!candidati.length) return 'Su Odoo non c’è nessuna scheda con questo nome: è una persona nuova?';
   const stesso = (c) => c.nome.trim().toLowerCase() === `${nome} ${cognome}`.trim().toLowerCase();
   if (candidati.length === 1) {
     return stesso(candidati[0])
@@ -786,8 +810,8 @@ function tastieraRegistrazione(id, candidati) {
       callback_data: `socio:${id}:${c.id}`,
     }]),
     [
-      { text: 'Sociə nuovə', callback_data: `socio:${id}:nuovo` },
-      { text: 'Non è sociə', callback_data: `socio:${id}:no` },
+      { text: 'Persona nuova', callback_data: `socio:${id}:nuovo` },
+      { text: 'Non è nel libro soci', callback_data: `socio:${id}:no` },
     ],
   ];
 }
@@ -805,13 +829,13 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
     return res.status(400).json({ errore: 'Serve accettare l’informativa.' });
   }
   if (await socioDi(utente.id, { fresco: true })) {
-    return res.status(409).json({ errore: 'Sei già registratə.' });
+    return res.status(409).json({ errore: 'La registrazione è già fatta.' });
   }
   if (soci.richiestaDi(utente.id)) return res.json({ ok: true, inAttesa: true });
   // Chi lo staff ha sospeso con /blocca non manda richieste: e' lo stesso
   // comando delle prenotazioni.
   if (prenotazioni.eBloccato(utente.id)) {
-    return res.status(403).json({ errore: 'Sei statə sospesə dallo staff: parlane in sede.' });
+    return res.status(403).json({ errore: 'Lo staff ha sospeso il tuo accesso: parlane in sede.' });
   }
   // Un account Telegram fa una richiesta per volta, ma cento account finti
   // ne fanno cento, e finiscono tutte nel gruppo direttivo. Oltre il tetto
@@ -823,12 +847,12 @@ app.post('/prenota/api/registrati', (req, res) => conUtente(req, res, async (ute
   const fino = soci.rifiutatoFinoA(utente.id);
   if (fino) {
     return res.status(403).json({
-      errore: `Il direttivo non ti ha riconosciutə come sociə: puoi riprovare dal ` +
+      errore: `Il direttivo non ha confermato la tua iscrizione: puoi riprovare dal ` +
               `${fino.setLocale('it').toFormat('d MMMM')}, o parlarne in sede`,
     });
   }
   const chatDirettivo = GRUPPI.get('direttivo');
-  if (!chatDirettivo) return res.status(500).json({ errore: 'Manca il gruppo del direttivo nella configurazione.' });
+  if (!chatDirettivo) return mancaGruppo(res, 'direttivo', 'il direttivo');
 
   // L'esito arriva in chat privata, e i promemoria dei prestiti pure: se il
   // bot non puo' scrivere a questa persona, lo si dice adesso e non quando
@@ -960,7 +984,7 @@ app.post('/prenota/api/prenota', (req, res) => conUtente(req, res, async (utente
     const chatStaff = STAFF.get(sede);
     if (!chatStaff) {
       prenotazioni.chiudiRichiesta(idRichiesta);
-      return res.status(500).json({ errore: 'Manca il gruppo staff di questa sede nella configurazione.' });
+      return mancaGruppo(res, 'staff di questa sede', 'lo staff');
     }
     try {
       const messaggio = await telegram('sendMessage', {
@@ -1173,7 +1197,7 @@ app.post('/prenota/api/settimanale', (req, res) => conUtente(req, res, async (ut
 
   const chatStaff = STAFF.get(sede);
   if (!chatStaff) {
-    return res.status(500).json({ errore: 'Manca il gruppo staff di questa sede nella configurazione.' });
+    return mancaGruppo(res, 'staff di questa sede', 'lo staff');
   }
 
   const titolo = evento.summary || 'senza titolo';
@@ -1444,7 +1468,7 @@ app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res
   const prestito = (await odoo.miniapp('miei_prestiti', utente.id)).find(p => p.id === prestitoId);
   if (!prestito) return res.status(404).json({ errore: 'Non è un tuo prestito aperto.' });
   const chatStaff = STAFF.get(String(prestito.sede || '').toLowerCase());
-  if (!chatStaff) return res.status(500).json({ errore: `Manca il gruppo staff di ${prestito.sede} nella configurazione.` });
+  if (!chatStaff) return mancaGruppo(res, `staff di ${prestito.sede}`, 'lo staff');
 
   const chi = `${prestito.socio}${utente.username ? ' (@' + utente.username + ')' : ''}`;
   try {
@@ -1461,7 +1485,11 @@ app.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, res
 // ---- vista degli admin: tutti i prestiti in corso
 app.post('/prenota/api/inventario/admin/prestiti', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdmin(utente, res)) return;
-  res.json({ prestiti: await odoo.miniapp('prestiti_aperti') });
+  const prestiti = await odoo.miniapp('prestiti_aperti');
+  // Per il pulsante "scrivi in chat": serve lo username, perche' una pagina
+  // dentro Telegram apre solo link t.me. Il numero resta qui.
+  res.json({ prestiti: await Promise.all(prestiti.map(async ({ telegram_id: tg, ...p }) =>
+    ({ ...p, username: tg ? await usernameDi(tg) : null }))) });
 }));
 
 // Chi amministra segna che un bene l'ha preso qualcun altro: unə sociə
@@ -1684,6 +1712,9 @@ app.post('/prenota/api/tessera/ricevuta', (req, res) => conUtente(req, res, asyn
 //                          e importi.tesseramento
 //   registra_pagamento(partner_id, { codice, metodo, data, mesi, importo }, da_chi)
 //                       -> { nome, telegram_id, ricevute: [{ id, numero, tipo, importo, data, mese }] }
+//                       Per chi non ha la tessera dell'anno, la prima mensilita'
+//                       pagata vale anche come tesseramento.
+//   prestiti_aperti()    in ogni prestito anche telegram_id, per aprire la chat
 //   annulla_ricevuta(ricevuta_id, da_chi)
 //                       -> { numero, tipo, importo, socio, telegram_id }
 // e, facoltativa, la spunta admin_tessere nella risposta di socio_da_telegram.
@@ -1734,63 +1765,130 @@ app.post('/prenota/api/tessere/elenco', (req, res) => conUtente(req, res, async 
 app.post('/prenota/api/tessere/socio', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdminTessere(utente, res)) return;
   const partnerId = Number(req.body?.partnerId);
-  if (!partnerId) return res.status(400).json({ errore: 'Quale sociə?' });
+  if (!partnerId) return res.status(400).json({ errore: 'Quale persona?' });
   const { telegram_id: tg, ...tessera } =
     await odoo.miniapp('tessera_socio', partnerId, annoQuote(req.body?.anno));
   res.json({ tessera: { ...tessera, telegram: Boolean(tg) } });
 }));
 
-// Un pagamento fatto in sede: la voce, come, quando e, per le mensilita',
-// quali mesi. Al direttivo arriva una riga nel gruppo, cosi' se due persone
-// segnano la stessa cosa se ne accorge qualcuno; a chi ha pagato, se ha
-// Telegram collegato, un messaggio.
-app.post('/prenota/api/tessere/registra', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdminTessere(utente, res)) return;
-  const b = req.body || {};
-  const partnerId = Number(b.partnerId);
-  if (!partnerId) return res.status(400).json({ errore: 'Quale sociə?' });
+// Cosa e' stato pagato, come e quando: lo stesso per un pagamento solo e
+// per tanti insieme. Le mensilita' le dice ogni riga, perche' chi ha gia'
+// pagato un mese non lo ripaga. Restituisce { errore } o { valori, data }.
+function leggiPagamento(b) {
   const codice = String(b.codice || '');
-  if (!VOCI_QUOTA[codice]) return res.status(400).json({ errore: 'Cosa ha pagato?' });
+  if (!VOCI_QUOTA[codice]) return { errore: 'Cosa ha pagato?' };
   const metodo = String(b.metodo || '');
-  if (!METODI_QUOTA[metodo]) return res.status(400).json({ errore: 'Come ha pagato?' });
+  if (!METODI_QUOTA[metodo]) return { errore: 'Come ha pagato?' };
   const oggi = DateTime.now().setZone('Europe/Rome').startOf('day');
   const data = DateTime.fromISO(String(b.data || ''), { zone: 'Europe/Rome' });
-  if (!data.isValid || data > oggi.endOf('day')) return res.status(400).json({ errore: 'Quando ha pagato?' });
+  if (!data.isValid || data > oggi.endOf('day')) return { errore: 'Quando ha pagato?' };
   const valori = { codice, metodo, data: data.toISODate(), mesi: [], importo: false };
-  if (codice === 'contributo_mensile') {
-    valori.mesi = [...new Set((Array.isArray(b.mesi) ? b.mesi : []).map(String))]
-      .filter(m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m)).sort();
-    if (!valori.mesi.length || valori.mesi.length > 12) return res.status(400).json({ errore: 'Quali mesi?' });
-  }
   if (codice === 'contributo_evento') {
     const importo = Number(b.importo);
-    if (!(importo > 0 && importo <= IMPORTO_EVENTO_MAX)) return res.status(400).json({ errore: 'Quanto ha dato?' });
+    if (!(importo > 0 && importo <= IMPORTO_EVENTO_MAX)) return { errore: 'Quanto ha dato?' };
     valori.importo = Math.round(importo * 100) / 100;
   }
+  return { valori, data };
+}
+
+function mesiDi(lista) {
+  const mesi = [...new Set((Array.isArray(lista) ? lista : []).map(String))]
+    .filter(m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m)).sort();
+  return mesi.length && mesi.length <= 12 ? mesi : null;
+}
+
+const cosaPagata = (valori, data) => valori.codice === 'contributo_mensile'
+  ? `${VOCI_QUOTA[valori.codice]} di ${valori.mesi.map(nomeMese).join(', ')}`
+  : `${VOCI_QUOTA[valori.codice]} del ${data.setLocale('it').toFormat('d MMMM yyyy')}`;
+
+// Registra in Odoo e scrive a chi ha pagato, se ha Telegram collegato.
+// Per chi non ha ancora la tessera dell'anno, Odoo fa della prima
+// mensilita' anche il tesseramento.
+async function registraUno(utente, partnerId, valori, data) {
   const esito = await odoo.miniapp('registra_pagamento', partnerId, valori, nomeTelegram(utente));
   const ricevute = esito.ricevute || [];
   const totale = ricevute.reduce((n, r) => n + Number(r.importo || 0), 0);
-  const cosa = codice === 'contributo_mensile'
-    ? `${VOCI_QUOTA[codice]} di ${valori.mesi.map(nomeMese).join(', ')}`
-    : `${VOCI_QUOTA[codice]} del ${data.setLocale('it').toFormat('d MMMM yyyy')}`;
-
-  const chatDirettivo = GRUPPI.get('direttivo');
-  if (chatDirettivo) {
-    telegram('sendMessage', {
-      chat_id: chatDirettivo,
-      text: `${nomeTelegram(utente)} ha registrato per ${esito.nome}: ${cosa}, ` +
-            `${euroTesto(totale)} ${METODI_QUOTA[metodo]}.`,
-    }).catch(err => console.error('quote: direttivo non avvisato:', err.message));
-  }
+  const cosa = cosaPagata(valori, data);
   if (esito.telegram_id) {
     sociVisti.delete(String(esito.telegram_id));
     telegram('sendMessage', {
       chat_id: esito.telegram_id,
       text: `Il direttivo ha registrato il tuo pagamento: ${cosa}, ${euroTesto(totale)}. ` +
             'Trovi la ricevuta nella Tessera, dentro l’app.',
-    }).catch(err => console.error('quote: socio non avvisato:', err.message));
+    }).catch(err => console.error('quote: avviso del pagamento non mandato:', err.message));
   }
-  res.json({ ricevute, totale });
+  return { nome: esito.nome, ricevute, totale, cosa };
+}
+
+function avvisaDirettivo(testo) {
+  const chatDirettivo = GRUPPI.get('direttivo');
+  if (!chatDirettivo) return;
+  telegram('sendMessage', { chat_id: chatDirettivo, text: testo })
+    .catch(err => console.error('quote: direttivo non avvisato:', err.message));
+}
+
+// Un pagamento fatto in sede: la voce, come, quando e, per le mensilita',
+// quali mesi. Al direttivo arriva una riga nel gruppo, cosi' se due persone
+// segnano la stessa cosa se ne accorge qualcuno.
+app.post('/prenota/api/tessere/registra', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const b = req.body || {};
+  const partnerId = Number(b.partnerId);
+  if (!partnerId) return res.status(400).json({ errore: 'Quale persona?' });
+  const { errore, valori, data } = leggiPagamento(b);
+  if (errore) return res.status(400).json({ errore });
+  if (valori.codice === 'contributo_mensile') {
+    valori.mesi = mesiDi(b.mesi);
+    if (!valori.mesi) return res.status(400).json({ errore: 'Quali mesi?' });
+  }
+  const fatto = await registraUno(utente, partnerId, valori, data);
+  avvisaDirettivo(`${nomeTelegram(utente)} ha registrato per ${fatto.nome}: ${fatto.cosa}, ` +
+                  `${euroTesto(fatto.totale)} ${METODI_QUOTA[valori.metodo]}.`);
+  res.json({ ricevute: fatto.ricevute, totale: fatto.totale });
+}));
+
+// Lo stesso pagamento per tante persone insieme: l'obolo di una serata, le
+// mensilita' raccolte a un'apertura. Si va una persona alla volta; chi non
+// va a buon fine resta nell'elenco con il motivo, gli altri sono registrati.
+// Al direttivo una riga sola, con tutti i nomi.
+const PAGAMENTI_PER_VOLTA = 60;
+app.post('/prenota/api/tessere/registra-tanti', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloAdminTessere(utente, res)) return;
+  const b = req.body || {};
+  const { errore, valori, data } = leggiPagamento(b);
+  if (errore) return res.status(400).json({ errore });
+  const righe = (Array.isArray(b.righe) ? b.righe : [])
+    .map(r => ({ partnerId: Number(r?.partnerId), mesi: r?.mesi }))
+    .filter((r, i, tutte) => r.partnerId && tutte.findIndex(x => x.partnerId === r.partnerId) === i);
+  if (!righe.length) return res.status(400).json({ errore: 'Per chi?' });
+  if (righe.length > PAGAMENTI_PER_VOLTA) {
+    return res.status(400).json({ errore: `Al massimo ${PAGAMENTI_PER_VOLTA} persone per volta.` });
+  }
+  const esiti = [];
+  for (const r of righe) {
+    const suoi = { ...valori };
+    if (valori.codice === 'contributo_mensile') {
+      suoi.mesi = mesiDi(r.mesi);
+      if (!suoi.mesi) { esiti.push({ partnerId: r.partnerId, ok: false, errore: 'Quali mesi?' }); continue; }
+    }
+    try {
+      const fatto = await registraUno(utente, r.partnerId, suoi, data);
+      esiti.push({ partnerId: r.partnerId, ok: true, nome: fatto.nome, totale: fatto.totale });
+    } catch (err) {
+      if (!(err instanceof odoo.ErroreOdoo && err.perUtente)) console.error('quote: pagamento non registrato:', err.message);
+      esiti.push({ partnerId: r.partnerId, ok: false,
+        errore: err.perUtente ? err.message : 'Non registrato: riprova.' });
+    }
+  }
+  const fatti = esiti.filter(e => e.ok);
+  if (fatti.length) {
+    const totale = fatti.reduce((n, e) => n + e.totale, 0);
+    const voce = valori.codice === 'contributo_mensile' ? VOCI_QUOTA[valori.codice] : cosaPagata(valori, data);
+    avvisaDirettivo(`${nomeTelegram(utente)} ha registrato ${voce} per ${fatti.length} ` +
+      `${fatti.length === 1 ? 'persona' : 'persone'}, ${euroTesto(totale)} ${METODI_QUOTA[valori.metodo]}: ` +
+      fatti.map(e => e.nome).join(', ') + '.');
+  }
+  res.json({ esiti });
 }));
 
 // Una ricevuta segnata per sbaglio (socio sbagliato, mese sbagliato): si
@@ -1819,7 +1917,7 @@ const promemoriaQuote = new Map();
 app.post('/prenota/api/tessere/ricorda', (req, res) => conUtente(req, res, async (utente) => {
   if (!await soloAdminTessere(utente, res)) return;
   const partnerId = Number(req.body?.partnerId);
-  if (!partnerId) return res.status(400).json({ errore: 'Quale sociə?' });
+  if (!partnerId) return res.status(400).json({ errore: 'Quale persona?' });
   const oggi = DateTime.now().setZone('Europe/Rome');
   if (promemoriaQuote.get(partnerId) === oggi.toISODate()) {
     return res.status(409).json({ errore: 'Un promemoria è già partito oggi.' });
@@ -1852,13 +1950,13 @@ const TESTO_MAX = 120;
 app.post('/prenota/api/iscrizione', (req, res) => conUtente(req, res, async (utente) => {
   if (!utente.debug) return res.status(404).json({ errore: 'Non c’è.' });
   if (await socioDi(utente.id, { fresco: true })) {
-    return res.status(409).json({ errore: 'Sei già sociə.' });
+    return res.status(409).json({ errore: 'Hai già la tessera.' });
   }
   if (prenotazioni.eBloccato(utente.id)) {
-    return res.status(403).json({ errore: 'Sei statə sospesə dallo staff: parlane in sede.' });
+    return res.status(403).json({ errore: 'Lo staff ha sospeso il tuo accesso: parlane in sede.' });
   }
   const chatDirettivo = GRUPPI.get('direttivo');
-  if (!chatDirettivo) return res.status(500).json({ errore: 'Manca il gruppo del direttivo nella configurazione.' });
+  if (!chatDirettivo) return mancaGruppo(res, 'direttivo', 'il direttivo');
   if (req.body?.privacy !== true) return res.status(400).json({ errore: 'Serve accettare l’informativa.' });
   const v = req.body?.valori || {};
   const valori = Object.fromEntries(
@@ -1881,7 +1979,7 @@ app.post('/prenota/api/iscrizione', (req, res) => conUtente(req, res, async (ute
       parse_mode: 'HTML',
       text: `<code>${escHtml(`${nomeTelegram(utente)}, id ${utente.id}`)}</code> chiede di tesserarsi,\n` +
             `dice di essere ${escHtml(`${valori.nome} ${valori.cognome}`)}, ` +
-            `natə a ${escHtml(valori.luogo_nascita)} il ${nascita}.\n` +
+            `nascita: ${escHtml(valori.luogo_nascita)}, ${nascita}.\n` +
             'I dati completi sono nella richiesta di iscrizione in Odoo.\n\n' +
             'Quando ha pagato la quota in sede, segna come:',
       reply_markup: { inline_keyboard: [
@@ -2015,7 +2113,7 @@ app.post('/prenota/api/staff/serie', (req, res) => conUtente(req, res, async (ut
       sedeNome: SEDI_NOMI.get(sede) || sede,
       titolo: serie.summary || 'senza titolo',
       cadenza: prenotazioni.testoRicorrenza(priv.ricorrenza || 'settimanale', inizio),
-      orario: `${inizio.toFormat('HH:mm')}–${fine.toFormat('HH:mm')}`,
+      orario: `${inizio.toFormat('HH:mm')}-${fine.toFormat('HH:mm')}`,
       dal: inizio.toISODate(),
       cominciata: inizio < adesso,
       chi: priv.richiedente || '',
@@ -2363,7 +2461,7 @@ app.post('/prenota/api/interno/cancella-dati', async (req, res) => {
       chat_id: chatDirettivo,
       text: `${esito.nome} (Telegram ${nome || userId}) ha chiesto dal bot di cancellare i suoi dati.\n` +
             (esito.provvisorio
-              ? 'Non era ancora confermatə: la scheda provvisoria è archiviata e Telegram è scollegato.'
+              ? 'La registrazione non era ancora confermata: la scheda provvisoria è archiviata e Telegram è scollegato.'
               : 'Telegram è scollegato dalla scheda, quindi niente più app né promemoria. ' +
                 'Libro soci e storico dei prestiti restano: valutate voi cosa va conservato.'),
     }).catch(err => console.error('cancella dati: direttivo non avvisato:', err.message));
@@ -2377,7 +2475,7 @@ app.post('/prenota/api/interno/cancella-dati', async (req, res) => {
 app.post('/prenota/api/interno/registrazioni', async (req, res) => {
   if (!soloBot(req, res)) return;
   const chatDirettivo = GRUPPI.get('direttivo');
-  if (!chatDirettivo) return res.status(500).json({ errore: 'Manca il gruppo del direttivo nella configurazione.' });
+  if (!chatDirettivo) return mancaGruppo(res, 'direttivo', 'il direttivo');
   const richieste = soci.inAttesa();
   let mandate = 0;
   for (const r of richieste) {
