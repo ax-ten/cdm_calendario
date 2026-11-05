@@ -1157,18 +1157,17 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 #dettaglio-quota:not(:empty) { padding-bottom: 8px; }
 .campo-evento { width: 100%; margin: 6px 0 8px; }
 /* Aggiungi un bene: i due passi */
-.passi-bene { display: flex; gap: 6px; padding: 4px; margin: 0 0 16px; border-radius: 999px; background: var(--scheda); }
-.passi-bene button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px;
-  border: 0; border-radius: 999px; background: none; color: var(--tenue); font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
-.passi-bene button span { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  font-size: .75rem; background: color-mix(in srgb, var(--tenue) 25%, transparent); }
-.passi-bene button[aria-selected="true"] { background: var(--accento); color: var(--su-accento); }
-.passi-bene button[aria-selected="true"] span { background: color-mix(in srgb, var(--su-accento) 25%, transparent); }
 .passo-bene[hidden] { display: none; }
 .riassunto-bene { margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: var(--scheda); }
 .riassunto-bene b { display: block; }
 .riassunto-bene span { color: var(--tenue); font-size: .86rem; }
-#indietro-bene[hidden], #avanti-bene[hidden], #salva-bene[hidden], #annulla-bene[hidden] { display: none; }
+#pannello-aggiungi { padding-bottom: calc(var(--azione) + 40px); }
+/* Il codice a barre e' la scorciatoia del primo passo: sta in un riquadro. */
+.riquadro-isbn { padding: 12px 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--accento) 9%, var(--sfondo));
+  border: 1px solid color-mix(in srgb, var(--accento) 28%, transparent); }
+.riquadro-isbn[hidden] { display: none; }
+.aiuto-isbn { margin: -2px 0 10px; color: var(--tenue); font-size: .84rem; line-height: 1.35; }
 .eventi-giorno { margin-top: 0; }
 .eventi-giorno:empty { display: none; }
 .eventi-giorno small { color: inherit; opacity: .7; margin-left: 2px; }
@@ -1403,13 +1402,13 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <!-- ------------------------------------------------- aggiunta (staff) -->
 <section class="pannello" id="pannello-aggiungi" hidden>
   <button type="button" class="indietro" id="chiudi-aggiungi">‹ Biblioteca</button>
-  <h1 id="titolo-aggiungi">Aggiungi un bene</h1>
-  <!-- Due passi: prima il bene (quello che arriva dal codice a barre), poi
-       la nostra catalogazione. I due nomi in cima portano all'uno o all'altro. -->
-  <div class="passi-bene" role="tablist" aria-label="Passi">
-    <button type="button" role="tab" data-passo-bene="1" aria-selected="true"><span>1</span> Il bene</button>
-    <button type="button" role="tab" data-passo-bene="2" aria-selected="false"><span>2</span> Catalogazione</button>
+  <!-- Due passi, come la prenotazione di un'attivita': prima il bene (quello
+       che arriva dal codice a barre), poi la nostra catalogazione. La linea
+       in basso dice a che punto si e'; la freccia va avanti. -->
+  <div class="avanzamento" role="progressbar" aria-valuemin="1" aria-valuemax="2" id="avanzamento-bene">
+    <div class="avanzamento-pieno" id="avanzamento-bene-pieno"></div>
   </div>
+  <h1 id="titolo-aggiungi">Il bene</h1>
 
   <div class="passo-bene" data-passo-bene-corpo="1">
   <div class="campo riga-campi">
@@ -1423,8 +1422,9 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     </div>
   </div>
 
-  <div class="campo" id="campo-isbn">
+  <div class="campo riquadro-isbn" id="campo-isbn">
     <label for="agg-isbn">ISBN</label>
+    <p class="aiuto-isbn">Inquadra o scrivi il codice: titolo, autore, editore e anno si compilano da soli.</p>
     <div class="riga-campi">
       <input type="text" id="agg-isbn" inputmode="numeric" autocomplete="off" placeholder="978…">
       <button type="button" class="bottone secondario" id="scansiona-isbn" hidden>Fotocamera</button>
@@ -1500,12 +1500,6 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   </div>
   </div>
 
-  <div class="azioni-form">
-    <button type="button" class="bottone secondario" id="annulla-bene">Annulla</button>
-    <button type="button" class="bottone secondario" id="indietro-bene" hidden>‹ Il bene</button>
-    <button type="button" class="bottone" id="avanti-bene">Avanti</button>
-    <button type="button" class="bottone" id="salva-bene" hidden>Salva</button>
-  </div>
 </section>
 
 <!-- Il pulsante d'azione: non quello di Telegram, che Telegram disegna sotto
@@ -2117,6 +2111,7 @@ function azionePrenota() {
 // tue prenotazioni.
 function indietro() {
   if (!el('foglio').hidden) return chiudiFoglio();
+  if (!el('pannello-aggiungi').hidden && inv.passoBene === 2) return passoBene(1);
   if (!el('pannello-aggiungi').hidden || !el('pannello-prestiti').hidden) return mostra('inventario');
   if (!el('pannello-ricevute').hidden) return mostra('tessera');
   if (!el('pannello-gestione').hidden) return mostra('mie');
@@ -3444,14 +3439,7 @@ function preparaFormBene() {
       const primo = el('agg-generi-suggeriti').querySelector('[data-genere-esistente]');
       if (primo && !el('agg-generi-suggeriti').hidden) primo.click(); else aggiungiGenere();
     };
-    el('salva-bene').onclick = salvaBene;
-    el('avanti-bene').onclick = () => passoBene(2);
-    el('indietro-bene').onclick = () => passoBene(1);
-    document.querySelectorAll('.passi-bene [data-passo-bene]').forEach(b => {
-      b.onclick = () => passoBene(Number(b.dataset.passoBene));
-    });
-    el('chiudi-aggiungi').onclick = () => mostra('inventario');
-    el('annulla-bene').onclick = () => mostra('inventario');
+    el('chiudi-aggiungi').onclick = () => (inv.passoBene === 2 ? passoBene(1) : mostra('inventario'));
     formAggiungiPronto = true;
   }
 }
@@ -3478,12 +3466,19 @@ function passoBene(n) {
   }
   inv.passoBene = n;
   document.querySelectorAll('[data-passo-bene-corpo]').forEach(c => { c.hidden = Number(c.dataset.passoBeneCorpo) !== n; });
-  document.querySelectorAll('.passi-bene [data-passo-bene]').forEach(b =>
-    b.setAttribute('aria-selected', String(Number(b.dataset.passoBene) === n)));
-  el('annulla-bene').hidden = n !== 1;
-  el('avanti-bene').hidden = n !== 1;
-  el('indietro-bene').hidden = n !== 2;
-  el('salva-bene').hidden = n !== 2;
+  el('titolo-aggiungi').textContent = n === 1 ? 'Il bene' : 'Catalogazione';
+  el('chiudi-aggiungi').textContent = n === 1 ? '‹ Biblioteca' : '‹ Indietro';
+  el('avanzamento-bene-pieno').style.width = `${n / 2 * 100}%`;
+  el('avanzamento-bene').setAttribute('aria-valuenow', String(n));
+  el('avanzamento-bene').setAttribute('aria-valuetext', `Passo ${n} di 2`);
+  // Il primo passo va avanti con la freccia, il secondo salva.
+  if (n === 1) {
+    azionePrincipale = () => passoBene(2);
+    pulsanteTondo('freccia', 'Avanti');
+  } else {
+    azionePrincipale = salvaBene;
+    pulsantePrincipale(inv.modifica ? 'Salva le modifiche' : 'Aggiungi il bene', true);
+  }
   if (n === 2) {
     const sede = el('agg-sede').selectedOptions[0]?.textContent || '';
     const cat = el('agg-categoria').selectedOptions[0]?.textContent || '';
@@ -3497,7 +3492,6 @@ function passoBene(n) {
 function modalitaForm(beneId) {
   const prima = inv.modifica;
   inv.modifica = beneId;
-  el('titolo-aggiungi').textContent = beneId ? 'Modifica bene' : 'Aggiungi un bene';
   el('campo-mancante').hidden = !beneId;
   // Passando da una modifica a un'aggiunta il form non deve tenere il bene di prima.
   if (prima || beneId) svuotaFormBene();
@@ -3752,7 +3746,7 @@ async function salvaBene() {
   };
   // Nella modifica un ISBN nascosto (un gioco da tavolo) resta com'e' in Odoo.
   if (inv.modifica && el('campo-isbn').hidden) delete valori.isbn;
-  el('salva-bene').disabled = true;
+  attesaAzione(true);
   try {
     if (inv.modifica) {
       await chiama('inventario/admin/modifica', { beneId: inv.modifica, valori });
@@ -3777,11 +3771,13 @@ async function salvaBene() {
     // intanto restano scritti cosi'.
     disegnaGeneri();
     esitoIsbn('');
-    window.scrollTo(0, 0);
+    // Si riparte dal primo passo, per il prossimo della pila.
+    attesaAzione(false);
+    passoBene(1);
   } catch (err) {
     lamenta(err.message);
   } finally {
-    el('salva-bene').disabled = false;
+    attesaAzione(false);
   }
 }
 
@@ -5770,7 +5766,7 @@ function mostra(quale) {
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
   const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute', 'gestione', 'serie', 'quote', 'quota', 'incassi'].includes(quale);
   if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
-  document.body.classList.toggle('in-passi', quale === 'prenota');
+  document.body.classList.toggle('in-passi', quale === 'prenota' || quale === 'aggiungi');
   azionePrincipale = quale === 'prenota' ? azionePrenota
     : quale === 'mie' ? nuovaPrenotazione
     : quale === 'inventario' ? prendiScelto : null;
