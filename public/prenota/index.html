@@ -952,6 +952,8 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .stellina.direttivo { color: #f2c14e; }
 .stellina.staff { color: #7cc4ff; }
 .tessera-nome .stellina.staff { color: #cfe9ff; }
+/* Sulla tessera la stellina sta sopra il nome, come un fregio. */
+.tessera-nome .stellina { display: block; font-size: 1.05rem; line-height: 1; margin-bottom: 4px; }
 .legenda-stelline { display: block; margin-top: 2px; font-size: .8rem; }
 .socio-nome small { display: block; font-weight: 400; font-size: .78rem; color: var(--tenue); }
 .socio-quota .mesi-mini { flex: 0 0 auto; grid-template-columns: repeat(6, 18px); gap: 3px; margin: 0; }
@@ -1097,10 +1099,11 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 /* ---- righe da scorrere: le azioni stanno dietro, da uno o due lati */
 .scorri { animation: entra-su .24s ease-out backwards;
   position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 10px; }
-.scorri > .riga { animation: none; position: relative; z-index: 1; margin: 0; cursor: pointer; touch-action: pan-y;
+.scorri > .riga, .scorri > .bene { animation: none; position: relative; z-index: 1; margin: 0; cursor: pointer; touch-action: pan-y;
   -webkit-user-select: none; user-select: none;
   transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
-.scorri > .riga:focus:not(:focus-visible) { outline: none; }
+.scorri > .riga:focus:not(:focus-visible), .scorri > .bene:focus:not(:focus-visible) { outline: none; }
+.scorri.di-bene { margin-bottom: 8px; }
 .scorri.trascina > .riga { transition: none; }
 .scorri-azioni { position: absolute; top: 0; bottom: 0; display: flex; visibility: hidden; }
 .scorri-azioni::before { content: ""; position: absolute; top: 0; bottom: 0; width: 16px;
@@ -3003,42 +3006,33 @@ function collegaBottoni(dove) {
     scheda.dataset.collegato = '1';
     const id = Number(scheda.dataset.bene);
     scheda.onclick = () => {
-      if (scheda.dataset.lungo) { delete scheda.dataset.lungo; return; }
+      // Dopo uno swipe non si sceglie; con la scheda aperta, il tocco la chiude.
+      if (scheda.dataset.appenaScorsa) return;
+      const scatola = scheda.closest('.scorri');
+      if (scatola?._lato) return apriScorri(scatola, false);
       sceglieBene(inv.scelto === id ? null : id);
     };
-    if (inv.admin) tieniPremuto(scheda, () => apriModifica(id));
     scheda.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scheda.click(); } };
+    // Chi amministra la biblioteca trascina la scheda verso sinistra e trova
+    // "Modifica": apre lo stesso modulo dell'aggiunta, sede compresa. Per
+    // gli altri la scheda non si sposta.
+    if (inv.admin) {
+      const azioni = document.createElement('div');
+      azioni.className = 'azioni';
+      azioni.innerHTML = '<button type="button" class="conferma" data-pieno>Modifica</button>';
+      azioni.querySelector('button').onclick = () => { chiudiScorri(scheda); apriModifica(id); };
+      scheda.append(azioni);
+    }
   });
+  if (inv.admin) {
+    scorrevoli(dove, '.bene[data-bene]', { tocco: () => {} });
+    dove.querySelectorAll('.scorri:not(.di-bene)').forEach(s => { if (s.querySelector(':scope > .bene')) s.classList.add('di-bene'); });
+  }
   dove.querySelectorAll('[data-prolunga]').forEach(b => {
     b.onclick = (e) => { e.stopPropagation(); prolunga(Number(b.dataset.prolunga), b); };
   });
 }
 
-// Tenere premuto un bene, per chi amministra la biblioteca, apre la modifica.
-// Per gli altri non succede niente: la pressione lunga non e' collegata.
-function tieniPremuto(scheda, azione) {
-  let timer = null;
-  let da = null;
-  const smetti = () => { clearTimeout(timer); timer = null; };
-  scheda.addEventListener('pointerdown', (e) => {
-    da = { x: e.clientX, y: e.clientY };
-    delete scheda.dataset.lungo;
-    smetti();
-    timer = setTimeout(() => {
-      timer = null;
-      // Il click che arriva al rilascio non deve anche selezionare il bene.
-      scheda.dataset.lungo = '1';
-      tg?.HapticFeedback?.impactOccurred('medium');
-      azione();
-    }, 550);
-  });
-  // Chi scorre l'elenco non sta tenendo premuto.
-  scheda.addEventListener('pointermove', (e) => {
-    if (timer && da && Math.hypot(e.clientX - da.x, e.clientY - da.y) > 10) smetti();
-  });
-  for (const t of ['pointerup', 'pointerleave', 'pointercancel']) scheda.addEventListener(t, smetti);
-  scheda.addEventListener('contextmenu', (e) => e.preventDefault());
-}
 
 // Chi amministra segna che un bene l'ha preso qualcun altro: si scrive il
 // nome, e se e' unə sociə la si sceglie dai suggerimenti, cosi' il prestito
@@ -5502,7 +5496,7 @@ function mostraLato(scatola, lato) {
 // false per chiudere. true vale 'destra'.
 function apriScorri(scatola, lato) {
   if (lato === true) lato = scatola.querySelector(':scope > .scorri-azioni.destra') ? 'destra' : 'sinistra';
-  const riga = scatola.querySelector(':scope > .riga');
+  const riga = scatola.querySelector(':scope > :not(.scorri-azioni)');
   const strato = lato && scatola.querySelector(`:scope > .scorri-azioni.${lato}`);
   if (lato && !strato) lato = false;
   scatola.classList.remove('trascina');
@@ -5589,6 +5583,9 @@ function collegaScorri(scatola, riga, lati, tocco) {
     const x = inizio.ultimo;
     const lato = x < 0 ? 'destra' : x > 0 ? 'sinistra' : null;
     const strato = lato && lati[lato];
+    // Chi ascolta il click della riga (la scelta di un bene) sa che era
+    // uno swipe e non un tocco.
+    if (trascinato) { riga.dataset.appenaScorsa = '1'; setTimeout(() => delete riga.dataset.appenaScorsa, 0); }
     if (trascinato && strato?.classList.contains('piena')) {
       // Swipe completo: la riga torna a posto e parte l'azione piena (che
       // chiede conferma da se').
