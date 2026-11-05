@@ -266,4 +266,13 @@ for (const n of document.querySelectorAll(GALLEGGIANTI)) {
 }
 addEventListener('resize', chiediFondo);
 
+// Le scritte dei tondi si vedono solo con la pagina in cima: appena si
+// scorre se ne vanno, e tornano risalendo. La classe sta su <html>, che gli
+// osservatori qui sopra non guardano.
+const IN_CIMA_ENTRO_PX = 8;
+const segnaScorsa = () =>
+  document.documentElement.classList.toggle('scorsa', scrollY > IN_CIMA_ENTRO_PX);
+addEventListener('scroll', segnaScorsa, { passive: true });
+segnaScorsa();
+
 avvia();

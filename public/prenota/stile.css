@@ -638,6 +638,8 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
    la scritta non c'e': resta il pulsante col suo nome per il lettore di
    schermo. Lo decide aggiornaEtichette(). */
 .tondo.etichetta-coperta .etichetta-tondo, #azione.etichetta-coperta .etichetta-tondo { display: none; }
+/* Scorrendo la pagina le scritte se ne vanno: tornano quando si e' di nuovo in cima. */
+.scorsa .tondo .etichetta-tondo, .scorsa #azione .etichetta-tondo { display: none; }
 .tondo.chiaro { background: var(--scheda); color: var(--testo);
   border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .tondo.secondo { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
