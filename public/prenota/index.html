@@ -1084,6 +1084,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .scorri[data-lato="destra"] > .scorri-azioni.destra, .scorri[data-lato="sinistra"] > .scorri-azioni.sinistra { visibility: visible; }
 .scorri-azioni > .azioni { margin: 0; gap: 0; flex-wrap: nowrap; height: 100%; align-items: stretch; }
 .scorri-azioni button { flex: 0 0 auto; width: 84px; border: 0; border-radius: 0; padding: 0 8px;
+  display: flex; align-items: center; justify-content: center;
   font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.2; white-space: normal; cursor: pointer;
   color: var(--testo); background: color-mix(in srgb, var(--tenue) 30%, var(--scheda)); }
 .scorri-azioni button.grave { background: var(--pieno); color: #fff; }
@@ -1096,6 +1097,10 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
    solo lei. */
 .scorri-azioni.oltre > .azioni { width: 100%; }
 .scorri-azioni.oltre .cresce { flex: 1 1 auto; }
+.scritta-azione { flex: 0 0 68px; width: 68px; text-align: center; }
+/* Allargandosi, la scritta resta attaccata alla riga che la tira. */
+.scorri-azioni.destra.oltre .cresce { justify-content: flex-start; }
+.scorri-azioni.sinistra.oltre .cresce { justify-content: flex-end; }
 .scorri-azioni.piena button:not([data-pieno]) { display: none; }
 .scorri-azioni.piena [data-pieno] { filter: brightness(1.12); }
 .riga.toccabile { cursor: pointer; }
@@ -3258,7 +3263,7 @@ function disegnaPrestitiAdmin() {
         : p.scadenza ? `Da riportare entro il ${dataTesto(p.scadenza)}` : 'Senza scadenza'}</div>
       <div class="azioni a-destra" data-azioni>
         <button type="button" data-chiudi="${p.id}" data-titolo="${esc(p.titolo)}" data-socio="${esc(p.socio)}">Chiudi prestito</button>
-        <button type="button" data-apri-prolunga>Prolunga</button>
+        <button type="button" data-apri-prolunga>Estendi</button>
       </div>
       <div class="azioni a-destra prolunga" data-prolunga-di="${p.id}" hidden>
         <div class="contagiorni">
@@ -3268,7 +3273,7 @@ function disegnaPrestitiAdmin() {
           <button type="button" data-piu aria-label="Un giorno in piu'">+</button>
         </div>
         <button type="button" data-annulla-prolunga>Annulla</button>
-        <button type="button" class="conferma" data-conferma-prolunga>Prolunga</button>
+        <button type="button" class="conferma" data-conferma-prolunga>Estendi</button>
       </div>
     </div>`).join('');
   dove.querySelectorAll('[data-chat]').forEach(b => {
@@ -3314,7 +3319,7 @@ async function prolunga(prestitoId, giorni, bottone) {
   bottone.disabled = true;
   try {
     const { prestito } = await chiama('inventario/prolunga', { prestitoId, giorni });
-    toast(`Prolungato: ora scade il ${dataTesto(prestito.scadenza)}.`);
+    toast(`Esteso: ora scade il ${dataTesto(prestito.scadenza)}.`);
     caricaPrestitiAdmin();
   } catch (err) {
     bottone.disabled = false;
@@ -5247,6 +5252,14 @@ function scorrevoli(dove, selettore = '.riga', { tocco = null } = {}) {
       const strato = document.createElement('div');
       strato.className = `scorri-azioni ${lato}`;
       strato.append(azioni);
+      // La scritta sta in una scatola larga quanto il pulsante normale:
+      // quando il pulsante si allarga non va a capo in un altro modo.
+      azioni.querySelectorAll('button').forEach(b => {
+        const scritta = document.createElement('span');
+        scritta.className = 'scritta-azione';
+        scritta.append(...b.childNodes);
+        b.append(scritta);
+      });
       lati[lato] = strato;
     }
     if (!lati.destra && !lati.sinistra) {
