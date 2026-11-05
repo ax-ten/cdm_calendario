@@ -919,13 +919,15 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .date-pagamenti input { flex: 1; min-width: 0; padding: 9px 10px; }
 .totale-giorno { float: right; color: var(--tenue); font-size: .9rem; font-weight: 500; }
 .riga.pagamento { cursor: pointer; }
-.socio-quota { display: flex; align-items: center; gap: 12px; }
-.socio-corpo { flex: 1; min-width: 0; }
-.socio-corpo > b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.numero-tessera { flex: 0 0 auto; min-width: 42px; height: 42px; padding: 0 6px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.05rem;
-  font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--accento) 16%, transparent); color: var(--accento); }
-.numero-tessera.senza { background: color-mix(in srgb, var(--tenue) 16%, transparent); color: var(--tenue); }
+.socio-quota { display: flex; align-items: center; gap: 12px; padding: 10px 13px; }
+.numero-tessera { flex: 0 0 2.4em; text-align: right; color: var(--tenue); font-variant-numeric: tabular-nums; }
+.socio-nome { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.socio-nome small { display: block; font-weight: 400; font-size: .78rem; color: var(--tenue); }
+.socio-quota .mesi-mini { flex: 0 0 auto; grid-template-columns: repeat(6, 18px); gap: 3px; margin: 0; }
+.socio-quota .mesi-mini span { padding: 1px 0; font-size: .64rem; border-radius: 4px; }
+.filtri .filtro-quote { flex: 1; margin: 0; }
+#vista-persone .filtri { align-items: center; }
+#vista-persone .ordina { align-self: stretch; min-height: 38px; }
 .anno-quote { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .anno-quote button { width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; font: inherit;
   font-size: 1.1rem; background: var(--scheda); color: var(--testo); }
@@ -1058,6 +1060,12 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .scorri-azioni button.grave { background: var(--pieno); color: #fff; }
 .scorri-azioni button.conferma { background: var(--accento); color: var(--su-accento); }
 .scorri-azioni button:disabled { opacity: .6; cursor: default; }
+/* Swipe oltre i pulsanti: l'azione piena si allarga, e a meta' riga resta
+   solo lei. */
+.scorri.oltre .scorri-azioni > .azioni { width: 100%; }
+.scorri.oltre .scorri-azioni [data-pieno] { flex: 1 1 auto; }
+.scorri.piena .scorri-azioni button:not([data-pieno]) { display: none; }
+.scorri.piena .scorri-azioni [data-pieno] { filter: brightness(1.12); }
 .scorri-azioni button:active:not(:disabled) { filter: brightness(.9); }
 /* Il suggerimento: la riga fa capolino a sinistra e torna. */
 @keyframes capolino {
@@ -1422,7 +1430,7 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   <div id="tessera" class="vuoto">…</div>
   <!-- lucide: users. Per il direttivo: le quote di tuttɜ. Sale sopra il
        pulsante Procedi quando c'e' anche quello. -->
-  <button type="button" class="tondo chiaro" id="apri-quote" aria-label="Quote" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="etichetta-tondo" aria-hidden="true">Quote</span></button>
+  <button type="button" class="tondo chiaro con-etichetta" id="apri-quote" aria-label="Quote" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="etichetta-tondo" aria-hidden="true">Quote</span></button>
 </section>
 
 <!-- ------------------------------------------- quote dei soci (direttivo) -->
@@ -1445,7 +1453,18 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <div class="campo ricerca" style="margin: 0">
       <input type="search" id="cerca-quote" placeholder="Nome o numero di tessera" autocomplete="off">
     </div>
-    <div class="tipi filtro-quote" id="filtro-quote" role="tablist" aria-label="Quali persone"></div>
+    <div class="filtri">
+      <div class="tipi filtro-quote" id="filtro-quote" role="tablist" aria-label="Quali persone"></div>
+      <label class="ordina" title="Ordina">
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg></span>
+        <select id="ordine-quote" aria-label="Ordina">
+          <option value="nome">Nome A-Z</option>
+          <option value="ultimo">Ultimo pagamento</option>
+          <option value="numero">Numero di tessera</option>
+        </select>
+      </label>
+    </div>
+    <label class="solo-disp"><input type="checkbox" id="anche-senza-tessera"> Mostra anche chi non ha la tessera</label>
     <p class="riepilogo-quote" id="riepilogo-quote"></p>
     <div id="elenco-quote" class="vuoto">…</div>
   </div>
@@ -2336,16 +2355,16 @@ async function caricaMie() {
         <div>${p.nome || 'senza titolo'}${p.fissa ? ' · ' + (CADENZE[p.ricorrenza] || CADENZE.settimanale) : ''}</div>
         <div class="quando">${p.fissa ? 'Prossima: ' : ''}${quandoTesto(p.inizio, p.fine)} · ${esc(nomeSede(p.sede))}</div>
         <div class="azioni">
-          <button data-sede="${p.sede}" data-id="${p.id}"
-                  data-cosa="${p.fissa ? 'volta' : 'una'}">
-            ${p.fissa ? 'Salta questa volta' : 'Annulla'}
-          </button>
+          ${p.fissa && p.serieId ? `
+            <button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.serieId}"
+                    data-cosa="serie">Elimina la serie</button>` : ''}
           ${p.fissa ? '' : `
+            <button class="grave" data-pieno data-sede="${p.sede}" data-id="${p.id}"
+                    data-cosa="una">Annulla</button>`}
+          ${p.fissa ? `
+            <button data-sede="${p.sede}" data-id="${p.id}" data-cosa="volta">Salta questa volta</button>` : `
             <button data-sede="${p.sede}" data-id="${p.id}"
                     data-cosa="settimanale">Rendi ricorrente</button>`}
-          ${p.fissa && p.serieId ? `
-            <button class="grave" data-sede="${p.sede}" data-id="${p.serieId}"
-                    data-cosa="serie">Elimina la serie</button>` : ''}
         </div>
       </div>`).join('');
     dove.querySelectorAll('button').forEach(b => {
@@ -4012,6 +4031,7 @@ function attesaTesseramento(iscrizione) {
 // ancora pagato, poi decide chi guarda.
 const quo = {
   anno: new Date().getFullYear(), filtro: 'mese', testo: '', soci: null,
+  ordine: 'nome', ancheSenza: false, voceScheda: 'tutte',
   vista: 'persone', periodo: 'mese', da: '', a: '', voceFiltro: 'tutte', pagamenti: null, chiavePagamenti: '',
   socio: null, voce: null, giorno: null, data: '', mesi: new Set(), importo: EVENTO_BASE, metodo: null,
 };
@@ -4032,6 +4052,8 @@ function collegaQuote() {
     quo.a = el('pagamenti-a').value;
     caricaPagamenti();
   };
+  el('ordine-quote').onchange = () => { quo.ordine = el('ordine-quote').value; disegnaQuote(); };
+  el('anche-senza-tessera').onchange = () => { quo.ancheSenza = el('anche-senza-tessera').checked; disegnaQuote(); };
   el('anno-prima').onclick = () => cambiaAnnoQuote(-1);
   el('anno-dopo').onclick = () => cambiaAnnoQuote(1);
   el('cerca-quote').addEventListener('input', () => {
@@ -4074,41 +4096,57 @@ async function caricaQuote() {
   disegnaQuote();
 }
 
+// Si vede chi ha la tessera dell'anno; chi non ce l'ha solo con la spunta
+// sotto. Il filtro Mese: chi non ha ancora pagato il mese in corso.
 function filtriQuote() {
   const mese = meseKey(quo.anno, new Date().getMonth());
   const filtri = [];
   if (quo.anno === annoCorrente()) {
     filtri.push(['mese', 'Mese', s => !s.mensilita.includes(mese)]);
   }
-  filtri.push(['rinnovo', 'Rinnovo', s => !s.tesserato]);
   filtri.push(['tutti', 'Tutte', () => true]);
   return filtri;
 }
+
+const ORDINI_QUOTE = {
+  nome: (a, b) => String(a.nome).localeCompare(String(b.nome), 'it'),
+  // Dal pagamento piu' recente; chi non ha mai pagato in fondo.
+  ultimo: (a, b) => String(b.ultimo_pagamento || '').localeCompare(String(a.ultimo_pagamento || ''))
+    || ORDINI_QUOTE.nome(a, b),
+  numero: (a, b) => (Number(a.numero_socio) || Infinity) - (Number(b.numero_socio) || Infinity)
+    || ORDINI_QUOTE.nome(a, b),
+};
 
 function disegnaQuote() {
   const dove = el('elenco-quote');
   if (!quo.soci) return;
   const filtri = filtriQuote();
   if (!filtri.some(([k]) => k === quo.filtro)) quo.filtro = 'tutti';
+  const base = quo.soci.filter(s => quo.ancheSenza || s.tesserato);
+  el('ordine-quote').value = quo.ordine;
+  el('ordine-quote').closest('.ordina').classList.toggle('attivo', quo.ordine !== 'nome');
+  el('anche-senza-tessera').checked = quo.ancheSenza;
   el('filtro-quote').innerHTML = filtri.map(([k, nome, prova]) =>
-    `<button type="button" role="tab" data-filtro="${k}" aria-selected="${k === quo.filtro}">${nome}${conta(quo.soci.filter(prova).length)}</button>`).join('');
+    `<button type="button" role="tab" data-filtro="${k}" aria-selected="${k === quo.filtro}">${nome}${conta(base.filter(prova).length)}</button>`).join('');
   el('filtro-quote').querySelectorAll('[data-filtro]').forEach(b => {
     b.onclick = () => { quo.filtro = b.dataset.filtro; disegnaQuote(); };
   });
 
-  const tesserati = quo.soci.filter(s => s.tesserato).length;
-  let riepilogo = `${quo.soci.length} ${quo.soci.length === 1 ? 'persona' : 'persone'} · ${tesserati} con la tessera ${quo.anno}`;
+  const tesserati = quo.soci.filter(s => s.tesserato);
+  let riepilogo = `${tesserati.length} con la tessera ${quo.anno}`;
   if (quo.anno === annoCorrente()) {
     const mese = meseKey(quo.anno, new Date().getMonth());
-    const n = quo.soci.filter(s => s.mensilita.includes(mese)).length;
+    const n = tesserati.filter(s => s.mensilita.includes(mese)).length;
     riepilogo += ` · ${n} ${n === 1 ? 'ha' : 'hanno'} pagato ${MESI[new Date().getMonth()]}`;
   }
+  if (quo.ancheSenza) riepilogo += ` · ${quo.soci.length - tesserati.length} senza tessera`;
   el('riepilogo-quote').textContent = riepilogo;
 
   const prova = filtri.find(([k]) => k === quo.filtro)[2];
   const t = quo.testo;
-  const lista = quo.soci.filter(prova).filter(s => !t ||
-    String(s.nome).toLowerCase().includes(t) || String(s.numero_socio || '').toLowerCase() === t);
+  const lista = base.filter(prova).filter(s => !t ||
+    String(s.nome).toLowerCase().includes(t) || String(s.numero_socio || '').toLowerCase() === t)
+    .sort(ORDINI_QUOTE[quo.ordine] || ORDINI_QUOTE.nome);
   if (!lista.length) {
     dove.className = 'vuoto';
     dove.textContent = t ? 'Nessun risultato.'
@@ -4118,16 +4156,11 @@ function disegnaQuote() {
   const adesso = quo.anno === annoCorrente() ? new Date().getMonth() : -1;
   dove.className = '';
   dove.innerHTML = lista.map(s => `
-    <div class="riga socio-quota" role="button" tabindex="0" data-socio="${s.id}">
-      <div class="numero-tessera${s.tesserato ? '' : ' senza'}" title="${s.tesserato && s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza tessera ' + quo.anno}">${s.tesserato && s.numero_socio ? esc(s.numero_socio) : '-'}</div>
-      <div class="socio-corpo">
-        <b>${esc(s.nome)}</b>
-        <div class="quando">${[s.categoria ? esc(s.categoria) : '',
-          Number.isFinite(s.oboli) ? `${s.oboli} ${s.oboli === 1 ? 'obolo' : 'oboli'}` : '',
-          s.telegram ? '' : 'senza Telegram'].filter(Boolean).join(' · ')}</div>
-        <div class="mesi-mini" aria-label="Mensilità pagate: ${s.mensilita.length} su 12">${MESI_BREVI.map((m, i) =>
-          `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}${i === adesso ? ' adesso' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</div>
-      </div>
+    <div class="riga socio-quota${s.tesserato ? '' : ' senza-tessera'}" role="button" tabindex="0" data-socio="${s.id}">
+      <span class="numero-tessera" title="${s.tesserato && s.numero_socio ? 'Tessera n. ' + esc(s.numero_socio) : 'Senza tessera ' + quo.anno}">${s.tesserato && s.numero_socio ? esc(s.numero_socio) : ''}</span>
+      <span class="socio-nome">${esc(s.nome)}${s.tesserato ? '' : `<small>senza tessera ${quo.anno}</small>`}</span>
+      <span class="mesi-mini" aria-label="Mensilità pagate: ${s.mensilita.length} su 12">${MESI_BREVI.map((m, i) =>
+        `<span class="${s.mensilita.includes(meseKey(quo.anno, i)) ? 'pagato' : ''}" title="${MESI[i]}">${m[0]}</span>`).join('')}</span>
     </div>`).join('');
   dove.querySelectorAll('[data-socio]').forEach(r => {
     const apri = () => apriQuota(Number(r.dataset.socio));
@@ -4286,14 +4319,8 @@ function disegnaQuota() {
       `<button type="button" class="voce${nome.length > 10 ? ' lunga' : ''}" data-voce-quota="${k}" aria-pressed="false"><b>${nome}</b>${prezzo ? `<span>${prezzo}</span>` : ''}${ICONE_VOCI[k]}</button>`).join('')}</div>
     <div id="dettaglio-quota"></div>
     <h2>Pagamenti ${t.anno}</h2>
-    ${ricevute.length ? ricevute.map(r => `
-      <div class="riga">
-        <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
-        <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}${r.metodo ? ' · ' + esc(r.metodo) : ''}</div>
-        <div class="azioni a-destra">
-          <button type="button" class="grave" data-annulla-ricevuta="${r.id}" data-numero="${esc(r.numero)}" data-tipo="${esc(r.tipo)}">Annulla</button>
-        </div>
-      </div>`).join('') : '<p class="nota-pagamento">Nessuna ricevuta quest’anno.</p>'}`;
+    ${ricevute.length ? `<div class="tipi" id="voce-scheda" role="tablist" aria-label="Voce"></div>` : ''}
+    <div id="pagamenti-scheda">${ricevute.length ? '' : '<p class="nota-pagamento">Nessuna ricevuta quest’anno.</p>'}</div>`;
 
   dove.querySelectorAll('[data-voce-quota]').forEach(b => {
     b.onclick = () => {
@@ -4310,13 +4337,37 @@ function disegnaQuota() {
       if (quo.voce) mostraDettaglioQuota();
     };
   });
+  if (ricevute.length) disegnaPagamentiScheda(ricevute);
+  const ricorda = el('ricorda-quota');
+  if (ricorda) ricorda.onclick = () => ricordaQuota(ricorda);
+  disegnaPagamentoQuota();
+}
+
+// I pagamenti di una persona, filtrabili per voce: tutte, mensilita',
+// oboli, eventi. Ogni riga si scorre per annullarla.
+function disegnaPagamentiScheda(ricevute) {
+  if (!VOCI_CRONOLOGIA.some(([k]) => k === quo.voceScheda)) quo.voceScheda = 'tutte';
+  el('voce-scheda').innerHTML = VOCI_CRONOLOGIA.map(([k, nome]) => {
+    const n = k === 'tutte' ? ricevute.length : ricevute.filter(r => r.codice === k).length;
+    return `<button type="button" role="tab" data-voce-scheda="${k}" aria-selected="${k === quo.voceScheda}">${nome}${conta(n)}</button>`;
+  }).join('');
+  el('voce-scheda').querySelectorAll('[data-voce-scheda]').forEach(b => {
+    b.onclick = () => { quo.voceScheda = b.dataset.voceScheda; disegnaPagamentiScheda(ricevute); };
+  });
+  const lista = quo.voceScheda === 'tutte' ? ricevute : ricevute.filter(r => r.codice === quo.voceScheda);
+  const dove = el('pagamenti-scheda');
+  dove.innerHTML = lista.length ? lista.map(r => `
+      <div class="riga">
+        <div><b>${esc(r.tipo)}</b> · ${euro(r.importo)}</div>
+        <div class="quando">${esc(r.numero)} · ${dataNumerica(r.data)}${r.mese ? ' · ' + meseTesto(r.mese) : ''}${r.metodo ? ' · ' + esc(metodoNome(r.metodo)) : ''}</div>
+        <div class="azioni a-destra">
+          <button type="button" class="grave" data-pieno data-annulla-ricevuta="${r.id}" data-numero="${esc(r.numero)}" data-tipo="${esc(r.tipo)}">Annulla</button>
+        </div>
+      </div>`).join('') : '<p class="nota-pagamento">Niente di questo tipo quest’anno.</p>';
   dove.querySelectorAll('[data-annulla-ricevuta]').forEach(b => {
     b.onclick = () => annullaRicevuta(Number(b.dataset.annullaRicevuta), b.dataset.numero, b.dataset.tipo, b);
   });
   scorrevoli(dove);
-  const ricorda = el('ricorda-quota');
-  if (ricorda) ricorda.onclick = () => ricordaQuota(ricorda);
-  disegnaPagamentoQuota();
 }
 
 function mostraDettaglioQuota() {
@@ -5013,6 +5064,14 @@ async function annullaSerie() {
 // I pulsanti si spostano, non si rifanno: i loro onclick restano quelli
 // messi da chi ha disegnato l'elenco, quindi questa si chiama dopo.
 const SCORRI_SOGLIA = 8;
+// Oltre questa parte della riga lo swipe e' completo: parte l'azione segnata
+// data-pieno (eliminare), non si aprono solo i pulsanti.
+const SCORRI_PIENO = 0.6;
+
+function chiudiPieno(scatola, dietro) {
+  scatola.classList.remove('oltre', 'piena');
+  dietro.style.width = '';
+}
 let scorriAperta = null;
 
 function scorrevoli(dove, selettore = '.riga') {
@@ -5056,7 +5115,8 @@ function collegaScorri(scatola, riga, dietro) {
   riga.addEventListener('pointerdown', (e) => {
     if (e.button > 0 || e.target.closest('button, input, a, label, select, textarea')) return;
     const aperta = scorriAperta === scatola;
-    inizio = { x: e.clientX, y: e.clientY, base: aperta ? -dietro.offsetWidth : 0, verso: null, t: e.timeStamp, id: e.pointerId };
+    inizio = { x: e.clientX, y: e.clientY, base: aperta ? -dietro.offsetWidth : 0, verso: null, t: e.timeStamp, id: e.pointerId,
+               larga: dietro.offsetWidth, tutta: riga.offsetWidth };
     trascinato = false;
   });
   riga.addEventListener('pointermove', (e) => {
@@ -5072,20 +5132,40 @@ function collegaScorri(scatola, riga, dietro) {
       if (scorriAperta && scorriAperta !== scatola) apriScorri(scorriAperta, false);
     }
     trascinato = true;
-    const larga = dietro.offsetWidth;
+    const larga = inizio.larga;
     let x = inizio.base + dx;
-    // Oltre i pulsanti, e verso destra, la riga fa resistenza.
-    if (x < -larga) x = -larga + (x + larga) / 4;
+    // Oltre i pulsanti la riga fa resistenza; se pero' c'e' un'azione da
+    // swipe completo, si va avanti e quell'azione si allarga fino a
+    // prendere tutta la riga.
+    const pieno = dietro.querySelector('[data-pieno]');
+    if (x < -larga && !pieno) x = -larga + (x + larga) / 4;
     if (x > 0) x = x / 4;
+    x = Math.max(x, -inizio.tutta);
     riga.style.transform = `translateX(${x}px)`;
+    if (pieno) {
+      scatola.classList.toggle('oltre', x < -larga);
+      scatola.classList.toggle('piena', x < -inizio.tutta * SCORRI_PIENO);
+      dietro.style.width = x < -larga ? `${-x}px` : '';
+    }
   });
   const fine = (e) => {
     if (!inizio || e.pointerId !== inizio.id) return;
     const dx = e.clientX - inizio.x;
     const veloce = Math.abs(dx) / Math.max(1, e.timeStamp - inizio.t) > 0.5;
     const x = inizio.base + dx;
+    if (trascinato && scatola.classList.contains('piena')) {
+      // Swipe completo: la riga torna a posto e parte l'azione piena (che
+      // chiede conferma da se').
+      const pieno = dietro.querySelector('[data-pieno]');
+      chiudiPieno(scatola, dietro);
+      apriScorri(scatola, false);
+      inizio = null;
+      setTimeout(() => pieno?.click(), 200);
+      return;
+    }
+    chiudiPieno(scatola, dietro);
     if (trascinato) {
-      const apri = veloce ? dx < 0 : x < -dietro.offsetWidth / 2;
+      const apri = veloce ? dx < 0 : x < -inizio.larga / 2;
       apriScorri(scatola, apri);
       if (apri) scorriImparato();
     }
@@ -5095,6 +5175,7 @@ function collegaScorri(scatola, riga, dietro) {
   riga.addEventListener('pointercancel', (e) => {
     if (!inizio) return;
     inizio = null;
+    chiudiPieno(scatola, dietro);
     apriScorri(scatola, scorriAperta === scatola);
   });
   riga.addEventListener('click', (e) => {
