@@ -624,11 +624,9 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
      Arial e non combaciavano con quella del + delle attivita'. */
   font: inherit; }
 .tondo:not([hidden]) { display: flex; }
-/* La scritta accanto all'hamburger e al +: sta a sinistra del pulsante, senza
-   sfondo, e si vede solo quando non c'e' nessun filtro (l'elenco e' vuoto e
-   lo spazio c'e'). E' dentro al pulsante solo per seguirlo dove si sposta. */
 /* La scritta accanto ai pulsanti tondi sta sopra l'elenco: una capsula
-   semitrasparente le da' lo stesso contrasto su qualsiasi cosa ci passi sotto. */
+   semitrasparente le da' lo stesso contrasto su qualsiasi cosa ci passi sotto.
+   E' dentro al pulsante solo per seguirlo dove si sposta. */
 .etichetta-tondo { position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
   margin-right: 8px; white-space: nowrap; padding: 5px 10px; border-radius: 999px;
   background: color-mix(in srgb, var(--sfondo) 78%, transparent);

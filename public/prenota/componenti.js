@@ -83,7 +83,10 @@ function aggiornaEtichette() {
     if (b.hidden || !b.querySelector('.etichetta-tondo') || !b.getClientRects().length) continue;
     const s = getComputedStyle(b);
     const cima = innerHeight - (parseFloat(s.bottom) || 0) - b.offsetHeight;
-    b.classList.toggle('etichetta-coperta', (barra && b !== azione) || fine > cima - 6);
+    // In biblioteca l'elenco e' sempre pieno (parte da "Tutto"): le scritte
+    // restano sopra l'elenco, sulla loro capsula semitrasparente.
+    const sopraElenco = b.dataset.etichetta === 'sempre';
+    b.classList.toggle('etichetta-coperta', (barra && b !== azione) || (!sopraElenco && fine > cima - 6));
   }
 }
 
