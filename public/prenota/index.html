@@ -1156,6 +1156,19 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 .blocco-segna .voce { background: var(--sfondo); }
 #dettaglio-quota:not(:empty) { padding-bottom: 8px; }
 .campo-evento { width: 100%; margin: 6px 0 8px; }
+/* Aggiungi un bene: i due passi */
+.passi-bene { display: flex; gap: 6px; padding: 4px; margin: 0 0 16px; border-radius: 999px; background: var(--scheda); }
+.passi-bene button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px;
+  border: 0; border-radius: 999px; background: none; color: var(--tenue); font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.passi-bene button span { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: .75rem; background: color-mix(in srgb, var(--tenue) 25%, transparent); }
+.passi-bene button[aria-selected="true"] { background: var(--accento); color: var(--su-accento); }
+.passi-bene button[aria-selected="true"] span { background: color-mix(in srgb, var(--su-accento) 25%, transparent); }
+.passo-bene[hidden] { display: none; }
+.riassunto-bene { margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: var(--scheda); }
+.riassunto-bene b { display: block; }
+.riassunto-bene span { color: var(--tenue); font-size: .86rem; }
+#indietro-bene[hidden], #avanti-bene[hidden], #salva-bene[hidden], #annulla-bene[hidden] { display: none; }
 .eventi-giorno { margin-top: 0; }
 .eventi-giorno:empty { display: none; }
 .eventi-giorno small { color: inherit; opacity: .7; margin-left: 2px; }
@@ -1391,7 +1404,14 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 <section class="pannello" id="pannello-aggiungi" hidden>
   <button type="button" class="indietro" id="chiudi-aggiungi">‹ Biblioteca</button>
   <h1 id="titolo-aggiungi">Aggiungi un bene</h1>
+  <!-- Due passi: prima il bene (quello che arriva dal codice a barre), poi
+       la nostra catalogazione. I due nomi in cima portano all'uno o all'altro. -->
+  <div class="passi-bene" role="tablist" aria-label="Passi">
+    <button type="button" role="tab" data-passo-bene="1" aria-selected="true"><span>1</span> Il bene</button>
+    <button type="button" role="tab" data-passo-bene="2" aria-selected="false"><span>2</span> Catalogazione</button>
+  </div>
 
+  <div class="passo-bene" data-passo-bene-corpo="1">
   <div class="campo riga-campi">
     <div>
       <label for="agg-categoria">Categoria</label>
@@ -1450,7 +1470,10 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
     <select id="agg-sistema"><option value="">Nessuno</option></select>
     <input type="text" id="agg-nuovo-sistema" maxlength="80" placeholder="Oppure scrivine uno nuovo" style="margin-top: 8px">
   </div>
+  </div>
 
+  <div class="passo-bene" data-passo-bene-corpo="2" hidden>
+  <p class="riassunto-bene" id="riassunto-bene"></p>
   <div class="campo riga-campi">
     <div>
       <label for="agg-codice">Codice interno</label>
@@ -1475,10 +1498,13 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
       <div><label for="agg-mancante">Mancante</label></div>
     </div>
   </div>
+  </div>
 
   <div class="azioni-form">
     <button type="button" class="bottone secondario" id="annulla-bene">Annulla</button>
-    <button type="button" class="bottone" id="salva-bene">Salva</button>
+    <button type="button" class="bottone secondario" id="indietro-bene" hidden>‹ Il bene</button>
+    <button type="button" class="bottone" id="avanti-bene">Avanti</button>
+    <button type="button" class="bottone" id="salva-bene" hidden>Salva</button>
   </div>
 </section>
 
@@ -3419,6 +3445,11 @@ function preparaFormBene() {
       if (primo && !el('agg-generi-suggeriti').hidden) primo.click(); else aggiungiGenere();
     };
     el('salva-bene').onclick = salvaBene;
+    el('avanti-bene').onclick = () => passoBene(2);
+    el('indietro-bene').onclick = () => passoBene(1);
+    document.querySelectorAll('.passi-bene [data-passo-bene]').forEach(b => {
+      b.onclick = () => passoBene(Number(b.dataset.passoBene));
+    });
     el('chiudi-aggiungi').onclick = () => mostra('inventario');
     el('annulla-bene').onclick = () => mostra('inventario');
     formAggiungiPronto = true;
@@ -3435,6 +3466,31 @@ function svuotaFormBene() {
   inv.generiScelti.clear();
   inv.nuoviGeneri = [];
   esitoIsbn('');
+}
+
+// I due passi del form. Al secondo si passa solo con un titolo: e' l'unico
+// dato che serve davvero, e chi cataloga deve vedere cosa sta catalogando.
+function passoBene(n) {
+  if (n === 2 && !el('agg-titolo').value.trim()) {
+    lamenta('Manca il titolo.');
+    el('agg-titolo').focus();
+    return;
+  }
+  inv.passoBene = n;
+  document.querySelectorAll('[data-passo-bene-corpo]').forEach(c => { c.hidden = Number(c.dataset.passoBeneCorpo) !== n; });
+  document.querySelectorAll('.passi-bene [data-passo-bene]').forEach(b =>
+    b.setAttribute('aria-selected', String(Number(b.dataset.passoBene) === n)));
+  el('annulla-bene').hidden = n !== 1;
+  el('avanti-bene').hidden = n !== 1;
+  el('indietro-bene').hidden = n !== 2;
+  el('salva-bene').hidden = n !== 2;
+  if (n === 2) {
+    const sede = el('agg-sede').selectedOptions[0]?.textContent || '';
+    const cat = el('agg-categoria').selectedOptions[0]?.textContent || '';
+    el('riassunto-bene').innerHTML = `<b>${esc(el('agg-titolo').value.trim())}</b>` +
+      `<span>${[el('agg-autore').value.trim(), cat, sede].filter(Boolean).map(esc).join(' · ')}</span>`;
+  }
+  window.scrollTo(0, 0);
 }
 
 // La modifica usa lo stesso form dell'aggiunta, riempito con il bene.
@@ -3468,7 +3524,7 @@ async function apriModifica(beneId) {
   for (const g of v.genere_ids) inv.generiScelti.add(String(g));
   aggiornaCategoria();
   mostra('aggiungi');
-  window.scrollTo(0, 0);
+  passoBene(1);
 }
 
 function apriAggiungi() {
@@ -3481,7 +3537,7 @@ function apriAggiungi() {
   }
   aggiornaCategoria();
   mostra('aggiungi');
-  window.scrollTo(0, 0);
+  passoBene(1);
 }
 
 function aggiornaCategoria() {
