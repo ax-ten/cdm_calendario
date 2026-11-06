@@ -30,6 +30,10 @@
   --occupato-fondo: #9a6500;
   --pieno-fondo: #c4372f;
   --libero-fondo: #23784a;
+  /* I segni della disponibilita' (pallini dei giorni, fasce gia' prese):
+     nel tema scuro sono gli stessi colori del testo. */
+  --segno-occupato: var(--occupato);
+  --segno-pieno: var(--pieno);
   --stella-direttivo: #f2c14e;
   --stella-staff: #7cc4ff;
   /* Nel tema chiaro le schede hanno un filo intorno: #f1f1f1 su bianco non
@@ -65,6 +69,10 @@
   --occupato: #855600;
   --pieno: #b3261e;
   --libero: #17693d;
+  /* Gli stati scuri vanno bene per il testo, ma un pallino marrone scuro su
+     bianco sembra nero: i segni restano accesi, ambra e rosso. */
+  --segno-occupato: #eea200;
+  --segno-pieno: #e5443b;
   --stella-direttivo: #a26c00;
   --stella-staff: #1f6fb5;
   --bordo-scheda: color-mix(in srgb, var(--testo) 11%, transparent);
@@ -256,7 +264,6 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
    (Indietro e titolo) e il margine sopra. */
 .passo[data-passo="1"]:not([hidden]) { display: flex; flex-direction: column; justify-content: center;
   min-height: calc(100dvh - var(--ingombro-fondo) - 150px); }
-.passo[data-passo="1"] .aiuto { text-align: center; }
 .sedi button {
   flex: 1;
   padding: 11px 8px;
@@ -429,8 +436,13 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   width: 5px; height: 5px; border-radius: 50%;
   background: transparent;
 }
-.giorno.occupato .segno { background: var(--occupato); }
-.giorno.pieno .segno { background: var(--pieno); }
+.giorno.occupato .segno { background: var(--segno-occupato); }
+.giorno.pieno .segno { background: var(--segno-pieno); }
+/* Nel tema chiaro il pallino da solo si perde: anche la casella si tinge. */
+.tema-chiaro .giorno .segno { width: 6px; height: 6px; }
+.tema-chiaro .giorno.occupato:not([aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--segno-occupato) 16%, transparent); }
+.tema-chiaro .giorno.pieno { background: color-mix(in srgb, var(--segno-pieno) 12%, transparent); }
 .giorno[aria-pressed="true"] .segno { box-shadow: 0 0 0 1.5px var(--su-accento); }
 .giorno.vuoto { visibility: hidden; }
 /* Spostando una data: quella di adesso, col bordo tratteggiato. */
@@ -481,7 +493,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   position: absolute;
   height: 15px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--occupato) 55%, transparent);
+  background: color-mix(in srgb, var(--segno-occupato) 55%, transparent);
   font-size: .64rem;
   line-height: 15px;
   padding: 0 5px;
