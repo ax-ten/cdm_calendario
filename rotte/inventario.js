@@ -10,7 +10,7 @@ import * as isbn from '../isbn.js';
 import { STAFF } from '../config.js';
 import { telegram, mandaFile, nomeTelegram, usernameDi } from '../telegram.js';
 import {
-  conUtente, mancaGruppo, staffInventario, adminBiblioteca, soloAdmin, soloStaff,
+  conUtente, staffInventario, adminBiblioteca, soloAdmin, soloStaff,
 } from '../sessione.js';
 import { memoria, mappaConLimite } from '../util.js';
 
@@ -106,6 +106,46 @@ router.post('/prenota/api/inventario/suggerimenti', (req, res) => conUtente(req,
   res.json({ ...esito, beni: (esito.beni || []).map(senzaPrestito) });
 }));
 
+// ---- a chi vanno gli avvisi della biblioteca
+// Prestiti e restituzioni li segue chi gestisce il club del libro: chi ha la
+// spunta "Amministra la biblioteca" in Odoo e Telegram collegato. A loro in
+// privato, non nel gruppo staff. Se nessuno e' raggiungibile (nessuna
+// spunta, o Telegram che rifiuta) si torna al gruppo staff della sede: un
+// avviso perso e' peggio di uno nel posto sbagliato.
+const RESPONSABILI_VALIDI_PER_MS = 5 * 60 * 1000;
+const responsabiliVisti = memoria(RESPONSABILI_VALIDI_PER_MS, 1);
+const responsabili = () => responsabiliVisti('tutti', () => odoo.miniapp('responsabili_biblioteca'));
+
+// manda(chatId) fa l'invio. Vero se almeno uno l'ha ricevuto.
+async function avvisaBiblioteca(sede, manda, cosa) {
+  let arrivati = 0;
+  try {
+    for (const r of await responsabili()) {
+      try {
+        await manda(r.telegram_id);
+        arrivati += 1;
+      } catch (err) {
+        console.error(`${cosa}: avviso a ${r.nome} non mandato:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error(`${cosa}: responsabili della biblioteca non letti:`, err.message);
+  }
+  if (arrivati) return true;
+  const chatStaff = STAFF.get(String(sede || '').toLowerCase());
+  if (!chatStaff) {
+    console.error(`${cosa}: nessun responsabile raggiungibile e nessun gruppo staff per ${sede}`);
+    return false;
+  }
+  try {
+    await manda(chatStaff);
+    return true;
+  } catch (err) {
+    console.error(`${cosa}: avviso al gruppo staff non mandato:`, err.message);
+    return false;
+  }
+}
+
 // Dopo aver preso un bene, per dieci secondi lo si puo' annullare (un tocco
 // sbagliato). L'avviso allo staff della sede parte quando la finestra e'
 // chiusa: un prestito annullato non lascia messaggi in giro.
@@ -113,21 +153,14 @@ const ATTESA_AVVISO_MS = 12 * 1000;
 const avvisiInSospeso = new Map();   // prestitoId -> { timer, utenteId }
 
 function avvisaStaffDelPrestito(prestito, utente, note) {
-  const chatStaff = STAFF.get(String(prestito?.sede || '').toLowerCase());
-  if (!chatStaff) {
-    console.error(`prestito: nessun gruppo staff per ${prestito?.sede}`);
-    return;
-  }
   const scade = prestito.scadenza
     ? DateTime.fromISO(prestito.scadenza).setLocale('it').toFormat('d MMMM') : '';
-  telegram('sendMessage', {
-    chat_id: chatStaff,
-    text: `${prestito.socio || nomeTelegram(utente)}` +
-      `${utente.username && prestito.socio ? ' (@' + utente.username + ')' : ''}` +
-      ` ha preso in prestito “${prestito.titolo}” a ${prestito.sede}.` +
-      (scade ? `\nDa riportare entro il ${scade}.` : '') +
-      (note ? `\nNote: ${note}` : ''),
-  }).catch((err) => console.error('prestito: messaggio allo staff non mandato:', err.message));
+  const text = `${prestito.socio || nomeTelegram(utente)}` +
+    `${utente.username && prestito.socio ? ' (@' + utente.username + ')' : ''}` +
+    ` ha preso in prestito “${prestito.titolo}” a ${prestito.sede}.` +
+    (scade ? `\nDa riportare entro il ${scade}.` : '') +
+    (note ? `\nNote: ${note}` : '');
+  avvisaBiblioteca(prestito?.sede, (chat_id) => telegram('sendMessage', { chat_id, text }), 'prestito');
 }
 
 router.post('/prenota/api/inventario/presta', (req, res) => conUtente(req, res, async (utente) => {
@@ -203,15 +236,11 @@ router.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, 
   // Dai propri prestiti aperti: cosi' si sa la sede, e si sa che e' suo.
   const prestito = (await odoo.miniapp('miei_prestiti', utente.id)).find((p) => p.id === prestitoId);
   if (!prestito) return res.status(404).json({ errore: 'Non è un tuo prestito aperto.' });
-  const chatStaff = STAFF.get(String(prestito.sede || '').toLowerCase());
-  if (!chatStaff) return mancaGruppo(res, `staff di ${prestito.sede}`, 'lo staff');
 
   const chi = `${prestito.socio}${utente.username ? ' (@' + utente.username + ')' : ''}`;
-  try {
-    await fotoAlloStaff(chatStaff, foto,
-      `${chi} ha riportato “${prestito.titolo}” a ${prestito.sede}.`, prestitoId);
-  } catch (err) {
-    console.error('restituzione: foto non mandata:', err.message);
+  const arrivata = await avvisaBiblioteca(prestito.sede, (chatId) => fotoAlloStaff(chatId, foto,
+    `${chi} ha riportato “${prestito.titolo}” a ${prestito.sede}.`, prestitoId), 'restituzione');
+  if (!arrivata) {
     return res.status(502).json({ errore: 'Non sono riuscito a mandare la foto allo staff: riprova.' });
   }
   res.json({ prestito: await odoo.miniapp('restituisci', utente.id, prestitoId) });
@@ -238,16 +267,11 @@ router.post('/prenota/api/inventario/admin/presta', (req, res) => conUtente(req,
   const nome = String(req.body?.nome || '').trim().slice(0, 120);
   const partnerId = Number(req.body?.partnerId) || false;
   const prestito = await odoo.miniapp('presta_a_nome', beneId, nome, partnerId, nomeTelegram(utente));
-  const chatStaff = STAFF.get(String(prestito.sede || '').toLowerCase());
-  if (chatStaff) {
-    const scade = prestito.scadenza
-      ? DateTime.fromISO(prestito.scadenza).setLocale('it').toFormat('d MMMM') : '';
-    telegram('sendMessage', {
-      chat_id: chatStaff,
-      text: `${nomeTelegram(utente)} ha segnato che “${prestito.titolo}” a ${prestito.sede} ` +
-        `l’ha preso ${prestito.socio}.` + (scade ? `\nDa riportare entro il ${scade}.` : ''),
-    }).catch((err) => console.error('prestito a nome: messaggio allo staff non mandato:', err.message));
-  }
+  const scade = prestito.scadenza
+    ? DateTime.fromISO(prestito.scadenza).setLocale('it').toFormat('d MMMM') : '';
+  const text = `${nomeTelegram(utente)} ha segnato che “${prestito.titolo}” a ${prestito.sede} ` +
+    `l’ha preso ${prestito.socio}.` + (scade ? `\nDa riportare entro il ${scade}.` : '');
+  avvisaBiblioteca(prestito.sede, (chat_id) => telegram('sendMessage', { chat_id, text }), 'prestito a nome');
   res.json({ prestito });
 }));
 
