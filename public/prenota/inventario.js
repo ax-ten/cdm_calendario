@@ -187,8 +187,12 @@ async function cercaBeni(daCapo) {
   // Si parte da "Tutto", in ordine di quanto e' preso in prestito: aprendo
   // la biblioteca c'e' subito qualcosa da guardare.
   const f = filtriBeni();
-  if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; }
-  el('altri-beni').disabled = true;
+  // Ricominciando l'elenco "Mostra altri" sparisce finche' non si sa se
+  // ce ne sono altri; caricandone altri resta, spento, a dire che arrivano.
+  const altri = el('altri-beni');
+  if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; altri.hidden = true; }
+  else altri.textContent = 'Carico…';
+  altri.disabled = true;
   try {
     const { beni, totale } = await chiama('inventario/catalogo',
       { filtri: f, offset: inv.offset, ordine: el('ordine-beni').value, seme: inv.seme || 0 });
@@ -206,7 +210,7 @@ async function cercaBeni(daCapo) {
   } catch (err) {
     if (mio === ricercaInCorso) erroreCarico(dove, err, () => cercaBeni(true));
   } finally {
-    el('altri-beni').disabled = false;
+    if (mio === ricercaInCorso) { altri.disabled = false; altri.textContent = 'Mostra altri'; }
   }
 }
 
