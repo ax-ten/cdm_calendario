@@ -27,6 +27,10 @@ function mostraRegistrazione(info) {
     el('informativa').textContent = 'Il testo completo lo trovi in sede.';
   }
 
+  // Nome e cognome si propongono da Telegram, se ci sono: spesso sono gia'
+  // quelli veri, e basta controllarli. Se no si scrivono a mano.
+  const daTelegram = proponiNome(reg('nome'), reg('cognome'));
+  el('reg-da-telegram').hidden = !daTelegram;
   for (const id of ['nome', 'cognome']) reg(id).addEventListener('input', aggiornaRegistrazione);
   for (const id of ['socio', 'privacy']) reg(id).addEventListener('change', aggiornaRegistrazione);
   document.body.classList.add('senza-menu');
@@ -121,6 +125,18 @@ const isc = (id) => el(`isc-${id}`);
 let quotaIscrizione = 0;
 let iscrizioneCollegata = false;
 
+// Riempie i campi ancora vuoti con il nome del profilo Telegram (o con quelli
+// della registrazione, per il tesseramento). Dice se ha proposto qualcosa.
+function proponiNome(campoNome, campoCognome, da = null) {
+  const utente = tg?.initDataUnsafe?.user || {};
+  const nome = String(da?.nome ?? utente.first_name ?? '').trim().slice(0, 60);
+  const cognome = String(da?.cognome ?? utente.last_name ?? '').trim().slice(0, 60);
+  let proposto = false;
+  if (!campoNome.value.trim() && nome) { campoNome.value = nome; proposto = true; }
+  if (!campoCognome.value.trim() && cognome) { campoCognome.value = cognome; proposto = true; }
+  return proposto;
+}
+
 function mostraIscrizione(info) {
   el('pannello-registrazione').hidden = true;
   el('pannello-iscrizione').hidden = false;
@@ -139,6 +155,8 @@ function mostraIscrizione(info) {
     for (const k of CAMPI_ISCRIZIONE) isc(k).addEventListener('input', aggiornaIscrizione);
     isc('privacy').addEventListener('change', aggiornaIscrizione);
   }
+  const scritti = { nome: reg('nome').value.trim(), cognome: reg('cognome').value.trim() };
+  proponiNome(isc('nome'), isc('cognome'), scritti.nome || scritti.cognome ? scritti : null);
   azionePrincipale = inviaIscrizione;
   aggiornaIscrizione();
   window.scrollTo(0, 0);

@@ -250,6 +250,10 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
 .campo > .aiuto.conta { display: flex; justify-content: space-between; gap: 12px; }
 .campo > .aiuto .lungo { color: var(--occupato); }
 #conta-note { font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Il richiamo al nome vero, sopra i campi della registrazione e del
+   tesseramento: si legge prima di scrivere. */
+.nome-vero { font-size: .9rem; line-height: 1.4; color: var(--tenue); margin: -2px 0 16px; }
+.nome-vero span { display: block; margin-top: 6px; color: var(--testo); }
 .campo > .aiuto {
   display: block;
   font-size: .84rem;
