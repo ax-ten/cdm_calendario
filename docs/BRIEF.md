@@ -7,13 +7,20 @@ parole ("giovedì 5 novembre").
 ## Cosa fa
 Mini app Telegram per i soci di un'associazione culturale con due sedi
 (Trani, Barletta). Tre schede:
-- **Attività**: prenotare la sede (Google Calendar), serie ricorrenti approvate
+- **Attività**: prenotare la sede (Google Calendar) con un wizard a passi
+  (Dove? → Quando? → Cosa fate? → riepilogo; barra di avanzamento in cima;
+  scelta la sede si passa subito al calendario; in "Cosa fate?" prima la
+  categoria, poi nome, vetrina e descrizione, che si apre solo con la vetrina),
+  serie ricorrenti approvate
   dallo staff, "Modifica la data" di una data della serie (giorno, ora, sede),
   "Salta la prossima data". Per lo staff c'è "Prenotazioni": chi apre, chi non
   ha le chiavi, annullare date o serie.
 - **Biblioteca**: catalogo beni (libri, giochi, manuali) su Odoo, prestito con
   "Annulla" nel toast, restituzione con foto, registro prestiti per lo staff,
-  aggiunta bene in 2 passi con ISBN e scanner.
+  "Segna come prestato" (prestito a nome di un'altra persona), aggiunta bene in
+  2 passi con ISBN e scanner. Gli avvisi di prestiti e restituzioni vanno in
+  privato a chi ha "Amministra la biblioteca" in Odoo (responsabili_biblioteca);
+  se nessuno è raggiungibile, al gruppo staff della sede.
 - **Tessera**: tessera socio, contributi (Obolo, Mensilità, Evento) con
   totale e canali di pagamento (contanti in sede, PayPal, carta, bonifico; il
   pagamento dall'app non è ancora attivo, `PAGAMENTO_ATTIVO=false`). Ricevute
@@ -60,7 +67,10 @@ Scelte UX già decise:
 - swipe: un'azione per lato (sinistra distruttiva, destra alternativa);
   la scritta resta ancorata al bordo e si stira al massimo del 50%;
 - un tocco sulla riga apre il menu contestuale sotto la riga, con icone a sinistra;
-- filtri senza numeri, con l'etichetta a sinistra; niente pulsanti "scorciatoia"
+- filtri senza numeri, con l'etichetta a sinistra;
+- scritte accanto ai pulsanti tondi solo con la pagina in cima (scorrendo
+  spariscono, classe `scorsa` su `<html>`);
+- in Biblioteca l'etichetta di stato c'è solo per i beni non disponibili; niente pulsanti "scorciatoia"
   che sembrano filtri (es. tolti "Questo mese"/"Tutto l'anno" in Tessera);
 - "Crea" sul pulsante tondo in Attività;
 - "Stripe" non si mostra mai: si scrive "Carta".
