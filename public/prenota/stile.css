@@ -30,6 +30,10 @@
   --occupato-fondo: #9a6500;
   --pieno-fondo: #c4372f;
   --libero-fondo: #23784a;
+  /* I segni della disponibilita' (pallini dei giorni, fasce gia' prese):
+     nel tema scuro sono gli stessi colori del testo. */
+  --segno-occupato: var(--occupato);
+  --segno-pieno: var(--pieno);
   --stella-direttivo: #f2c14e;
   --stella-staff: #7cc4ff;
   /* Nel tema chiaro le schede hanno un filo intorno: #f1f1f1 su bianco non
@@ -65,6 +69,10 @@
   --occupato: #855600;
   --pieno: #b3261e;
   --libero: #17693d;
+  /* Gli stati scuri vanno bene per il testo, ma un pallino marrone scuro su
+     bianco sembra nero: i segni restano accesi, ambra e rosso. */
+  --segno-occupato: #eea200;
+  --segno-pieno: #e5443b;
   --stella-direttivo: #a26c00;
   --stella-staff: #1f6fb5;
   --bordo-scheda: color-mix(in srgb, var(--testo) 11%, transparent);
@@ -158,13 +166,13 @@ body {
 .link-mie { appearance: none; border: 0; background: none; color: var(--accento-testo);
   font: inherit; font-size: .88rem; padding: 6px 0; margin-left: auto; cursor: pointer; }
 .link-mie[hidden] { display: none; }
-/* La barra sta ferma in fondo, fra il menu e il pulsante d'azione: si vede
-   sempre quanto manca, anche scorrendo. */
+/* La barra sta ferma in cima: dice a che passo si e' prima di leggere, e
+   non si muove quando si apre la tastiera. Il fondo e' pieno perche'
+   scorrendo ci passa sotto la pagina. */
 .avanzamento { position: fixed; left: 50%; transform: translateX(-50%); z-index: 24;
-  bottom: calc(var(--ingombro-menu) + 8px); width: min(440px, calc(100% - 24px));
+  top: calc(env(safe-area-inset-top, 0px) + 8px); width: min(440px, calc(100% - 24px));
   height: 5px; border-radius: 999px; overflow: hidden;
-  background: color-mix(in srgb, var(--tenue) 25%, transparent); }
-body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
+  background: color-mix(in srgb, var(--tenue) 25%, var(--sfondo)); }
 .avanzamento-pieno { height: 100%; width: 20%; border-radius: 999px; background: var(--accento);
   transition: width .3s ease; }
 .passo[hidden] { display: none; }
@@ -198,7 +206,7 @@ body.in-passi #azione { bottom: calc(var(--ingombro-menu) + 22px); }
 .tab[hidden] { display: none; }
 body.senza-menu { --ingombro-menu: calc(env(safe-area-inset-bottom) + 6px); }
 /* Con la tastiera aperta il menu non serve e ruberebbe spazio: sparisce, e
-   la barra dei passi e il pulsante scendono al suo posto, sopra la tastiera. */
+   il pulsante scende al suo posto, sopra la tastiera. */
 body.tastiera { --ingombro-menu: 6px; }
 body.tastiera .tab { display: none; }
 
@@ -255,6 +263,11 @@ h2 { font-size: 1.1rem; line-height: 1.2; margin: 4px 0 12px; font-weight: 600; 
 }
 
 .sedi { display: flex; gap: 8px; }
+/* "Dove?" ha solo la scelta della sede: sta al centro dello spazio libero,
+   non schiacciata in cima con lo schermo vuoto sotto. 150px sono la testa
+   (Indietro e titolo) e il margine sopra. */
+.passo[data-passo="1"]:not([hidden]) { display: flex; flex-direction: column; justify-content: center;
+  min-height: calc(100dvh - var(--ingombro-fondo) - 150px); }
 .sedi button {
   flex: 1;
   padding: 11px 8px;
@@ -386,7 +399,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .rotella { animation-duration: 2.4s; }
 }
-.griglia.in-attesa { opacity: .45; }
+/* Finche' non arrivano i giorni non si sceglie: uno pieno sembrerebbe libero. */
+.griglia.in-attesa { opacity: .45; pointer-events: none; }
 
 .griglia {
   display: grid;
@@ -426,8 +440,13 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   width: 5px; height: 5px; border-radius: 50%;
   background: transparent;
 }
-.giorno.occupato .segno { background: var(--occupato); }
-.giorno.pieno .segno { background: var(--pieno); }
+.giorno.occupato .segno { background: var(--segno-occupato); }
+.giorno.pieno .segno { background: var(--segno-pieno); }
+/* Nel tema chiaro il pallino da solo si perde: anche la casella si tinge. */
+.tema-chiaro .giorno .segno { width: 6px; height: 6px; }
+.tema-chiaro .giorno.occupato:not([aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--segno-occupato) 16%, transparent); }
+.tema-chiaro .giorno.pieno { background: color-mix(in srgb, var(--segno-pieno) 12%, transparent); }
 .giorno[aria-pressed="true"] .segno { box-shadow: 0 0 0 1.5px var(--su-accento); }
 .giorno.vuoto { visibility: hidden; }
 /* Spostando una data: quella di adesso, col bordo tratteggiato. */
@@ -478,7 +497,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   position: absolute;
   height: 15px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--occupato) 55%, transparent);
+  background: color-mix(in srgb, var(--segno-occupato) 55%, transparent);
   font-size: .64rem;
   line-height: 15px;
   padding: 0 5px;
@@ -579,7 +598,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 #azione[hidden] { display: none; }
 /* Due azioni affiancate: si dividono la stessa larghezza del pulsante da
-   solo, "Presta a un’altra persona…" a sinistra. */
+   solo, "Segna come prestato" a sinistra. */
 #azione-a-nome {
   position: fixed; z-index: 24;
   left: calc((100% - min(440px, 100% - 24px)) / 2);
@@ -642,6 +661,8 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
    la scritta non c'e': resta il pulsante col suo nome per il lettore di
    schermo. Lo decide aggiornaEtichette(). */
 .tondo.etichetta-coperta .etichetta-tondo, #azione.etichetta-coperta .etichetta-tondo { display: none; }
+/* Scorrendo la pagina le scritte se ne vanno: tornano quando si e' di nuovo in cima. */
+.scorsa .tondo .etichetta-tondo, .scorsa #azione .etichetta-tondo { display: none; }
 .tondo.chiaro { background: var(--scheda); color: var(--testo);
   border: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .tondo.secondo { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
@@ -718,7 +739,7 @@ body.due-azioni #azione:not(:disabled):active { transform: scale(.96); }
 /* Durante la prenotazione il toast ("manca l'orario") sta accanto alla
    freccia che si e' appena premuta, alla stessa altezza, non sopra. */
 body.in-passi #toast { right: calc(12px + var(--azione) + 10px); left: 12px;
-  bottom: calc(var(--ingombro-menu) + 22px); min-height: var(--azione);
+  bottom: calc(var(--ingombro-menu) + 10px); min-height: var(--azione);
   display: flex; align-items: center; padding: 8px 14px; }
 body.in-passi #toast[hidden] { display: none; }
 
@@ -827,7 +848,6 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .bene-testa b { font-weight: 600; }
 .bene-info { color: var(--tenue); font-size: .84rem; margin-top: 2px; }
 .stato { font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; margin-top: 2px; }
-.stato-disponibile { color: var(--libero); background: color-mix(in srgb, var(--libero) 18%, transparent); }
 .stato-in_prestito { color: var(--occupato); background: color-mix(in srgb, var(--occupato) 13%, transparent); }
 .stato-mancante { color: var(--pieno); background: color-mix(in srgb, var(--pieno) 18%, transparent); }
 

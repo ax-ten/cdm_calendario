@@ -84,7 +84,7 @@ const articoloGiorno = (n) => [1, 8, 11].includes(n) ? `l’${n}` : `il ${n}`;
 // Prima di scegliere una categoria non si sa che esempio dare, quindi si
 // danno i due estremi.
 // Corto: sta intero nel campo anche a 320px.
-const ESEMPIO_GENERICO = 'Es. Serata giochi, campagna GdR';
+const ESEMPIO_GENERICO = 'Es. Campagna di D&D, torneo di Mario Kart';
 
 const el = (id) => document.getElementById(id);
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;

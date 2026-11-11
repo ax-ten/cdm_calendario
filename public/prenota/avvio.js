@@ -19,7 +19,7 @@ function mostra(quale) {
   }
   if (quale !== 'prenota') stato.spostando = null;
   for (const p of PANNELLI) el(`pannello-${p}`).hidden = p !== quale;
-  // "Presta a un’altra persona…" e' del bene scelto in biblioteca: cambiando scheda
+  // "Segna come prestato" e' del bene scelto in biblioteca: cambiando scheda
   // se ne va, e il pulsante grande torna da solo a tutta larghezza.
   el('azione-a-nome').hidden = true;
   document.body.classList.remove('due-azioni');
@@ -91,10 +91,15 @@ async function avvia() {
       stato.sede = b.dataset.slug;
       el('sedi').querySelectorAll('button')
         .forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      // Si passa subito al calendario, spento e con la rotella finche' non
+      // arrivano i giorni: aspettare sulla sede sembrava un tocco a vuoto.
+      if (stato.passo === 1) {
+        vaiAPasso(2);
+        disegnaCalendario();
+      }
       await caricaMese();
       if (stato.giorno) await scegliGiorno(stato.giorno);
       else aggiornaEsito();
-      if (stato.passo === 1) vaiAPasso(2);
     };
   });
 
@@ -265,5 +270,14 @@ for (const n of document.querySelectorAll(GALLEGGIANTI)) {
   new MutationObserver(chiediFondo).observe(n, { attributes: true, attributeFilter: ['class', 'style'] });
 }
 addEventListener('resize', chiediFondo);
+
+// Le scritte dei tondi si vedono solo con la pagina in cima: appena si
+// scorre se ne vanno, e tornano risalendo. La classe sta su <html>, che gli
+// osservatori qui sopra non guardano.
+const IN_CIMA_ENTRO_PX = 8;
+const segnaScorsa = () =>
+  document.documentElement.classList.toggle('scorsa', scrollY > IN_CIMA_ENTRO_PX);
+addEventListener('scroll', segnaScorsa, { passive: true });
+segnaScorsa();
 
 avvia();

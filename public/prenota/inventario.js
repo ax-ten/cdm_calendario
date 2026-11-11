@@ -187,8 +187,12 @@ async function cercaBeni(daCapo) {
   // Si parte da "Tutto", in ordine di quanto e' preso in prestito: aprendo
   // la biblioteca c'e' subito qualcosa da guardare.
   const f = filtriBeni();
-  if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; }
-  el('altri-beni').disabled = true;
+  // Ricominciando l'elenco "Mostra altri" sparisce finche' non si sa se
+  // ce ne sono altri; caricandone altri resta, spento, a dire che arrivano.
+  const altri = el('altri-beni');
+  if (daCapo) { dove.className = 'vuoto'; dove.textContent = 'Carico…'; altri.hidden = true; }
+  else altri.textContent = 'Carico…';
+  altri.disabled = true;
   try {
     const { beni, totale } = await chiama('inventario/catalogo',
       { filtri: f, offset: inv.offset, ordine: el('ordine-beni').value, seme: inv.seme || 0 });
@@ -206,7 +210,7 @@ async function cercaBeni(daCapo) {
   } catch (err) {
     if (mio === ricercaInCorso) erroreCarico(dove, err, () => cercaBeni(true));
   } finally {
-    el('altri-beni').disabled = false;
+    if (mio === ricercaInCorso) { altri.disabled = false; altri.textContent = 'Mostra altri'; }
   }
 }
 
@@ -268,7 +272,7 @@ function schedaBene(b) {
     <div class="bene" role="button" tabindex="0" aria-pressed="false" data-bene="${esc(b.id)}">
       <div class="bene-testa">
         <b>${esc(b.titolo)}</b>
-        <span class="stato stato-${esc(b.stato)}">${STATI_BENE[b.stato] || esc(b.stato)}</span>
+        ${b.stato === 'disponibile' ? '' : `<span class="stato stato-${esc(b.stato)}">${STATI_BENE[b.stato] || esc(b.stato)}</span>`}
       </div>
       ${riga1 ? `<div class="bene-info">${esc(riga1)}</div>` : ''}
       <div class="bene-info">${esc(riga2)}</div>
@@ -449,7 +453,7 @@ function aggiornaPrestito() {
   else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
 
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
-  // Chi amministra, su un bene disponibile, ha anche "Presta a un’altra persona…".
+  // Chi amministra, su un bene disponibile, ha anche "Segna come prestato".
   const aNomeVisibile = visibile && inv.admin && b.stato === 'disponibile';
   el('azione-a-nome').hidden = !aNomeVisibile;
   document.body.classList.toggle('due-azioni', aNomeVisibile);

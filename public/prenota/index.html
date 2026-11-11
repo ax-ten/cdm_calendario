@@ -19,7 +19,7 @@
 <!-- ------------------------------------------------------------ prenota -->
 <section class="pannello" id="pannello-prenota" role="tabpanel" aria-labelledby="tab-prenota" hidden>
   <!-- La prenotazione e' fatta a passi: un pezzo per volta, e la barra in
-       fondo dice quanto manca. Si va avanti compilando (la sede porta da sola
+       cima dice quanto manca. Si va avanti compilando (la sede porta da sola
        al passo dopo, altrimenti c'e' la freccia), indietro con la freccia di
        Telegram o con "Indietro". -->
   <div class="testa-passi">
@@ -34,7 +34,6 @@
 
   <div class="passo" data-passo="1">
   <div class="campo">
-    <span class="aiuto">Scegli una sede per vedere le date disponibili.</span>
     <div class="sedi" id="sedi"></div>
   </div>
 
@@ -49,8 +48,8 @@
     </div>
     <div class="griglia" id="calendario"></div>
     <div class="legenda">
-      <span><i style="background:var(--occupato)"></i> c'è già qualcosa</span>
-      <span><i style="background:var(--pieno)"></i> non c'è più posto</span>
+      <span><i style="background:var(--segno-occupato)"></i> c'è già qualcosa</span>
+      <span><i style="background:var(--segno-pieno)"></i> non c'è più posto</span>
     </div>
   </div>
 
@@ -92,9 +91,19 @@
   </div>
 
   <div class="passo" data-passo="3" hidden>
+  <!-- La categoria per prima: l'esempio nel campo del nome cambia con lei. -->
   <div class="campo">
     <span class="titolo">Categoria</span>
     <div class="categorie" id="categorie"></div>
+  </div>
+
+  <div class="campo">
+    <label for="titolo">Nome attività</label>
+    <span class="aiuto" id="aiuto-titolo">Serve agli altri per capire subito cosa fate. Va bene anche qualcosa di semplice, come «Serata giochi».</span>
+    <input type="text" id="titolo" maxlength="80" required aria-describedby="aiuto-titolo"
+           placeholder="Es. Campagna di D&amp;D, torneo di Mario Kart">
+    <datalist id="serie-note"></datalist>
+    <p class="serie" id="serie-nota" hidden></p>
   </div>
 
   <!-- Solo per il direttivo: per tutti gli altri il campo non esiste. -->
@@ -108,15 +117,9 @@
     </div>
   </div>
 
-  <div class="campo">
-    <label for="titolo">Nome attività</label>
-    <input type="text" id="titolo" maxlength="80" required
-           placeholder="Es. Serata giochi, campagna GdR">
-    <datalist id="serie-note"></datalist>
-    <p class="serie" id="serie-nota" hidden></p>
-  </div>
-
-  <div class="campo">
+  <!-- La descrizione serve solo in vetrina (va sotto il titolo): si apre
+       con la spunta. -->
+  <div class="campo" id="campo-note" hidden>
     <label for="note">Descrizione <small>(facoltativa)</small></label>
     <span class="aiuto conta">
       <span>Una riga sola: va sotto il titolo, in vetrina.</span>
@@ -226,7 +229,7 @@
   <button type="button" class="indietro" id="chiudi-aggiungi">‹ Biblioteca</button>
   <!-- Due passi, come la prenotazione di un'attivita': prima il bene (quello
        che arriva dal codice a barre), poi la nostra catalogazione. La linea
-       in basso dice a che punto si e'; la freccia va avanti. -->
+       in cima dice a che punto si e'; la freccia va avanti. -->
   <div class="avanzamento" role="progressbar" aria-valuemin="1" aria-valuemax="2" id="avanzamento-bene">
     <div class="avanzamento-pieno" id="avanzamento-bene-pieno"></div>
   </div>
@@ -330,7 +333,7 @@
 <button type="button" id="azione" hidden></button>
 <!-- Per chi amministra, accanto a "Prendi in prestito": segnare che il bene
      l'ha preso qualcun altro. -->
-<button type="button" id="azione-a-nome" hidden>Presta a un’altra persona…</button>
+<button type="button" id="azione-a-nome" hidden>Segna come prestato</button>
 
 <!-- La foto del bene riportato in sede. capture apre direttamente la
      fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
