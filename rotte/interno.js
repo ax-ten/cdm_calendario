@@ -454,3 +454,64 @@ router.post('/prenota/api/interno/domani', async (req, res) => {
     res.status(500).json({ errore: err.message });
   }
 });
+
+// ---- task dello staff
+// Ogni mattina, a chi se ne occupa: le task che scadono domani e quelle
+// scadute ieri (una volta sola: poi c'e' il riepilogo del lunedi').
+router.post('/prenota/api/interno/promemoria-task', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  let task;
+  try {
+    task = await odoo.miniapp('task_promemoria');
+  } catch (err) {
+    console.error('promemoria task:', err.message);
+    return res.status(500).json({ errore: err.message });
+  }
+  let mandati = 0;
+  for (const t of task) {
+    const testo = t.quando === 'domani'
+      ? `Promemoria: la task “${t.nome}” (${t.progetto}) scade domani.`
+      : `La task “${t.nome}” (${t.progetto}) è scaduta ieri. Se è fatta, segnala nell’app; se no, sposta la scadenza.`;
+    for (const p of t.persone) {
+      try {
+        await telegram('sendMessage', { chat_id: p.telegram_id, text: testo });
+        mandati += 1;
+      } catch (err) {
+        console.error(`promemoria task: a ${p.nome} non mandato:`, err.message);
+      }
+    }
+  }
+  res.json({ ok: true, task: task.length, mandati });
+});
+
+// Il lunedi', nei gruppi staff: le task scadute e quelle della settimana.
+router.post('/prenota/api/interno/riepilogo-task', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  let task;
+  try {
+    task = await odoo.miniapp('task_settimana');
+  } catch (err) {
+    console.error('riepilogo task:', err.message);
+    return res.status(500).json({ errore: err.message });
+  }
+  if (!task.length) return res.json({ ok: true, task: 0, gruppi: 0 });
+  const riga = (t) => `• ${t.nome} (${t.progetto}), ` +
+    `${DateTime.fromISO(t.scadenza, { zone: ZONA }).setLocale('it').toFormat('ccc d MMM')}` +
+    (t.persone.length ? `, ${t.persone.join(', ')}` : ', nessuno se ne occupa');
+  const scadute = task.filter((t) => t.scaduta);
+  const settimana = task.filter((t) => !t.scaduta);
+  const testo = ['Le task della settimana.',
+    ...(scadute.length ? ['', 'Scadute:', ...scadute.map(riga)] : []),
+    ...(settimana.length ? ['', 'Nei prossimi sette giorni:', ...settimana.map(riga)] : []),
+    '', 'Si gestiscono dall’app, scheda Task.'].join('\n');
+  let gruppi = 0;
+  for (const chat of new Set(STAFF.values())) {
+    try {
+      await telegram('sendMessage', { chat_id: chat, text: testo });
+      gruppi += 1;
+    } catch (err) {
+      console.error('riepilogo task: gruppo staff non avvisato:', err.message);
+    }
+  }
+  res.json({ ok: true, task: task.length, gruppi });
+});
