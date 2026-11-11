@@ -485,8 +485,12 @@ router.post('/prenota/api/interno/promemoria-task', async (req, res) => {
 });
 
 // Il lunedi', nei gruppi staff: le task scadute e quelle della settimana.
+// Finche' la scheda Task e' in prova (solo dal link debug) il riepilogo
+// non parte: lo staff non saprebbe dove trovarle.
+const RIEPILOGO_TASK_ATTIVO = false;
 router.post('/prenota/api/interno/riepilogo-task', async (req, res) => {
   if (!soloBot(req, res)) return;
+  if (!RIEPILOGO_TASK_ATTIVO) return res.json({ ok: true, sospeso: true, task: 0, gruppi: 0 });
   let task;
   try {
     task = await odoo.miniapp('task_settimana');

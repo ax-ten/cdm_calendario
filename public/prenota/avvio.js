@@ -192,9 +192,10 @@ async function avvia() {
   el('tab-inventario').onclick = () => mostra('inventario');
   el('tab-tessera').hidden = !DEBUG;
   el('tab-tessera').onclick = () => mostra('tessera');
-  // Le task sono dello staff: gruppi staff o direttivo. Con quattro voci il
-  // menu stringe un poco le sue.
-  const conTask = Boolean(info.staff || info.direttivo);
+  // Le task sono dello staff: gruppi staff o direttivo. Per ora sono in
+  // prova come la Tessera: solo dal link ...?startapp=debug. Con quattro
+  // voci il menu stringe un poco le sue.
+  const conTask = DEBUG && Boolean(info.staff || info.direttivo);
   el('tab-task').hidden = !conTask;
   document.querySelector('nav.tab').classList.toggle('quattro', conTask && !el('tab-tessera').hidden);
   el('tab-task').onclick = () => mostra('task');
