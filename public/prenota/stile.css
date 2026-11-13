@@ -1329,3 +1329,41 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
   .pannello, .passo, .bene, .riga, .scorri, .mio-prestito, .tondo, #azione, #azione-a-nome, .tessera-carta,
   .etichetta-tondo, .tab button svg, #foglio-a-nome, #foglio-a-nome .foglio, .foglio-velo, .foglio-velo .foglio { animation: none !important; }
 }
+
+/* ------------------------------------------------------------------ task */
+/* Con la scheda Task (e la Tessera) le voci del menu sono quattro: si
+   stringono un poco, e il menu resta dentro lo schermo. */
+.tab.quattro button { width: 78px; }
+.giorno-gestione.ritardo { color: var(--pieno); }
+.riga.task-riga.spento b { text-decoration: line-through; color: var(--tenue); }
+.bollino.importante { margin-left: 8px; color: var(--occupato); background: color-mix(in srgb, var(--occupato) 15%, transparent); }
+.etichette-task { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 2px; align-items: center; }
+.etichetta-task { font-size: .74rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--tinta-etichetta, var(--accento)) 18%, transparent); color: var(--testo); }
+.colore-1 { --tinta-etichetta: #e5443b; } .colore-2 { --tinta-etichetta: #f08c00; } .colore-3 { --tinta-etichetta: #e8c547; }
+.colore-4 { --tinta-etichetta: #4a9ee0; } .colore-5 { --tinta-etichetta: #8e5bd8; } .colore-6 { --tinta-etichetta: #e5739a; }
+.colore-7 { --tinta-etichetta: #2fa89a; } .colore-8 { --tinta-etichetta: #3d5a98; } .colore-9 { --tinta-etichetta: #b0466d; }
+.colore-10 { --tinta-etichetta: #4caf6a; } .colore-11 { --tinta-etichetta: #7a5bd8; }
+.testa-task { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.testa-task h1 { margin-bottom: 4px; }
+.descrizione-task { white-space: pre-wrap; margin: 4px 0 18px; }
+#prendo-task { margin-bottom: 18px; }
+.voce-task { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }
+.voce-spunta { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer; }
+.voce-task.fatta .voce-spunta { color: var(--tenue); text-decoration: line-through; }
+.riga-aggiungi { display: flex; gap: 8px; margin: 8px 0 22px; }
+.riga-aggiungi input { flex: 1; min-width: 0; }
+.foto-task { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 22px; }
+.miniatura { aspect-ratio: 1; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--scheda);
+  cursor: pointer; font: inherit; }
+.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.miniatura.aggiungi-foto { font-size: 1.6rem; color: var(--accento-testo); border: 1.5px dashed color-mix(in srgb, var(--tenue) 50%, transparent); }
+.foto-grande { width: 100%; max-height: 70vh; object-fit: contain; border-radius: 12px; }
+.commento-task { background: var(--scheda); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.commento-task p { margin: 4px 0 0; white-space: pre-wrap; }
+.persona-task { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; border-radius: 999px;
+  background: var(--scheda); font-size: .9rem; }
+.persona-task button { appearance: none; border: 0; background: none; color: var(--tenue); font: inherit;
+  font-size: 1.1rem; width: 28px; height: 28px; cursor: pointer; }
+.scelte-persone { margin: 0 0 18px; gap: 6px; }
+#scheda-task > .etichette-task { margin: -8px 0 20px; }

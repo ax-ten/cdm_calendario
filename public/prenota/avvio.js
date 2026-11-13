@@ -2,12 +2,14 @@
 // Va caricato per ultimo: in fondo chiama avvia().
 
 // ------------------------------------------------------------------ avvio
-const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute', 'gestione', 'serie', 'quote', 'quota', 'incassi'];
+const PANNELLI = ['prenota', 'mie', 'inventario', 'aggiungi', 'prestiti', 'tessera', 'ricevute', 'gestione', 'serie', 'quote', 'quota', 'incassi',
+  'task', 'task-scheda', 'task-modulo'];
 
 // I caricamenti di ogni pagina: lasciandola, le risposte in viaggio non
 // valgono piu'.
 const GIRI_PAGINA = { mie: ['mie'], gestione: ['gestione'], serie: ['serie'], prestiti: ['prestiti'],
-  tessera: ['tessera'], quote: ['quote', 'pagamenti'], quota: ['quota'], incassi: ['incassi'] };
+  tessera: ['tessera'], quote: ['quote', 'pagamenti'], quota: ['quota'], incassi: ['incassi'],
+  task: ['task'], 'task-scheda': ['task-scheda'] };
 
 function mostra(quale) {
   chiudiMenuRiga();
@@ -25,12 +27,14 @@ function mostra(quale) {
   document.body.classList.remove('due-azioni');
   const scheda = quale === 'aggiungi' || quale === 'prestiti' ? 'inventario'
     : ['mie', 'gestione', 'serie'].includes(quale) ? 'prenota'
-    : ['ricevute', 'quote', 'quota', 'incassi'].includes(quale) ? 'tessera' : quale;
-  for (const t of ['prenota', 'inventario', 'tessera']) {
+    : ['ricevute', 'quote', 'quota', 'incassi'].includes(quale) ? 'tessera'
+    : quale.startsWith('task') ? 'task' : quale;
+  for (const t of ['prenota', 'inventario', 'tessera', 'task']) {
     el(`tab-${t}`).setAttribute('aria-selected', String(t === scheda));
   }
   // La freccia di Telegram, in alto, c'e' quando c'e' un posto dove tornare.
-  const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute', 'gestione', 'serie', 'quote', 'quota', 'incassi'].includes(quale);
+  const siTorna = ['aggiungi', 'prestiti', 'prenota', 'ricevute', 'gestione', 'serie', 'quote', 'quota', 'incassi',
+    'task-scheda', 'task-modulo'].includes(quale);
   if (siTorna) tg?.BackButton?.show(); else tg?.BackButton?.hide();
   document.body.classList.toggle('in-passi', quale === 'prenota' || quale === 'aggiungi');
   azionePrincipale = quale === 'prenota' ? azionePrenota
@@ -55,6 +59,13 @@ function mostra(quale) {
     else caricaTessera();
   }
   if (quale === 'gestione') caricaGestione();
+  if (quale === 'task') {
+    // Appena vista: l'elenco e' ancora quello, ma si ridisegna (un'oggi diverso, un filtro).
+    if (eFresco('task') && tk.dati) disegnaTask(); else caricaTask();
+    azionePrincipale = () => apriModuloTask();
+    pulsanteTondo('piu', 'Nuova task', true, 'Crea');
+    el('azione').classList.add('con-etichetta');
+  }
   if (quale === 'quote') {
     caricaQuote();
     azionePrincipale = apriIncassi;
@@ -181,6 +192,16 @@ async function avvia() {
   el('tab-inventario').onclick = () => mostra('inventario');
   el('tab-tessera').hidden = !DEBUG;
   el('tab-tessera').onclick = () => mostra('tessera');
+  // Le task sono dello staff: gruppi staff o direttivo. Per ora sono in
+  // prova come la Tessera: solo dal link ...?startapp=debug. Con quattro
+  // voci il menu stringe un poco le sue.
+  const conTask = DEBUG && Boolean(info.staff || info.direttivo);
+  el('tab-task').hidden = !conTask;
+  document.querySelector('nav.tab').classList.toggle('quattro', conTask && !el('tab-tessera').hidden);
+  el('tab-task').onclick = () => mostra('task');
+  el('chiudi-task-scheda').onclick = () => mostra('task');
+  el('chiudi-task-modulo').onclick = () => (tk.modulo?.id ? apriTask(tk.modulo.id) : mostra('task'));
+  stato.mioSocio = info.socio;
   // Le quote di tuttɜ le vede il direttivo, o chi ha la spunta in Odoo.
   el('apri-quote').hidden = !info.tessere;
   // Ogni volta l'elenco si rilegge: nel frattempo qualcunə puo' aver pagato.
@@ -219,6 +240,7 @@ function paginaIniziale() {
   const chiesta = String(tg?.initDataUnsafe?.start_param ||
     new URLSearchParams(location.search).get('pagina') || '').toLowerCase();
   const [pagina, ...resto] = chiesta.split(/[_-]/);
+  if (pagina === 'task' && !el('tab-task').hidden) return 'task';
   if (pagina !== 'biblioteca') return 'mie';
   // Dopo "biblioteca" un tipo (libri, gdt, gdr, altro, tutto) e/o una sede
   // (barletta, trani): biblioteca_trani apre gia' filtrata su Trani.

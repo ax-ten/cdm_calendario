@@ -390,6 +390,8 @@ function indietro() {
   if (!el('pannello-quote').hidden) return mostra('tessera');
   if (!el('pannello-quota').hidden) return mostra('quote');
   if (!el('pannello-incassi').hidden) return mostra('quote');
+  if (!el('pannello-task-scheda').hidden) return mostra('task');
+  if (!el('pannello-task-modulo').hidden) return el('chiudi-task-modulo').click();
   if (!el('pannello-prenota').hidden) {
     if (stato.passo > 1) vaiAPasso(stato.passo - 1); else mostra('mie');
   }

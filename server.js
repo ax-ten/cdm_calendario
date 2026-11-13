@@ -13,6 +13,7 @@ import { router as prenota } from './rotte/prenota.js';
 import { router as inventario } from './rotte/inventario.js';
 import { router as tessere } from './rotte/tessere.js';
 import { router as staff } from './rotte/staff.js';
+import { router as task } from './rotte/task.js';
 import { router as interno } from './rotte/interno.js';
 
 const PORT = process.env.PORT || 8080;
@@ -30,18 +31,19 @@ app.use('/prenota', express.static(path.join(DIR_BASE, 'public', 'prenota'), {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
 }));
 
-// Le richieste dell'app sono piccole; l'unica eccezione e' la foto del bene
-// riportato in sede, che arriva gia' rimpicciolita dalla pagina.
+// Le richieste dell'app sono piccole; le eccezioni sono le foto (del bene
+// riportato in sede, di una task), che arrivano gia' rimpicciolite.
 const jsonPiccolo = express.json({ limit: '64kb' });
 const jsonConFoto = express.json({ limit: '6mb' });
 app.use((req, res, next) =>
-  (req.path === '/prenota/api/inventario/restituisci' ? jsonConFoto : jsonPiccolo)(req, res, next));
+  (['/prenota/api/inventario/restituisci', '/prenota/api/task/foto'].includes(req.path) ? jsonConFoto : jsonPiccolo)(req, res, next));
 
 app.use(account);
 app.use(prenota);
 app.use(inventario);
 app.use(tessere);
 app.use(staff);
+app.use(task);
 app.use(interno);
 app.use(pubblico);
 
