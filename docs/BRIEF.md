@@ -6,7 +6,7 @@ parole ("giovedì 5 novembre").
 
 ## Cosa fa
 Mini app Telegram per i soci di un'associazione culturale con due sedi
-(Trani, Barletta). Tre schede:
+(Trani, Barletta). Tre schede per tutti, più una per lo staff:
 - **Attività**: prenotare la sede (Google Calendar) con un wizard a passi
   (Dove? → Quando? → Cosa fate? → riepilogo; barra di avanzamento in cima;
   scelta la sede si passa subito al calendario; in "Cosa fate?" prima la
@@ -26,6 +26,15 @@ Mini app Telegram per i soci di un'associazione culturale con due sedi
   pagamento dall'app non è ancora attivo, `PAGAMENTO_ATTIVO=false`). Ricevute
   in PDF. Il direttivo ha "Contributi": soci, mensilità, pagamenti, "Segna
   pagamenti".
+- **Task** (solo staff, per ora solo dal link debug `?startapp=debug`): le
+  task del modulo Progetti di Odoo. Elenco per scadenza (in ritardo, oggi,
+  sette giorni, più avanti) con le mie, tutte o fatte, filtri per progetto ed
+  etichetta; swipe per Fatta e Prendo io. Scheda con checklist, foto, commenti,
+  Segna come fatta; modulo per creare o cambiare (nome, progetto, scadenza,
+  ripetizione, persone, etichette, importante, attività collegata, note). Chi
+  se ne occupa riceve gli avvisi in chat; il bot manda il promemoria del giorno
+  prima (`interno/promemoria-task`). Il riepilogo del lunedì nei gruppi staff
+  (`interno/riepilogo-task`) è sospeso: `RIEPILOGO_TASK_ATTIVO`.
 - **Registrazione / primo tesseramento**: nome e cognome proposti da Telegram,
   da confermare come nomi veri. Il primo tesseramento si fa solo in sede; chi
   era già socio può rinnovare anche a distanza.
@@ -47,7 +56,8 @@ Mini app Telegram per i soci di un'associazione culturale con due sedi
   `erroriPagina.js`, `util.js` (Cache, `inFila`, `senzaDoppioni`,
   `mappaConLimite`), `jsonStore.js` (file in `dati/`).
 - `rotte/`: `prenota.js` (prenota, mie, annulla, sposta, settimanale),
-  `inventario.js`, `tessere.js`, `staff.js`, `account.js` (stato,
+  `inventario.js`, `tessere.js`, `staff.js`, `task.js` (task dello staff su
+  Odoo: `task_elenco`, `task_dettaglio`, `task_salva`, ...), `account.js` (stato,
   registrazione, iscrizione), `interno.js` (chiamate del bot, protette da
   `soloBot`), `pubblico.js` (calendario pubblico `/api/weekly`).
 - Mancano nel repo (e servono per avviare): `drive_key.json`,
@@ -61,7 +71,7 @@ risposte vecchie) → `componenti.js` (pulsanti tondi, swipe `scorrevoli`, menu
 della riga `menuDellaRiga`, foglio dal basso) → `prenota.js` (wizard, sposta)
 → `mie.js` → `iscrizione.js` → `inventario.js` → `aggiungi-bene.js` →
 `tessera.js` → `quote.js` (Contributi, pagamenti, incassi) → `gestione.js`
-(staff) → `avvio.js` (mostra, indietro, avvia).
+(staff) → `task.js` (scheda Task) → `avvio.js` (mostra, indietro, avvia).
 
 Scelte UX già decise:
 - swipe: un'azione per lato (sinistra distruttiva, destra alternativa);
@@ -93,5 +103,7 @@ Script di build e test Playwright non sono nel repo: se servono, vanno rifatti.
   chi apre (da confermare).
 - IBAN e link PayPal/carta (costanti vuote in `tessera.js`).
 - "Tutti quelli che mancano" in Contributi: toglierlo come in Tessera?
+- Scheda Task: aprirla a tutto lo staff (fuori dal link debug) e riattivare
+  il riepilogo del lunedì.
 - Da provare dal vivo (Google, Telegram, Odoo): cambio d'ora, spostamento su
   un'altra sede, pagamento doppio, annullamento del prestito.
