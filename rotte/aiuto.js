@@ -18,8 +18,11 @@ export const router = express.Router();
 router.post('/prenota/api/aiuto', (req, res) => conUtente(req, res, async () => {
   let referenti = [];
   try {
-    const persone = await odoo.miniapp('responsabili_biblioteca');
-    referenti = await Promise.all(persone.map(async (p) => ({ nome: p.nome, username: await usernameDi(p.telegram_id) })));
+    // Anche chi non ha ancora collegato Telegram: si vede, spento.
+    const persone = await odoo.miniapp('responsabili_biblioteca', true);
+    referenti = await Promise.all(persone.map(async (p) => ({
+      nome: p.nome, username: p.telegram_id ? await usernameDi(p.telegram_id) : null,
+    })));
   } catch (err) {
     console.error('aiuto: referenti non letti:', err.message);
   }

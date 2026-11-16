@@ -6,28 +6,14 @@ const AIUTO_VALIDO_MS = 10 * 60 * 1000;
 let aiutoDati = null;
 let aiutoLetto = 0;
 
-// Cosa dire per ogni scheda: poche righe, quelle che servono la prima volta.
+// Cosa dire per ogni scheda: il titolo e due righe, non di piu'.
 function guidaScheda(scheda) {
   const giorni = inv.giorni || 30;
   return {
-    inventario: ['La biblioteca', [
-      `Cerca un libro o un gioco, toccalo e premi «Prendi in prestito»: è tuo per ${giorni} giorni. Se ne prende uno alla volta.`,
-      'Per restituirlo rimettilo al suo posto in sede e premi «L’ho restituito»: ti chiedo una foto del bene sullo scaffale.',
-      'Tre giorni prima della scadenza ti scrivo in chat. Se ti serve più tempo, chiedi alle referenti qui sotto.',
-    ]],
-    mie: ['Le attività', [
-      'Con il + prenoti una stanza: sede, giorno e orario, cosa fate. Se in quelle ore la sede è piena te lo dico subito.',
-      'Senza chiavi? Spunta «Non ho le chiavi»: lo staff riceve un messaggio e viene ad aprire.',
-      'Le attività che si ripetono le approva lo staff della sede. Da «Le tue attività» sposti una data, ne salti una o la cancelli.',
-    ]],
-    tessera: ['La tessera', [
-      'Qui vedi la tua tessera e le mensilità pagate.',
-      '«Contribuisci» ti dice quanto e come pagare. Le ricevute sono in «Le mie ricevute»: te le mando in chat.',
-    ]],
-    task: ['Le task', [
-      'Le cose da fare dello staff. «Prendo io» per occupartene; scorri una riga per segnarla fatta.',
-      'Chi se ne occupa riceve un messaggio quando gliela affidano e il giorno prima della scadenza.',
-    ]],
+    inventario: ['La biblioteca', `Da qui prendi in prestito libri e giochi, uno alla volta per ${giorni} giorni. Per restituirlo premi «L’ho restituito» e manda una foto.`],
+    mie: ['Le tue attività', 'Da qui puoi prenotare una stanza e gestire i tuoi appuntamenti. Premi + per crearne una nuova.'],
+    tessera: ['La tua tessera', 'Da qui vedi la tua tessera, le mensilità pagate e le ricevute. «Contribuisci» ti dice quanto e come pagare.'],
+    task: ['Le task', 'Le cose da fare dello staff. «Prendo io» per occupartene, scorri una riga per segnarla fatta.'],
   }[scheda];
 }
 
@@ -35,12 +21,16 @@ const schedaAttuale = () => ['inventario', 'mie', 'tessera', 'task'].find(p => !
 const apriLinkTelegram = (link) => { if (tg?.openTelegramLink) tg.openTelegramLink(link); else window.open(link, '_blank'); };
 const apriLinkEsterno = (link) => { if (tg?.openLink) tg.openLink(link); else window.open(link, '_blank'); };
 
+// Il navigatore con la sede come destinazione: il link di Google Maps apre
+// l'app, se c'e', gia' sul percorso.
+const linkPercorso = (indirizzo) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(indirizzo)}`;
+
 async function apriAiuto() {
   const scheda = schedaAttuale();
-  const [titolo, righe] = guidaScheda(scheda);
+  const [titolo, guida] = guidaScheda(scheda);
   const sedi = (stato.sediInfo || []).filter(s => s.indirizzo);
   // In cima la segnalazione (chi apre l'aiuto spesso ha un problema), poi
-  // come funziona la scheda, le sedi, i dati; in fondo le referenti.
+  // la scheda, le sedi, i dati; le referenti solo in biblioteca.
   const corpo = apriFoglio(`
     <h2>Qualcosa non va?</h2>
     <div class="campo">
@@ -48,23 +38,26 @@ async function apriAiuto() {
     </div>
     <button type="button" class="bottone secondario largo" id="invia-segnala">Manda la segnalazione</button>
 
-    <h2 class="titolo-aiuto">${esc(titolo)}</h2>
-    ${righe.map(r => `<p class="riga-aiuto">${esc(r)}</p>`).join('')}
+    <h2 class="sezione-aiuto">${esc(titolo)}</h2>
+    <p class="riga-aiuto">${esc(guida)}</p>
 
-    ${sedi.length ? `<h2 class="titolo-aiuto">Le sedi</h2>
+    ${sedi.length ? `<h2 class="sezione-aiuto">Le sedi</h2>
     <div class="sedi-aiuto">${sedi.map(s => `
-      <button type="button" class="riga sede-aiuto" data-indirizzo="${esc(s.indirizzo)}">
-        <b>${esc(s.nome)}</b><span class="quando">${esc(s.indirizzo)}</span><span class="vedi-mappa">Vedi su Maps</span>
+      <button type="button" class="riga sede-aiuto" data-indirizzo="${esc(s.indirizzo)}" aria-label="Portami a ${esc(s.nome)}, ${esc(s.indirizzo)}">
+        <span class="testa-sede"><b>${esc(s.nome)}</b><span class="vai-sede">Vai ›</span></span>
+        <span class="quando">${esc(s.indirizzo)}</span>
       </button>`).join('')}</div>` : ''}
 
-    <button type="button" class="bottone secondario largo dati-aiuto" id="miei-dati">I miei dati</button>
-    <p class="nota-pagamento">Ti scrivo in chat cosa tiene l’app di te, con il pulsante per cancellarlo.</p>
+    <h2 class="sezione-aiuto">I miei dati</h2>
+    <p class="riga-aiuto">L’app tiene il tuo nome, il tuo Telegram, quando hai accettato l’informativa, se sei socio (con il numero di tessera) e i tuoi prestiti.</p>
+    <button type="button" class="bottone secondario largo" id="miei-dati">Richiedi i tuoi dati</button>
+    <p class="nota-pagamento">Te li mando in chat, con il pulsante per cancellarli.</p>
 
-    <h2 class="titolo-aiuto">Referenti della biblioteca</h2>
-    <div id="referenti-aiuto"><p class="nota-pagamento">Carico…</p></div>`);
+    ${scheda === 'inventario' ? `<h2 class="sezione-aiuto">Referenti della biblioteca</h2>
+    <div id="referenti-aiuto"><p class="nota-pagamento">Carico…</p></div>` : ''}`);
 
   corpo.querySelectorAll('[data-indirizzo]').forEach(b => {
-    b.onclick = () => apriLinkEsterno(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.dataset.indirizzo)}`);
+    b.onclick = () => apriLinkEsterno(linkPercorso(b.dataset.indirizzo));
   });
   el('miei-dati').onclick = async () => {
     el('miei-dati').disabled = true;
@@ -89,6 +82,7 @@ async function apriAiuto() {
       lamenta(err.message);
     }
   };
+  if (scheda !== 'inventario') return;
 
   if (!aiutoDati || Date.now() - aiutoLetto > AIUTO_VALIDO_MS) {
     try {
@@ -100,10 +94,12 @@ async function apriAiuto() {
   }
   const dove = el('referenti-aiuto');
   if (!dove?.isConnected) return;
+  // Chi si puo' scrivere in chat ha il nome in chiaro; chi non ha (ancora)
+  // Telegram collegato, o non ha uno username, resta in grigio.
   const referenti = aiutoDati?.referenti || [];
   dove.innerHTML = referenti.length ? referenti.map(r => r.username
     ? `<button type="button" class="riga referente-aiuto" data-chat="${esc(r.username)}" aria-label="Scrivi in chat a ${esc(r.nome)}">${esc(r.nome)}</button>`
-    : `<div class="riga referente-aiuto">${esc(r.nome)}</div>`).join('')
+    : `<div class="riga referente-aiuto spenta">${esc(r.nome)}</div>`).join('')
     : '<p class="nota-pagamento">Per la biblioteca chiedi allo staff in sede.</p>';
   dove.querySelectorAll('[data-chat]').forEach(b => { b.onclick = () => apriLinkTelegram(`https://t.me/${b.dataset.chat}`); });
 }
