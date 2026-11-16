@@ -1369,11 +1369,14 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 #scheda-task > .etichette-task { margin: -8px 0 20px; }
 
 /* ----------------------------------------------------------------- aiuto */
-/* Il "?" sta a sinistra, sopra il menu: piu' piccolo dei tondi d'azione, e
-   alto quanto il secondo tondo di destra, cosi' non finisce sotto la barra
-   d'azione larga. */
+/* Il "?" sta in basso a sinistra, all'altezza del menu e centrato su di
+   lui: piu' piccolo dei tondi d'azione. Se il menu e' cosi' largo che non
+   c'e' posto accanto (tre o quattro voci su un telefono stretto), sale
+   all'altezza del secondo tondo di destra: lo decide aggiornaEtichette(). */
 .tondo.aiuto { left: 12px; right: auto; width: 44px; height: 44px;
-  bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
+  bottom: calc(var(--menu-margine) + env(safe-area-inset-bottom) + (var(--menu) - 44px) / 2); }
+.tondo.aiuto.sopra { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
+body.senza-menu .tondo.aiuto, body.tastiera .tondo.aiuto { display: none; }
 .tondo.aiuto svg { width: 22px; height: 22px; }
 .riga-aiuto { margin: 0 0 10px; line-height: 1.45; }
 #foglio-corpo .titolo-aiuto { margin-top: 24px; }
