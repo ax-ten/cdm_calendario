@@ -29,16 +29,10 @@ async function apriAiuto() {
   const scheda = schedaAttuale();
   const [titolo, guida] = guidaScheda(scheda);
   const sedi = (stato.sediInfo || []).filter(s => s.indirizzo);
-  // In cima la segnalazione (chi apre l'aiuto spesso ha un problema), poi
-  // la scheda, le sedi, i dati; le referenti solo in biblioteca.
+  // Prima come funziona la scheda e dove sono le sedi, poi la segnalazione
+  // e i propri dati; le referenti solo in biblioteca, in fondo.
   const corpo = apriFoglio(`
-    <h2>Qualcosa non va?</h2>
-    <div class="campo">
-      <textarea id="testo-segnala" maxlength="1500" placeholder="Scrivi cosa è successo: arriva al direttivo, con la scheda in cui sei."></textarea>
-    </div>
-    <button type="button" class="bottone secondario largo" id="invia-segnala">Manda la segnalazione</button>
-
-    <h2 class="sezione-aiuto">${esc(titolo)}</h2>
+    <h2>${esc(titolo)}</h2>
     <p class="riga-aiuto">${esc(guida)}</p>
 
     ${sedi.length ? `<h2 class="sezione-aiuto">Le sedi</h2>
@@ -48,8 +42,14 @@ async function apriAiuto() {
         <span class="quando">${esc(s.indirizzo)}</span>
       </button>`).join('')}</div>` : ''}
 
-    <h2 class="sezione-aiuto">I miei dati</h2>
-    <p class="riga-aiuto">L’app tiene il tuo nome, il tuo Telegram, quando hai accettato l’informativa, se sei socio (con il numero di tessera) e i tuoi prestiti.</p>
+    <h2 class="sezione-aiuto">Qualcosa non va?</h2>
+    <div class="campo">
+      <textarea id="testo-segnala" maxlength="1500" placeholder="Scrivi cosa è successo: arriva al direttivo, con la scheda in cui sei."></textarea>
+    </div>
+    <button type="button" class="bottone secondario largo" id="invia-segnala">Manda la segnalazione</button>
+
+    <h2 class="sezione-aiuto">I tuoi dati</h2>
+    <p class="riga-aiuto">Conserviamo nome, tessera associativa, quali libri hai preso in prestito, ecc.</p>
     <button type="button" class="bottone secondario largo" id="miei-dati">Richiedi i tuoi dati</button>
     <p class="nota-pagamento">Te li mando in chat, con il pulsante per cancellarli.</p>
 
