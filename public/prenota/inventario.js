@@ -686,6 +686,14 @@ function disegnaPrestitiAdmin() {
   scorrevoli(dove, '.riga', { tocco: menuDellaRiga, menu: menuDellaRiga });
 }
 
+// Un prestito chiuso o esteso dal registro puo' essere anche il proprio, e
+// cambia comunque l'etichetta del bene nel catalogo: tornando in biblioteca
+// si ridisegna il proprio prestito e il catalogo si rilegge.
+function prestitoCambiato(prestitoId, nuovo = null) {
+  inv.prestiti = (inv.prestiti || []).flatMap(p => p.id !== prestitoId ? [p] : nuovo ? [{ ...p, ...nuovo }] : []);
+  delete fresco.inventario;
+}
+
 async function chiudiPrestito(prestitoId, titolo, socio, bottone) {
   // Basta il nome: chi amministra sa di chi si parla, e la domanda resta corta.
   const nome = String(socio || '').trim().split(/\s+/)[0];
@@ -693,6 +701,7 @@ async function chiudiPrestito(prestitoId, titolo, socio, bottone) {
   bottone.disabled = true;
   try {
     await chiama('inventario/admin/chiudi', { prestitoId });
+    prestitoCambiato(prestitoId);
     toast('Prestito chiuso.');
     caricaPrestitiAdmin();
   } catch (err) {
@@ -705,6 +714,7 @@ async function prolunga(prestitoId, giorni, bottone) {
   bottone.disabled = true;
   try {
     const { prestito } = await chiama('inventario/prolunga', { prestitoId, giorni });
+    prestitoCambiato(prestitoId, prestito);
     toast(`Esteso: ora scade il ${dataTesto(prestito.scadenza)}.`);
     caricaPrestitiAdmin();
   } catch (err) {
