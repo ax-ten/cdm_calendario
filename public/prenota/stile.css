@@ -1381,6 +1381,12 @@ body.senza-menu .tondo.aiuto, body.tastiera .tondo.aiuto { display: none; }
 .riga-aiuto { margin: 0 0 10px; line-height: 1.45; }
 #foglio-corpo .titolo-aiuto { margin-top: 24px; }
 .sede-aiuto, .referente-aiuto { display: flex; flex-direction: column; align-items: flex-start; width: 100%;
-  text-align: left; font: inherit; color: var(--testo); cursor: pointer; margin-bottom: 8px; }
+  text-align: left; font: inherit; color: var(--testo); cursor: pointer; border: 0; }
+/* Le sedi una accanto all'altra; le referenti sottili, solo il nome. */
+.sedi-aiuto { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.sedi-aiuto .riga { margin: 0; height: 100%; }
+.vedi-mappa { margin-top: 6px; font-size: .84rem; font-weight: 600; color: var(--accento-testo); }
+.referente-aiuto { padding: 9px 13px; margin-bottom: 6px; font-weight: 500; }
+button.referente-aiuto { color: var(--accento-testo); }
 div.referente-aiuto { cursor: default; }
 .dati-aiuto { margin-top: 18px; }

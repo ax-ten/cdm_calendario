@@ -39,30 +39,43 @@ async function apriAiuto() {
   const scheda = schedaAttuale();
   const [titolo, righe] = guidaScheda(scheda);
   const sedi = (stato.sediInfo || []).filter(s => s.indirizzo);
+  // In cima la segnalazione (chi apre l'aiuto spesso ha un problema), poi
+  // come funziona la scheda, le sedi, i dati; in fondo le referenti.
   const corpo = apriFoglio(`
-    <h2>${esc(titolo)}</h2>
-    ${righe.map(r => `<p class="riga-aiuto">${esc(r)}</p>`).join('')}
-
-    <h2 class="titolo-aiuto">Referenti della biblioteca</h2>
-    <div id="referenti-aiuto"><p class="nota-pagamento">Carico…</p></div>
-
-    ${sedi.length ? `<h2 class="titolo-aiuto">Le sedi</h2>
-    <div class="sedi-aiuto">${sedi.map(s => `
-      <button type="button" class="riga sede-aiuto" data-indirizzo="${esc(`${s.indirizzo}`)}">
-        <b>${esc(s.nome)}</b><span class="quando">${esc(s.indirizzo)} · apri la mappa</span>
-      </button>`).join('')}</div>` : ''}
-
-    <h2 class="titolo-aiuto">Qualcosa non va?</h2>
+    <h2>Qualcosa non va?</h2>
     <div class="campo">
       <textarea id="testo-segnala" maxlength="1500" placeholder="Scrivi cosa è successo: arriva al direttivo, con la scheda in cui sei."></textarea>
     </div>
     <button type="button" class="bottone secondario largo" id="invia-segnala">Manda la segnalazione</button>
 
-    <p class="nota-pagamento dati-aiuto">I tuoi dati: scrivi /mydata al bot per vederli o cancellarli.</p>`);
+    <h2 class="titolo-aiuto">${esc(titolo)}</h2>
+    ${righe.map(r => `<p class="riga-aiuto">${esc(r)}</p>`).join('')}
+
+    ${sedi.length ? `<h2 class="titolo-aiuto">Le sedi</h2>
+    <div class="sedi-aiuto">${sedi.map(s => `
+      <button type="button" class="riga sede-aiuto" data-indirizzo="${esc(s.indirizzo)}">
+        <b>${esc(s.nome)}</b><span class="quando">${esc(s.indirizzo)}</span><span class="vedi-mappa">Vedi su Maps</span>
+      </button>`).join('')}</div>` : ''}
+
+    <button type="button" class="bottone secondario largo dati-aiuto" id="miei-dati">I miei dati</button>
+    <p class="nota-pagamento">Ti scrivo in chat cosa tiene l’app di te, con il pulsante per cancellarlo.</p>
+
+    <h2 class="titolo-aiuto">Referenti della biblioteca</h2>
+    <div id="referenti-aiuto"><p class="nota-pagamento">Carico…</p></div>`);
 
   corpo.querySelectorAll('[data-indirizzo]').forEach(b => {
     b.onclick = () => apriLinkEsterno(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.dataset.indirizzo)}`);
   });
+  el('miei-dati').onclick = async () => {
+    el('miei-dati').disabled = true;
+    try {
+      await chiama('aiuto/miei-dati');
+      toast('Te li ho scritti in chat.');
+    } catch (err) {
+      lamenta(err.message);
+    }
+    el('miei-dati').disabled = false;
+  };
   el('invia-segnala').onclick = async () => {
     const testo = el('testo-segnala').value.trim();
     if (testo.length < 5) return toast('Scrivi cosa non va, anche in poche parole.', false);
@@ -89,8 +102,8 @@ async function apriAiuto() {
   if (!dove?.isConnected) return;
   const referenti = aiutoDati?.referenti || [];
   dove.innerHTML = referenti.length ? referenti.map(r => r.username
-    ? `<button type="button" class="riga referente-aiuto" data-chat="${esc(r.username)}"><b>${esc(r.nome)}</b><span class="quando">scrivi in chat</span></button>`
-    : `<div class="riga referente-aiuto"><b>${esc(r.nome)}</b><span class="quando">in sede</span></div>`).join('')
+    ? `<button type="button" class="riga referente-aiuto" data-chat="${esc(r.username)}" aria-label="Scrivi in chat a ${esc(r.nome)}">${esc(r.nome)}</button>`
+    : `<div class="riga referente-aiuto">${esc(r.nome)}</div>`).join('')
     : '<p class="nota-pagamento">Per la biblioteca chiedi allo staff in sede.</p>';
   dove.querySelectorAll('[data-chat]').forEach(b => { b.onclick = () => apriLinkTelegram(`https://t.me/${b.dataset.chat}`); });
 }

@@ -6,9 +6,10 @@
 // username, per aprire la chat: il numero di Telegram resta qui.
 
 import express from 'express';
+import { DateTime } from 'luxon';
 import * as odoo from '../odoo.js';
-import { GRUPPI } from '../config.js';
-import { telegram, nomeTelegram, usernameDi } from '../telegram.js';
+import { GRUPPI, ZONA } from '../config.js';
+import { telegram, nomeTelegram, usernameDi, ErroreTelegram } from '../telegram.js';
 import { conUtente } from '../sessione.js';
 import { Cache } from '../util.js';
 
@@ -46,5 +47,42 @@ router.post('/prenota/api/aiuto/segnala', (req, res) => conUtente(req, res, asyn
     text: `Segnalazione dall’app di ${nomeTelegram(utente)}${pagina ? ` (scheda ${pagina})` : ''}:\n\n${testo}`,
   });
   segnalazioni.metti(utente.id, [...recenti, ora]);
+  res.json({ ok: true });
+}));
+
+// "I miei dati": lo stesso messaggio di /mydata, mandato in privato dal bot,
+// con lo stesso pulsante per chiedere la cancellazione (lo gestisce il bot,
+// callback "dati:"). Il testo segue _testo_dati del bot: se cambia uno, va
+// cambiato anche l'altro.
+function testoDati(d) {
+  const righe = ['Ecco cosa tiene l’app di te:', '', `Nome: ${d.nome}`, `Telegram: id ${d.telegram_id}`];
+  if (d.privacy) {
+    const quando = DateTime.fromSQL(String(d.privacy), { zone: 'utc' }).setZone(ZONA);
+    if (quando.isValid) righe.push(`Informativa accettata il ${quando.toFormat("dd/MM/yyyy 'alle' HH:mm")}`);
+  }
+  if (d.provvisorio) righe.push('Sociə: in attesa che il direttivo confermi');
+  else if (d.socio) righe.push(`Sociə: sì${d.numero_socio ? `, n. ${d.numero_socio}` : ''}`);
+  if (d.admin) righe.push('Amministri la biblioteca');
+  const p = d.prestito;
+  righe.push(p ? `Prestito in corso: “${p.titolo}” a ${p.sede}` : 'Nessun prestito in corso');
+  righe.push(`Prestiti in tutto: ${d.prestiti_totali || 0}`);
+  righe.push('', 'Se chiedi la cancellazione, il tuo Telegram si stacca subito: niente più ' +
+    'app né promemoria. Il libro soci ha obblighi di conservazione suoi: ' +
+    'per quello decide la segreteria, che viene avvisata.');
+  return righe.join('\n');
+}
+
+router.post('/prenota/api/aiuto/miei-dati', (req, res) => conUtente(req, res, async (utente) => {
+  const d = await odoo.miniapp('dati_personali', String(utente.id));
+  const text = d ? testoDati(d) : 'L’app non ha dati tuoi: questo Telegram non è collegato a nessuna scheda.';
+  try {
+    await telegram('sendMessage', {
+      chat_id: utente.id, text,
+      ...(d ? { reply_markup: { inline_keyboard: [[{ text: 'Cancella i miei dati', callback_data: 'dati:chiedi' }]] } } : {}),
+    });
+  } catch (err) {
+    if (!(err instanceof ErroreTelegram)) throw err;
+    return res.status(502).json({ errore: 'Non riesco a scriverti: apri la chat con il bot e premi Avvia.' });
+  }
   res.json({ ok: true });
 }));
