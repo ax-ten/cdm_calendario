@@ -1369,15 +1369,19 @@ button.link { appearance: none; border: 0; background: none; padding: 0; font: i
 #scheda-task > .etichette-task { margin: -8px 0 20px; }
 
 /* ----------------------------------------------------------------- aiuto */
-/* Il "?" sta in basso a sinistra, all'altezza del menu e centrato su di
-   lui: piu' piccolo dei tondi d'azione. Se il menu e' cosi' largo che non
-   c'e' posto accanto (tre o quattro voci su un telefono stretto), sale
-   all'altezza del secondo tondo di destra: lo decide aggiornaEtichette(). */
-.tondo.aiuto { left: 12px; right: auto; width: 44px; height: 44px;
-  bottom: calc(var(--menu-margine) + env(safe-area-inset-bottom) + (var(--menu) - 44px) / 2); }
-.tondo.aiuto.sopra { bottom: calc(var(--ingombro-menu) + var(--azione) + 20px); }
-body.senza-menu .tondo.aiuto, body.tastiera .tondo.aiuto { display: none; }
-.tondo.aiuto svg { width: 22px; height: 22px; }
+/* Il "?" accanto al titolo della scheda: piccolo, grigio, senza cerchio.
+   Si trova cercandolo e scorre via con la pagina. */
+/* Il margine sotto passa dal titolo alla riga, se no l'icona non sta in
+   mezzo al titolo. */
+.titolo-aiuto { display: flex; align-items: center; gap: 4px; margin: 0 0 18px; }
+.titolo-aiuto:has(h2) { margin: 4px 0 12px; }
+.titolo-aiuto h1, .titolo-aiuto h2 { margin: 0; }
+.titolo-con-link .titolo-aiuto { margin: 4px 0 12px; }
+.aiuto-mini { appearance: none; border: 0; background: none; padding: 6px; margin: -6px 0; cursor: pointer;
+  color: var(--tenue); display: flex; position: relative; }
+.aiuto-mini svg { width: 18px; height: 18px; }
+/* Il tocco e' piu' grande dell'icona. */
+.aiuto-mini::before { content: ""; position: absolute; inset: -6px; }
 .riga-aiuto { margin: 0 0 10px; line-height: 1.45; }
 #foglio-corpo .titolo-aiuto { margin-top: 24px; }
 .sede-aiuto, .referente-aiuto { display: flex; flex-direction: column; align-items: flex-start; width: 100%;

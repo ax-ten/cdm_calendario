@@ -161,7 +161,7 @@
 
 <!-- ---------------------------------------------------------------- mie -->
 <section class="pannello" id="pannello-mie">
-  <h1>Le tue attività</h1>
+  <div class="titolo-aiuto"><h1>Le tue attività</h1><button type="button" class="aiuto-mini" data-aiuto aria-label="Aiuto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button></div>
   <div id="elenco-mie" class="vuoto">…</div>
   <!-- phosphor: calendar-dots. Per lo staff: le prenotazioni di tutti. Sta
        sopra il +, come Prestiti in biblioteca. -->
@@ -186,7 +186,7 @@
 <!-- --------------------------------------------------------------- task -->
 <!-- Le cose da fare dello staff: per scadenza, con i filtri in cima. -->
 <section class="pannello" id="pannello-task" role="tabpanel" aria-labelledby="tab-task" hidden>
-  <h1>Task</h1>
+  <div class="titolo-aiuto"><h1>Task</h1><button type="button" class="aiuto-mini" data-aiuto aria-label="Aiuto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button></div>
   <div class="filtro-riga"><span class="filtro-nome">Mostra</span><div class="tipi" id="filtro-task" role="group" aria-label="Quali task"></div></div>
   <div class="filtro-riga" id="riga-progetto-task" hidden><span class="filtro-nome">Progetto</span><div class="tipi" id="progetto-task" role="group" aria-label="Progetto"></div></div>
   <div class="filtro-riga" id="riga-etichetta-task" hidden><span class="filtro-nome">Etichetta</span><div class="tipi" id="etichetta-task" role="group" aria-label="Etichetta"></div></div>
@@ -209,7 +209,7 @@
 <!-- --------------------------------------------------------- inventario -->
 <section class="pannello" id="pannello-inventario" role="tabpanel" aria-labelledby="tab-inventario" hidden>
   <div id="mio-prestito"></div>
-  <h2>Prendi in prestito</h2>
+  <div class="titolo-aiuto"><h2>Prendi in prestito</h2><button type="button" class="aiuto-mini" data-aiuto aria-label="Aiuto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button></div>
 
   <div class="campo ricerca" style="margin: 0">
     <input type="search" id="cerca-beni" placeholder="Titolo, autore, ISBN…" autocomplete="off">
@@ -365,10 +365,6 @@
      fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
 <input type="file" id="foto-restituzione" accept="image/*" capture="environment" hidden>
 <!-- Per chi amministra: a chi e' andato un bene, se non a sé. -->
-<!-- lucide: circle-help. Il pulsante dell'aiuto, a sinistra sopra il menu,
-     nelle quattro schede principali. -->
-<button type="button" class="tondo chiaro aiuto" id="apri-aiuto" aria-label="Aiuto" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
-
 <div id="foglio" class="foglio-velo" hidden>
   <div class="foglio" role="dialog" aria-modal="true"><div id="foglio-corpo"></div></div>
 </div>

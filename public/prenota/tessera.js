@@ -116,7 +116,7 @@ function disegnaTessera(t) {
     </div>
     ${t.tesserato ? '' : '<p class="tessera-avviso">Tesseramento da rinnovare</p>'}
     <div class="titolo-con-link">
-      <h2>Contribuisci</h2>
+      <div class="titolo-aiuto"><h2>Contribuisci</h2><button type="button" class="aiuto-mini" data-aiuto aria-label="Aiuto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button></div>
       <button type="button" class="link" id="vai-ricevute">Le mie ricevute ›</button>
     </div>
     <div class="voci">${voci.map(([k, nome, prezzo]) => {

@@ -69,13 +69,6 @@ function aggiornaFondo() {
 // ne va. Il contenuto si misura dove sta nella pagina, non dove e' adesso
 // sullo schermo: scorrendo la scritta non va e viene.
 function aggiornaEtichette() {
-  // Il "?" accanto al menu, se c'e' posto; se no sale (vedi stile.css).
-  const aiuto = el('apri-aiuto');
-  const menu = document.querySelector('nav.tab');
-  if (aiuto && menu && !aiuto.hidden) {
-    const sinistraMenu = menu.getBoundingClientRect().left;
-    aiuto.classList.toggle('sopra', sinistraMenu < 12 + 44 + 8);
-  }
   const pannello = [...document.querySelectorAll('.pannello')].find(p => !p.hidden);
   let fine = 0;
   for (const n of pannello ? pannello.children : []) {
