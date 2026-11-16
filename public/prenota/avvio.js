@@ -53,6 +53,7 @@ function mostra(quale) {
     if (!eFresco('mie') || el('elenco-mie').className === 'vuoto') caricaMie();
     controllaChiavi();
   }
+  el('apri-aiuto').hidden = !['mie', 'inventario', 'tessera', 'task'].includes(quale);
   if (quale === 'inventario') apriInventario();
   if (quale === 'tessera') {
     if (eFresco('tessera') && tess.dati && el('tessera').querySelector('#dettaglio-pagamento')) disegnaPagamento();
@@ -199,6 +200,7 @@ async function avvia() {
   el('tab-task').hidden = !conTask;
   document.querySelector('nav.tab').classList.toggle('quattro', conTask && !el('tab-tessera').hidden);
   el('tab-task').onclick = () => mostra('task');
+  el('apri-aiuto').onclick = apriAiuto;
   el('chiudi-task-scheda').onclick = () => mostra('task');
   el('chiudi-task-modulo').onclick = () => (tk.modulo?.id ? apriTask(tk.modulo.id) : mostra('task'));
   stato.mioSocio = info.socio;

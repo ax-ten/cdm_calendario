@@ -365,6 +365,10 @@
      fotocamera dove si puo'; su iPhone si sceglie fra fotocamera e libreria. -->
 <input type="file" id="foto-restituzione" accept="image/*" capture="environment" hidden>
 <!-- Per chi amministra: a chi e' andato un bene, se non a sé. -->
+<!-- lucide: circle-help. Il pulsante dell'aiuto, a sinistra sopra il menu,
+     nelle quattro schede principali. -->
+<button type="button" class="tondo chiaro aiuto" id="apri-aiuto" aria-label="Aiuto" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+
 <div id="foglio" class="foglio-velo" hidden>
   <div class="foglio" role="dialog" aria-modal="true"><div id="foglio-corpo"></div></div>
 </div>
@@ -583,6 +587,7 @@
 <script src="quote.js"></script>
 <script src="gestione.js"></script>
 <script src="task.js"></script>
+<script src="aiuto.js"></script>
 <script src="avvio.js"></script>
 </body>
 </html>

@@ -14,6 +14,7 @@ import { router as inventario } from './rotte/inventario.js';
 import { router as tessere } from './rotte/tessere.js';
 import { router as staff } from './rotte/staff.js';
 import { router as task } from './rotte/task.js';
+import { router as aiuto } from './rotte/aiuto.js';
 import { router as interno } from './rotte/interno.js';
 
 const PORT = process.env.PORT || 8080;
@@ -44,6 +45,7 @@ app.use(inventario);
 app.use(tessere);
 app.use(staff);
 app.use(task);
+app.use(aiuto);
 app.use(interno);
 app.use(pubblico);
 
