@@ -70,8 +70,9 @@ function testoDati(d) {
   righe.push(p ? `Prestito in corso: “${p.titolo}” a ${p.sede}` : 'Nessun prestito in corso');
   righe.push(`Prestiti in tutto: ${d.prestiti_totali || 0}`);
   righe.push('', 'Se chiedi la cancellazione, il tuo Telegram si stacca subito: niente più ' +
-    'app né promemoria. Il libro soci ha obblighi di conservazione suoi: ' +
-    'per quello decide la segreteria, che viene avvisata.');
+    'app né promemoria. Per eliminare i tuoi dati da socio il processo è un po’ più ' +
+    'complicato: scrivi a info@croceviadeimondi.org per maggiori informazioni, ' +
+    'o contatta qualcuno del direttivo.');
   return righe.join('\n');
 }
 
