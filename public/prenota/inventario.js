@@ -76,6 +76,7 @@ async function apriInventario() {
     el('chiudi-prestiti').onclick = () => mostra('inventario');
   }
   disegnaMioPrestito();
+  caricaPrestitiCatalogo();
   if (inv.sedeIniziale) {
     const voce = [...el('filtro-sede').options].find(o => o.textContent.toLowerCase() === inv.sedeIniziale);
     if (voce) el('filtro-sede').value = voce.value;
@@ -279,6 +280,80 @@ function schedaBene(b) {
     </div>`;
 }
 
+const primoNome = (nome) => String(nome || '').trim().split(/\s+/)[0] || 'chi l’ha preso';
+
+// Chi amministra la biblioteca, sul bene che ha in prestito qualcun altro,
+// trova nel menu della scheda (pressione lunga, tasto destro) le stesse
+// azioni del registro: Estendi, Scrivi a..., Chiudi prestito. I prestiti in
+// corso si leggono una volta aprendo la biblioteca; arrivati, le schede gia'
+// disegnate ricevono le loro azioni.
+const prestitiCatalogo = { perBene: null, inCorso: null };
+
+function caricaPrestitiCatalogo() {
+  if (!inv.admin) return;
+  prestitiCatalogo.inCorso ??= chiama('inventario/admin/prestiti').then(({ prestiti }) => {
+    prestitiCatalogo.perBene = new Map(prestiti.map(p => [p.bene_id, p]));
+    azioniPrestitoBeni(el('elenco-beni'));
+  }).catch(() => {}).finally(() => { prestitiCatalogo.inCorso = null; });
+}
+
+function azioniPrestitoBeni(dove) {
+  if (!prestitiCatalogo.perBene) return;
+  dove.querySelectorAll('.bene[data-bene]').forEach(scheda => {
+    const p = prestitiCatalogo.perBene.get(Number(scheda.dataset.bene));
+    // Il proprio prestito ha gia' le sue azioni in cima alla biblioteca.
+    if (!p || scheda.querySelector(':scope > .azioni-prestito') || (inv.prestiti || []).some(x => x.id === p.id)) return;
+    const azioni = document.createElement('div');
+    azioni.className = 'azioni solo-menu azioni-prestito';
+    azioni.hidden = true;
+    azioni.innerHTML = html`
+      <button type="button" data-icona="estendi" data-estendi-bene>Estendi</button>
+      ${p.username ? html`<button type="button" data-icona="chat" data-chat-bene>Scrivi a ${primoNome(p.socio)}</button>` : ''}
+      <button type="button" class="grave" data-icona="restituito" data-chiudi-bene>Chiudi prestito</button>`;
+    azioni.querySelector('[data-estendi-bene]').onclick = () => estendiDalCatalogo(p);
+    azioni.querySelector('[data-chat-bene]')?.addEventListener('click', () => {
+      const link = `https://t.me/${p.username}`;
+      if (tg?.openTelegramLink) tg.openTelegramLink(link); else window.open(link, '_blank');
+    });
+    azioni.querySelector('[data-chiudi-bene]').onclick = async (e) => {
+      if (await chiudiPrestito(p.id, p.titolo, p.socio, e.currentTarget)) dopoPrestitoDalCatalogo(p.bene_id);
+    };
+    scheda.append(azioni);
+  });
+}
+
+// Chiuso o esteso dal catalogo: la lista dei prestiti si rilegge e il
+// catalogo anche (l'etichetta In prestito cambia).
+function dopoPrestitoDalCatalogo() {
+  prestitiCatalogo.perBene = null;
+  caricaPrestitiCatalogo();
+  cercaBeni(true);
+}
+
+function estendiDalCatalogo(p) {
+  const corpo = apriFoglio(`
+    <h2>Estendo “${esc(p.titolo)}”?</h2>
+    <p class="spiega">${esc(p.socio)} · ${p.scadenza ? `scade il ${esc(dataTesto(p.scadenza))}` : 'senza scadenza'}</p>
+    <div class="contagiorni grande">
+      <button type="button" data-meno aria-label="Un giorno in meno">−</button>
+      <input type="number" inputmode="numeric" min="1" max="365" value="${esc(inv.giorni)}" aria-label="Giorni in piu'">
+      <span class="unita">giorni</span>
+      <button type="button" data-piu aria-label="Un giorno in piu'">+</button>
+    </div>
+    <div class="azioni-form">
+      <button type="button" class="bottone secondario" data-indietro>Annulla</button>
+      <button type="button" class="bottone" data-conferma>Estendi</button>
+    </div>`);
+  const giorni = corpo.querySelector('input');
+  const vale = () => Math.min(365, Math.max(1, Number(giorni.value) || inv.giorni));
+  corpo.querySelector('[data-meno]').onclick = () => { giorni.value = Math.max(1, vale() - 1); };
+  corpo.querySelector('[data-piu]').onclick = () => { giorni.value = Math.min(365, vale() + 1); };
+  corpo.querySelector('[data-indietro]').onclick = chiudiFoglio;
+  corpo.querySelector('[data-conferma]').onclick = async (e) => {
+    if (await prolunga(p.id, vale(), e.currentTarget)) { chiudiFoglio(); dopoPrestitoDalCatalogo(); }
+  };
+}
+
 function collegaBottoni(dove) {
   dove.querySelectorAll('.bene[data-bene]:not([data-collegato])').forEach(scheda => {
     scheda.dataset.collegato = '1';
@@ -302,6 +377,7 @@ function collegaBottoni(dove) {
       scheda.append(azioni);
     }
   });
+  if (inv.admin) azioniPrestitoBeni(dove);
   if (inv.admin) {
     // Il tocco sceglie il bene (lo fa gia' la scheda); Modifica si trova
     // scorrendo, o nel menu della scheda: pressione lunga, tasto destro,
@@ -646,7 +722,7 @@ function disegnaPrestitiAdmin() {
         <button type="button" class="conferma" data-pieno data-icona="estendi" data-apri-prolunga>Estendi</button>
       </div>
       ${p.username ? `<div class="azioni solo-menu" hidden>
-        <button type="button" data-icona="chat" data-chat="${esc(p.username)}">Scrivi in chat</button>
+        <button type="button" data-icona="chat" data-chat="${esc(p.username)}">Scrivi a ${esc(primoNome(p.socio))}</button>
       </div>` : ''}
       <div class="azioni a-destra prolunga" data-prolunga-di="${esc(p.id)}" hidden>
         <div class="contagiorni">
@@ -697,16 +773,18 @@ function prestitoCambiato(prestitoId, nuovo = null) {
 async function chiudiPrestito(prestitoId, titolo, socio, bottone) {
   // Basta il nome: chi amministra sa di chi si parla, e la domanda resta corta.
   const nome = String(socio || '').trim().split(/\s+/)[0];
-  if (!await conferma(`Chiudo il prestito di ${nome}?`)) return;
+  if (!await conferma(`Chiudo il prestito di ${nome}?`)) return false;
   bottone.disabled = true;
   try {
     await chiama('inventario/admin/chiudi', { prestitoId });
     prestitoCambiato(prestitoId);
     toast('Prestito chiuso.');
-    caricaPrestitiAdmin();
+    if (!el('pannello-prestiti').hidden) caricaPrestitiAdmin();
+    return true;
   } catch (err) {
     bottone.disabled = false;
     lamenta(err.message);
+    return false;
   }
 }
 
@@ -716,9 +794,11 @@ async function prolunga(prestitoId, giorni, bottone) {
     const { prestito } = await chiama('inventario/prolunga', { prestitoId, giorni });
     prestitoCambiato(prestitoId, prestito);
     toast(`Esteso: ora scade il ${dataTesto(prestito.scadenza)}.`);
-    caricaPrestitiAdmin();
+    if (!el('pannello-prestiti').hidden) caricaPrestitiAdmin();
+    return true;
   } catch (err) {
     bottone.disabled = false;
     lamenta(err.message);
+    return false;
   }
 }
