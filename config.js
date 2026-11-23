@@ -61,6 +61,12 @@ export const STAFF = coppie('staff.txt');
 // chi ne fa parte puo' mettere un'attivita' in vetrina.
 export const GRUPPI = coppie('gruppi.txt');
 
+// Quando si passa in sede a prendere un libro, per chi non lo puo' segnare
+// da se'. Formato di orari_prestito.txt:  Nome della sede | testo, per
+// esempio "Trani | il venerdì dalle 17 alle 19". Senza, un testo generico.
+export const ORARI_PRESTITO = new Map([...coppie('orari_prestito.txt')]
+  .map(([sede, testo]) => [sede.toLowerCase(), testo]));
+
 
 // ---------- Drive ----------
 // API key da drive_key.json: senza, il server non parte, come prima.

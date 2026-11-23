@@ -7,10 +7,11 @@ import express from 'express';
 import { DateTime } from 'luxon';
 import * as odoo from '../odoo.js';
 import * as isbn from '../isbn.js';
-import { STAFF } from '../config.js';
+import { STAFF, ORARI_PRESTITO } from '../config.js';
 import { telegram, mandaFile, nomeTelegram, usernameDi } from '../telegram.js';
 import {
   conUtente, staffInventario, adminBiblioteca, soloAdmin, soloStaff,
+  gestisciPrestiti, soloChiGestisce,
 } from '../sessione.js';
 import { memoria, mappaConLimite } from '../util.js';
 
@@ -52,10 +53,11 @@ function generiPerCategoria(opzioni) {
 }
 
 router.post('/prenota/api/inventario/opzioni', (req, res) => conUtente(req, res, async (utente) => {
-  const [opzioni, staff, admin, prestiti] = await Promise.all([
+  const [opzioni, staff, admin, gestore, prestiti] = await Promise.all([
     odoo.miniapp('opzioni'),
     staffInventario(utente.id),
     adminBiblioteca(utente),
+    gestisciPrestiti(utente),
     odoo.miniapp('miei_prestiti', utente.id),
   ]);
   // Senza la mappa l'app mostra tutti i generi: meglio troppi che nessuno.
@@ -63,7 +65,10 @@ router.post('/prenota/api/inventario/opzioni', (req, res) => conUtente(req, res,
     console.error('generi per categoria:', err.message);
     return null;
   });
-  res.json({ ...opzioni, staff, admin, prestiti, generi_categoria });
+  res.json({
+    ...opzioni, staff, admin, gestore, prestiti, generi_categoria,
+    orari_prestito: Object.fromEntries(ORARI_PRESTITO),
+  });
 }));
 
 const PAGINA_CATALOGO = 30;
@@ -164,6 +169,7 @@ function avvisaStaffDelPrestito(prestito, utente, note) {
 }
 
 router.post('/prenota/api/inventario/presta', (req, res) => conUtente(req, res, async (utente) => {
+  if (!await soloChiGestisce(utente, res)) return;
   const beneId = Number(req.body?.beneId);
   if (!beneId) return res.status(400).json({ errore: 'Quale bene?' });
   const note = String(req.body?.note || '').trim().slice(0, 500) || false;
@@ -249,7 +255,7 @@ router.post('/prenota/api/inventario/restituisci', (req, res) => conUtente(req, 
 // Solo lo staff prolunga: il socio restituisce e, se vuole, lo riprende.
 // ---- vista degli admin: tutti i prestiti in corso
 router.post('/prenota/api/inventario/admin/prestiti', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdmin(utente, res)) return;
+  if (!await soloChiGestisce(utente, res)) return;
   const prestiti = await odoo.miniapp('prestiti_aperti');
   // Per il pulsante "scrivi in chat": serve lo username, perche' una pagina
   // dentro Telegram apre solo link t.me. Il numero resta qui. Poche domande
@@ -261,7 +267,7 @@ router.post('/prenota/api/inventario/admin/prestiti', (req, res) => conUtente(re
 // Chi amministra segna che un bene l'ha preso qualcun altro: unə sociə
 // scelto dai suggerimenti, o solo un nome. Lo staff della sede lo sa subito.
 router.post('/prenota/api/inventario/admin/presta', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdmin(utente, res)) return;
+  if (!await soloChiGestisce(utente, res)) return;
   const beneId = Number(req.body?.beneId);
   if (!beneId) return res.status(400).json({ errore: 'Quale bene?' });
   const nome = String(req.body?.nome || '').trim().slice(0, 120);
@@ -277,7 +283,7 @@ router.post('/prenota/api/inventario/admin/presta', (req, res) => conUtente(req,
 
 // I nomi dellɜ sociɜ mentre si scrive, per collegare il prestito alla scheda.
 router.post('/prenota/api/inventario/admin/soci', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdmin(utente, res)) return;
+  if (!await soloChiGestisce(utente, res)) return;
   const testo = String(req.body?.testo || '').trim().slice(0, 60);
   // Anche col campo vuoto: l'elenco nel foglio e' aperto da subito, in
   // ordine, e si scorre. Con poche lettere i nomi sono tanti: un tetto.
@@ -285,14 +291,14 @@ router.post('/prenota/api/inventario/admin/soci', (req, res) => conUtente(req, r
 }));
 
 router.post('/prenota/api/inventario/admin/chiudi', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdmin(utente, res)) return;
+  if (!await soloChiGestisce(utente, res)) return;
   const prestitoId = Number(req.body?.prestitoId);
   if (!prestitoId) return res.status(400).json({ errore: 'Quale prestito?' });
   res.json({ prestito: await odoo.miniapp('chiudi_prestito', prestitoId, nomeTelegram(utente)) });
 }));
 
 router.post('/prenota/api/inventario/prolunga', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdmin(utente, res)) return;
+  if (!await soloChiGestisce(utente, res)) return;
   const prestitoId = Number(req.body?.prestitoId);
   if (!prestitoId) return res.status(400).json({ errore: 'Quale prestito?' });
   // Quanti giorni in piu' lo sceglie chi prolunga; senza, quelli di un prestito.

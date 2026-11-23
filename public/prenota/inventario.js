@@ -70,7 +70,12 @@ async function apriInventario() {
     el('altri-beni').onclick = () => cercaBeni(false);
     el('apri-aggiungi').onclick = apriAggiungi;
     inv.admin = Boolean(o.admin);
-    el('apri-prestiti').hidden = !inv.admin;
+    // Staff, direttivo e chi amministra: prendono da se' e tengono i
+    // prestiti degli altri. Gli altri soci passano in sede.
+    inv.gestore = Boolean(o.gestore);
+    inv.orari = o.orari_prestito || {};
+    el('titolo-inventario').textContent = inv.gestore ? 'Prendi in prestito' : 'In biblioteca';
+    el('apri-prestiti').hidden = !inv.gestore;
     el('apri-prestiti').classList.toggle('secondo', !el('apri-aggiungi').hidden);
     el('apri-prestiti').onclick = () => { mostra('prestiti'); caricaPrestitiAdmin(); };
     el('chiudi-prestiti').onclick = () => mostra('inventario');
@@ -378,6 +383,9 @@ function collegaBottoni(dove) {
     }
   });
   if (inv.admin) azioniPrestitoBeni(dove);
+  // Lo scorrimento serve a chi ha "Modifica": senza azioni da scoprire
+  // prenderebbe il tocco della scheda, e il bene non si sceglierebbe piu'.
+  // Lo staff tiene i prestiti degli altri dal registro.
   if (inv.admin) {
     // Il tocco sceglie il bene (lo fa gia' la scheda); Modifica si trova
     // scorrendo, o nel menu della scheda: pressione lunga, tasto destro,
@@ -523,24 +531,43 @@ function sceglieBene(id) {
 function aggiornaPrestito() {
   const b = inv.scelto && inv.beni?.get(inv.scelto);
   const visibile = Boolean(b) && !el('pannello-inventario').hidden;
-  let testo = 'Prendi in prestito', attivo = true;
+  // Chi non tiene i prestiti non prende da se': il pulsante dice come fare.
+  let testo = inv.gestore ? 'Prendi in prestito' : 'Come prenderlo', attivo = true;
   if (b && b.stato === 'in_prestito') { testo = 'Già in prestito'; attivo = false; }
   else if (b && b.stato === 'mancante') { testo = 'Risulta mancante'; attivo = false; }
-  else if (b && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
+  else if (b && inv.gestore && inv.prestiti.length >= inv.maxPrestiti) { testo = 'Porta indietro il tuo prestito!'; attivo = false; }
 
   if (visibile) pulsantePrincipale(testo, attivo); else nascondiAzione();
   // Chi amministra, su un bene disponibile, ha anche "Segna come prestato".
-  const aNomeVisibile = visibile && inv.admin && b.stato === 'disponibile';
+  const aNomeVisibile = visibile && inv.gestore && b.stato === 'disponibile';
   el('azione-a-nome').hidden = !aNomeVisibile;
   document.body.classList.toggle('due-azioni', aNomeVisibile);
   // Il + sta dove sta il pulsante del prestito: si vede solo senza un bene scelto.
   el('apri-aggiungi').hidden = !inv.staff || Boolean(b);
-  el('apri-prestiti').hidden = !inv.admin || Boolean(b);
+  el('apri-prestiti').hidden = !inv.gestore || Boolean(b);
   el('apri-prestiti').classList.toggle('secondo', !el('apri-aggiungi').hidden);
+}
+
+// Il socio prende un bene passando in sede: chi e' di turno lo segna.
+function comePrenderlo(b) {
+  const sede = (stato.sediInfo || []).find(x => x.nome.toLowerCase() === String(b.sede || '').toLowerCase());
+  const orari = inv.orari[String(b.sede || '').toLowerCase()];
+  const corpo = apriFoglio(`
+    <h2>Come prenderlo</h2>
+    <p class="riga-aiuto">Libri e giochi si prendono in sede: passa a ${esc(b.sede)}${orari ? ' ' + esc(orari) : ' durante l’apertura'} e chiedi «${esc(b.titolo)}». Chi è di turno lo segna per te, e lo trovi qui fra i tuoi prestiti.</p>
+    ${sede?.indirizzo ? `<button type="button" class="riga sede-aiuto" data-indirizzo="${esc(sede.indirizzo)}" aria-label="Portami a ${esc(sede.nome)}, ${esc(sede.indirizzo)}">
+      <span class="testa-sede"><b>${esc(sede.nome)}</b><span class="vai-sede">Vai ›</span></span>
+      <span class="quando">${esc(sede.indirizzo)}</span>
+    </button>` : ''}
+    <div class="azioni-form"><button type="button" class="bottone secondario largo" data-indietro>Ho capito</button></div>`);
+  corpo.querySelector('[data-indirizzo]')?.addEventListener('click', (e) =>
+    apriLinkEsterno(linkPercorso(e.currentTarget.dataset.indirizzo)));
+  corpo.querySelector('[data-indietro]').onclick = chiudiFoglio;
 }
 
 async function prendiScelto() {
   const b = inv.scelto && inv.beni?.get(inv.scelto);
+  if (b && b.stato === 'disponibile' && !inv.gestore) return comePrenderlo(b);
   if (!b || b.stato !== 'disponibile' || inv.prestiti.length >= inv.maxPrestiti) return;
   // Niente domanda prima: c'e' il toast con Annulla dopo, che basta e
   // costa un tocco in meno. Il toast dice anche dove e quando riportarlo.

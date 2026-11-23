@@ -10,7 +10,9 @@ let aiutoLetto = 0;
 function guidaScheda(scheda) {
   const giorni = inv.giorni || 30;
   return {
-    inventario: ['La biblioteca', `Da qui prendi in prestito libri e giochi, uno alla volta per ${giorni} giorni. Per restituirlo premi «L’ho restituito» e manda una foto.`],
+    inventario: ['La biblioteca', inv.gestore
+      ? `Da qui prendi in prestito libri e giochi, uno alla volta per ${giorni} giorni, e tieni i prestiti degli altri. Per restituirlo premi «L’ho restituito» e manda una foto.`
+      : `Da qui vedi cosa c’è. Per prendere un libro o un gioco passa in sede: chi è di turno lo segna per te, per ${giorni} giorni. Per restituirlo premi «L’ho restituito» e manda una foto.`],
     mie: ['Le tue attività', 'Da qui puoi prenotare una stanza e gestire i tuoi appuntamenti. Premi + per crearne una nuova.'],
     tessera: ['La tua tessera', 'Da qui vedi la tua tessera, le mensilità pagate e le ricevute. «Contribuisci» ti dice quanto e come pagare.'],
     task: ['Le task', 'Le cose da fare dello staff. «Prendo io» per occupartene, scorri una riga per segnarla fatta.'],

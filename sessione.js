@@ -179,6 +179,20 @@ export async function soloAdmin(utente, res) {
   return false;
 }
 
+// Chi tiene i prestiti: lo staff, il direttivo e chi amministra la
+// biblioteca. Solo loro prendono un bene dall'app, e segnano, prolungano e
+// chiudono i prestiti degli altri; il socio passa in sede e lo segnano loro.
+export async function gestisciPrestiti(utente) {
+  const [staff, admin] = await Promise.all([staffInventario(utente.id), adminBiblioteca(utente)]);
+  return staff || admin;
+}
+
+export async function soloChiGestisce(utente, res) {
+  if (await gestisciPrestiti(utente)) return true;
+  res.status(403).json({ errore: 'I prestiti li segna chi è di turno in sede.' });
+  return false;
+}
+
 export async function soloStaff(utente, res) {
   if (await staffInventario(utente.id)) return true;
   res.status(403).json({ errore: 'Lo può fare solo lo staff.' });
