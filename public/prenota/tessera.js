@@ -298,7 +298,7 @@ function disegnaPagamento() {
     const manca = v === 'contributo_mensile' ? 'Scegli i mesi' : 'Scegli il giorno';
     html += `<div class="conto-pagamento" role="status">
       <b>${totale ? `Totale: ${esc(euro(totale))}` : esc(manca)}</b>
-      <span>Puoi pagare in sede in contanti, oppure con PayPal, carta o bonifico.</span>
+      <span>Puoi pagare con PayPal, carta o bonifico.</span>
       ${dovePagare()}
     </div>`;
   }

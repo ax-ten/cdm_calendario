@@ -204,8 +204,11 @@ async function avvia() {
   el('chiudi-task-scheda').onclick = () => mostra('task');
   el('chiudi-task-modulo').onclick = () => (tk.modulo?.id ? apriTask(tk.modulo.id) : mostra('task'));
   stato.mioSocio = info.socio;
-  // Le quote di tuttɜ le vede il direttivo, o chi ha la spunta in Odoo.
-  el('apri-quote').hidden = !info.tessere;
+  // Le quote di tuttɜ le gestisce il direttivo, o chi ha la spunta in Odoo;
+  // lo staff segna solo i contanti presi in sede.
+  stato.soloContanti = info.quote === 'contanti';
+  el('apri-quote').hidden = !info.quote;
+  el('vista-quote').hidden = stato.soloContanti;
   // Ogni volta l'elenco si rilegge: nel frattempo qualcunə puo' aver pagato.
   el('apri-quote').onclick = () => { quo.soci = null; mostra('quote'); };
   el('chiudi-quote').onclick = () => mostra('tessera');

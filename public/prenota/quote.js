@@ -16,6 +16,9 @@ const quo = {
 };
 const METODI = [['contanti', 'Contanti'], ['paypal', 'PayPal'], ['bonifico', 'Bonifico'], ['stripe', 'Carta']];
 const METODI_TESTO = { contanti: 'in contanti', paypal: 'con PayPal', bonifico: 'con bonifico', stripe: 'con carta' };
+// Lo staff segna solo i contanti: la scelta e' gia' fatta, e non si vede.
+const metodiSegnabili = () => (stato.soloContanti ? METODI.filter(([k]) => k === 'contanti') : METODI);
+const metodoIniziale = () => (stato.soloContanti ? 'contanti' : null);
 const metodoNome = (k) => METODI.find(([x]) => x === k)?.[1] || k || '';
 const IMPORTO_EVENTO_MAX = 50;
 
@@ -298,7 +301,7 @@ async function apriQuota(partnerId) {
   mostra('quota');
   const giro = nuovoGiro('quota');
   window.scrollTo(0, 0);
-  Object.assign(quo, { socio: null, voce: null, giorno: null, data: '', mesi: new Set(), importo: EVENTO_BASE, metodo: null });
+  Object.assign(quo, { socio: null, voce: null, giorno: null, data: '', mesi: new Set(), importo: EVENTO_BASE, metodo: metodoIniziale() });
   const dove = el('scheda-quota');
   dove.className = 'vuoto';
   dove.textContent = 'Carico…';
@@ -336,7 +339,7 @@ function disegnaQuota() {
       return `<span class="${pagato ? 'pagato' : ''}${i === adesso ? ' adesso' : ''}" title="${MESI[i]}${pagato ? ': pagato' : ''}">${m}</span>`;
     }).join('')}</div>
     </div>
-    ${t.telegram && t.anno === annoCorrente()
+    ${t.telegram && t.anno === annoCorrente() && !stato.soloContanti
       ? '<p class="ricorda-quota"><button type="button" class="link" id="ricorda-quota">Manda un promemoria in chat ›</button></p>' : ''}
     <section class="blocco-segna" aria-labelledby="titolo-segna">
       <h2 id="titolo-segna">Segna un pagamento</h2>
@@ -449,9 +452,9 @@ function disegnaPagamentoQuota() {
         <input type="date" id="data-quota" max="${isoLocale(oggi)}" value="${esc(quo.data)}"></label>
     </div>
     ${v === 'contributo_evento' ? campoEventoHtml('quota', quo.nomeEvento) : ''}
-    <p class="domanda">Come ha pagato?</p>
-    <div class="scelte">${METODI.map(([k, nome]) =>
-      `<button type="button" data-metodo="${k}" aria-pressed="${quo.metodo === k}">${nome}</button>`).join('')}</div>`;
+    ${stato.soloContanti ? '<p class="nota-pagamento">In contanti: lo staff segna solo quelli presi in sede.</p>' : `<p class="domanda">Come ha pagato?</p>
+    <div class="scelte">${metodiSegnabili().map(([k, nome]) =>
+      `<button type="button" data-metodo="${k}" aria-pressed="${quo.metodo === k}">${nome}</button>`).join('')}</div>`}`;
   ridisegnaTenendo(d, () => { d.innerHTML = html; });
 
   d.querySelectorAll('[data-mese-quota]').forEach(b => {
@@ -554,7 +557,7 @@ async function apriIncassi() {
   mostra('incassi');
   window.scrollTo(0, 0);
   const oggi = isoLocale(new Date());
-  Object.assign(inc, { giorno: 'oggi', data: oggi, metodo: null, mesi: new Set([meseCorrente()]),
+  Object.assign(inc, { giorno: 'oggi', data: oggi, metodo: metodoIniziale(), mesi: new Set([meseCorrente()]),
                        importo: EVENTO_BASE, nomeEvento: '', scelti: [], errori: new Map() });
   const dove = el('modulo-incassi');
   const giro = nuovoGiro('incassi');
@@ -622,9 +625,9 @@ function disegnaIncassi() {
         <input type="date" id="data-incasso" max="${isoLocale(oggi)}" value="${esc(inc.data)}"></label>
     </div>
     ${inc.voce === 'contributo_evento' ? campoEventoHtml('incasso', inc.nomeEvento) : ''}
-    <p class="domanda">Come hanno pagato?</p>
-    <div class="scelte">${METODI.map(([k, nome]) =>
-      `<button type="button" data-metodo-incasso="${k}" aria-pressed="${inc.metodo === k}">${nome}</button>`).join('')}</div>
+    ${stato.soloContanti ? '<p class="nota-pagamento">In contanti: lo staff segna solo quelli presi in sede.</p>' : `<p class="domanda">Come hanno pagato?</p>
+    <div class="scelte">${metodiSegnabili().map(([k, nome]) =>
+      `<button type="button" data-metodo-incasso="${k}" aria-pressed="${inc.metodo === k}">${nome}</button>`).join('')}</div>`}
     <p class="domanda">Chi?</p>
     <div class="campo-cerca-incasso">
       <input type="text" id="cerca-incasso" placeholder="Scrivi un nome o un numero di tessera" autocomplete="off"

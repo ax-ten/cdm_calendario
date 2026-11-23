@@ -38,7 +38,7 @@ import * as odoo from '../odoo.js';
 import { ZONA, GRUPPI, nomeSede } from '../config.js';
 import { eventiDiTutte } from '../calendario.js';
 import { telegram, mandaFile, ErroreTelegram, nomeTelegram, ruoloDi } from '../telegram.js';
-import { conUtente, soloAdminTessere, dimenticaSocio } from '../sessione.js';
+import { conUtente, soloAdminTessere, soloQuote, dimenticaSocio } from '../sessione.js';
 import { Cache, mappaConLimite, senzaDoppioni } from '../util.js';
 
 export const router = express.Router();
@@ -116,7 +116,7 @@ function annoQuote(valore) {
 }
 
 router.post('/prenota/api/tessere/elenco', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdminTessere(utente, res)) return;
+  if (!await soloQuote(utente, res)) return;
   const anno = annoQuote(req.body?.anno);
   const soci = await odoo.miniapp('quote_soci', anno);
   // Il numero di Telegram resta qui: alla pagina basta sapere se c'e', e
@@ -165,7 +165,7 @@ router.post('/prenota/api/tessere/pagamenti', (req, res) => conUtente(req, res, 
 }));
 
 router.post('/prenota/api/tessere/socio', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdminTessere(utente, res)) return;
+  if (!await soloQuote(utente, res)) return;
   const partnerId = Number(req.body?.partnerId);
   if (!partnerId) return res.status(400).json({ errore: 'Quale persona?' });
   const { telegram_id: tg, ...tessera } =
@@ -205,6 +205,14 @@ const cosaPagata = (valori, data) => valori.codice === 'contributo_mensile'
   ? `${VOCI_QUOTA[valori.codice]} di ${valori.mesi.map(nomeMese).join(', ')}`
   : `${VOCI_QUOTA[valori.codice]}${valori.evento ? ` “${valori.evento}”` : ''} del ${data.setLocale('it').toFormat('d MMMM yyyy')}`;
 
+// Lo staff segna solo i contanti presi in sede: PayPal, carta e bonifico
+// li controlla chi tiene i conti.
+function metodoConsentito(poteri, valori, res) {
+  if (poteri === 'tutto' || valori.metodo === 'contanti') return true;
+  res.status(403).json({ errore: 'Lo staff segna solo i pagamenti in contanti.' });
+  return false;
+}
+
 // Lo stesso pagamento segnato due volte in pochi minuti dalla stessa
 // persona (doppio tocco, rete che ritrasmette) e' uno solo: la seconda
 // volta si risponde con le ricevute della prima, senza registrarlo di nuovo
@@ -230,7 +238,7 @@ async function registraUno(utente, partnerId, valori, data) {
       dimenticaSocio(esito.telegram_id);
       telegram('sendMessage', {
         chat_id: esito.telegram_id,
-        text: `Il direttivo ha registrato il tuo pagamento: ${cosa}, ${euroTesto(totale)}. ` +
+        text: `Abbiamo registrato il tuo pagamento: ${cosa}, ${euroTesto(totale)}. ` +
               'Trovi la ricevuta nella Tessera, dentro l’app.',
       }).catch((err) => console.error('quote: avviso del pagamento non mandato:', err.message));
     }
@@ -251,12 +259,14 @@ function avvisaDirettivo(testo) {
 // quali mesi. Al direttivo arriva una riga nel gruppo, cosi' se due persone
 // segnano la stessa cosa se ne accorge qualcuno.
 router.post('/prenota/api/tessere/registra', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdminTessere(utente, res)) return;
+  const poteri = await soloQuote(utente, res);
+  if (!poteri) return;
   const b = req.body || {};
   const partnerId = Number(b.partnerId);
   if (!partnerId) return res.status(400).json({ errore: 'Quale persona?' });
   const { errore, valori, data } = leggiPagamento(b);
   if (errore) return res.status(400).json({ errore });
+  if (!metodoConsentito(poteri, valori, res)) return;
   if (valori.codice === 'contributo_mensile') {
     valori.mesi = mesiDi(b.mesi);
     if (!valori.mesi) return res.status(400).json({ errore: 'Quali mesi?' });
@@ -276,10 +286,12 @@ router.post('/prenota/api/tessere/registra', (req, res) => conUtente(req, res, a
 // gia' stato registrato da un invio identico di poco prima non si ripete).
 const PAGAMENTI_PER_VOLTA = 60;
 router.post('/prenota/api/tessere/registra-tanti', (req, res) => conUtente(req, res, async (utente) => {
-  if (!await soloAdminTessere(utente, res)) return;
+  const poteri = await soloQuote(utente, res);
+  if (!poteri) return;
   const b = req.body || {};
   const { errore, valori, data } = leggiPagamento(b);
   if (errore) return res.status(400).json({ errore });
+  if (!metodoConsentito(poteri, valori, res)) return;
   const righe = (Array.isArray(b.righe) ? b.righe : [])
     .map((r) => ({ partnerId: Number(r?.partnerId), mesi: r?.mesi }))
     .filter((r, i, tutte) => r.partnerId && tutte.findIndex((x) => x.partnerId === r.partnerId) === i);

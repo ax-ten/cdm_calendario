@@ -1036,6 +1036,7 @@ select { appearance: none; padding-right: 30px; text-overflow: ellipsis;
 .titolo-con-anno { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
 .titolo-con-anno h1 { margin: 0; }
 .segmenti { display: flex; gap: 4px; padding: 4px; margin: 0 0 14px; border-radius: 999px; background: var(--scheda); }
+.segmenti[hidden] { display: none; }
 .segmenti button { flex: 1; padding: 8px 10px; border: 0; border-radius: 999px; background: none; color: var(--tenue);
   font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; }
 .segmenti button[aria-pressed="true"] { background: var(--accento); color: var(--su-accento); }

@@ -8,7 +8,7 @@ import * as odoo from '../odoo.js';
 import * as soci from '../soci.js';
 import { GRUPPI, CALENDARI, CATEGORIE, SEDI_INDIRIZZI, nomeSede } from '../config.js';
 import { telegram, nomeTelegram, escHtml, eStaff, eDirettivo } from '../telegram.js';
-import { conUtente, socioDi, dimenticaSocio, mancaGruppo, troppeChiamate } from '../sessione.js';
+import { conUtente, socioDi, dimenticaSocio, mancaGruppo, troppeChiamate, poteriQuote } from '../sessione.js';
 import { registraErrore } from '../erroriPagina.js';
 import { inFila } from '../util.js';
 
@@ -33,7 +33,8 @@ router.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utent
     });
   }
 
-  const [staff, direttivo] = await Promise.all([eStaff(utente.id), eDirettivo(utente.id)]);
+  const [staff, direttivo, quote] = await Promise.all([
+    eStaff(utente.id), eDirettivo(utente.id), poteriQuote(utente)]);
   res.json({
     utente,
     socio: utente.socio,
@@ -44,6 +45,8 @@ router.post('/prenota/api/stato', (req, res) => conUtente(req, res, async (utent
     direttivo,
     // Il tasto delle quote dellɜ sociɜ, nella Tessera.
     tessere: direttivo || Boolean(utente.socio.admin_tessere),
+    // Chi apre "Gestisci contributi": 'tutto', o 'contanti' per lo staff.
+    quote,
     sedi: CALENDARI.map((c) => ({
       slug: c.sede,
       nome: nomeSede(c.sede),

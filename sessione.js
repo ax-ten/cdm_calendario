@@ -207,6 +207,20 @@ export async function adminTessere(utente) {
   return eDirettivo(utente.id);
 }
 
+// Chi segna le quote, e quanto: chi le gestisce tutte (direttivo e la
+// spunta in Odoo) o lo staff, che in sede riceve i contanti e segna solo
+// quelli. null per gli altri.
+export async function poteriQuote(utente) {
+  if (await adminTessere(utente)) return 'tutto';
+  return await eStaff(utente.id) ? 'contanti' : null;
+}
+
+export async function soloQuote(utente, res) {
+  const poteri = await poteriQuote(utente);
+  if (!poteri) res.status(403).json({ errore: 'Lo può fare solo lo staff.' });
+  return poteri;
+}
+
 export async function soloAdminTessere(utente, res) {
   if (await adminTessere(utente)) return true;
   res.status(403).json({ errore: 'Lo può fare solo il direttivo.' });
