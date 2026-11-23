@@ -56,6 +56,14 @@ export function leggiRichiesta(id) {
   return r ? { id, ...structuredClone(r) } : null;
 }
 
+// La richiesta a cui appartiene un messaggio nel gruppo del direttivo: chi
+// risponde a quel messaggio con un nome cerca la scheda giusta.
+export function richiestaDelMessaggio(chat, messaggio) {
+  const trovata = Object.entries(leggi().richieste).find(([, r]) => (r.messaggi || [])
+    .some((m) => String(m.chat) === String(chat) && Number(m.id) === Number(messaggio)));
+  return trovata ? { id: trovata[0], ...structuredClone(trovata[1]) } : null;
+}
+
 export function aggiorna(id, campi) {
   const dati = copia();
   if (!dati.richieste[id]) return false;

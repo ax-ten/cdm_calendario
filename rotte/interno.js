@@ -229,6 +229,38 @@ router.post('/prenota/api/interno/cancella-dati', async (req, res) => {
   res.json({ ok: true, esito });
 });
 
+// Il direttivo risponde al messaggio di una registrazione con un nome: la
+// scheda non era fra le proposte (un soprannome, un nome scritto diverso).
+// Si cerca con quel nome e i pulsanti del messaggio diventano i risultati,
+// piu' "Persona nuova" e "Non e' nel libro soci" che restano sempre.
+const NOME_CERCA_MAX = 80;
+router.post('/prenota/api/interno/socio/cerca', async (req, res) => {
+  if (!soloBot(req, res)) return;
+  const { chat, messaggio } = req.body || {};
+  const testo = String(req.body?.testo || '').trim().replace(/\s+/g, ' ');
+  const r = soci.richiestaDelMessaggio(chat, messaggio);
+  if (!r) return res.json({ ok: true, esito: 'nessuna' });
+  if (!testo || testo.length > NOME_CERCA_MAX) {
+    return res.status(400).json({ errore: 'Scrivi il nome e il cognome della scheda.' });
+  }
+  // candidati() cerca ogni parola nel nome della scheda, in qualsiasi ordine.
+  const parole = testo.split(' ');
+  const cognome = parole.pop();
+  try {
+    const candidati = await odoo.miniapp('candidati', parole.join(' '), cognome);
+    const tastiera = tastieraRegistrazione(r.id, candidati, { conNome: true });
+    for (const m of r.messaggi || []) {
+      await telegram('editMessageReplyMarkup', {
+        chat_id: m.chat, message_id: m.id, reply_markup: { inline_keyboard: tastiera },
+      }).catch((err) => console.error('registrazione: pulsanti non aggiornati:', err.message));
+    }
+    res.json({ ok: true, esito: 'cercato', trovati: candidati.map((c) => c.nome) });
+  } catch (err) {
+    console.error('registrazione: cerca:', err.message);
+    res.status(err.perUtente ? 409 : 500).json({ errore: err.message });
+  }
+});
+
 // /registrazioni dal gruppo del direttivo: le richieste ancora senza
 // risposta tornano in fondo alla chat, con i loro bottoni. Le copie vecchie
 // restano e si aggiornano insieme alle nuove quando qualcuno decide.

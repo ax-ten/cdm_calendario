@@ -75,24 +75,25 @@ function testoRegistrazione(utente, nome, cognome) {
 }
 
 export function testoCandidati(candidati, nome, cognome) {
-  if (!candidati.length) return 'Su Odoo non c’è nessuna scheda con questo nome: è una persona nuova?';
+  const altro = '\nSe è unə sociə con un altro nome, rispondi a questo messaggio con il nome della sua scheda.';
+  if (!candidati.length) return `Su Odoo non c’è nessuna scheda con questo nome: è una persona nuova?${altro}`;
   const stesso = (c) => c.nome.trim().toLowerCase() === `${nome} ${cognome}`.trim().toLowerCase();
   if (candidati.length === 1) {
     return stesso(candidati[0])
-      ? 'Su Odoo c’è un utente omonimo, collego gli account?'
-      : `Su Odoo c’è un utente con un nome simile, ${escHtml(nomeScheda(candidati[0]))}: collego gli account?`;
+      ? `Su Odoo c’è un utente omonimo, collego gli account?${altro}`
+      : `Su Odoo c’è un utente con un nome simile, ${escHtml(nomeScheda(candidati[0]))}: collego gli account?${altro}`;
   }
   return 'Su Odoo ci sono utenti con un nome simile:\n' +
          candidati.map((c) => `- ${escHtml(nomeScheda(c))}`).join('\n') +
-         '\nCollego gli account a uno di questi?';
+         `\nCollego gli account a uno di questi?${altro}`;
 }
 
-// Con una sola scheda simile il pulsante dice solo cosa fa; con piu' di una
-// deve dire anche quale.
-export function tastieraRegistrazione(id, candidati) {
+// Con una sola scheda simile il pulsante dice solo cosa fa; con piu' di una,
+// o dopo una ricerca a mano (il messaggio parla d'altro), deve dire anche quale.
+export function tastieraRegistrazione(id, candidati, { conNome = false } = {}) {
   return [
     ...candidati.map((c) => [{
-      text: candidati.length === 1 ? 'Collega ad utente Odoo' : `Collega ad utente Odoo: ${nomeScheda(c)}`,
+      text: candidati.length === 1 && !conNome ? 'Collega ad utente Odoo' : `Collega ad utente Odoo: ${nomeScheda(c)}`,
       callback_data: `socio:${id}:${c.id}`,
     }]),
     [
